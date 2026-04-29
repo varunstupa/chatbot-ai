@@ -1,0 +1,16 @@
+fastapi
+uvicorn[standard]
+langchain
+langchain-core
+langchain-community
+langchain-chroma
+langchain-openai
+langchain-text-splitters
+chromadb
+sentence-transformers
+pydantic
+pydantic-settings
+python-multipart
+markitdown[all]
+pyyaml
+

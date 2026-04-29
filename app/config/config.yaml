@@ -1,0 +1,74 @@
+app:
+  name: "RAG Backend"
+  version: "1.0"
+
+server:
+  host: "0.0.0.0"
+  port: 8000
+
+paths:
+  upload_dir: "data/uploads"
+
+# Re-upload / re-ingest docs after changing chunk_* so Chroma matches.
+chunking:
+  chunk_size: 3000
+  chunk_overlap: 500
+
+embedding:
+  model_name: "sentence-transformers/all-mpnet-base-v2"
+  model_kwargs: {}
+  encode_kwargs: {}
+
+vector_store:
+  collection_name: "rag_collection"
+  persist_directory: "data/chroma"
+  top_k: 4
+
+rag:
+  prompt_template: |
+    You are a helpful assistant. Use ONLY the context below to answer.
+    If the user names a topic, section, or heading that appears in the context, summarize what the context says about it.
+    If the context has no relevant information at all, reply exactly: I don't know.
+
+    Context:
+    {context}
+
+    Question:
+    {question}
+
+    Answer (follow system Markdown rules):
+
+llm:
+  # Use "local" or "ollama" for Ollama (http://localhost:11434 by default).
+  provider: "local"
+  temperature: 0
+  model: "nvidia/llama-3.1-nemotron-nano-8b-v1"
+  base_url: "https://integrate.api.nvidia.com/v1"
+  system_message: |
+    You must respond in strict Markdown format.
+
+    Rules:
+    - Use ## for headings (not #)
+    - Use proper Markdown tables
+    - Use ``` for code blocks (always close them)
+    - Do not output partial or broken Markdown
+    - Do not switch formats mid-response
+  missing_api_key_message: "Set NVIDIA_API_KEY in .env or your environment."
+  top_p: 0.95
+  # Ignored for provider nvidia (LangChain would send max_completion_tokens; API returns 400).
+  max_tokens: null
+  frequency_penalty: 0.0
+  presence_penalty: 0.0
+  local_base_url: "http://localhost:11434"
+  local_model_name: "llama3.2:1b"
+
+logging:
+  level: "INFO"
+  json_format: false
+
+messages:
+  upload_success: "File ingested successfully"
+  missing_filename: "Missing filename"
+  upload_empty: "Empty upload"
+  query_empty: "Question must not be empty"
+  query_processing_failed: "Query processing failed"
