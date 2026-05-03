@@ -46,6 +46,7 @@ def create_app() -> FastAPI:
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
+        expose_headers=["X-Session-Id"],
     )
     application.include_router(router)
     # Same routes under /api for SPAs and proxies (e.g. /api/query/stream).

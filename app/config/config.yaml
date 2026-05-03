@@ -26,9 +26,15 @@ vector_store:
 
 rag:
   prompt_template: |
-    You are a helpful assistant. Use ONLY the context below to answer.
-    If the user names a topic, section, or heading that appears in the context, summarize what the context says about it.
-    If the context has no relevant information at all, reply exactly: I don't know.
+    You are a helpful assistant.
+    Use the Context block below for facts from uploaded documents.
+    For follow-ups about this chat (e.g. what the user said earlier, the previous question, or details they already gave like an event name), use the prior messages in the conversation.
+    If the user names a topic, section, or heading that appears in the Context, summarize what the Context says about it.
+
+    When you have enough information, give a direct answer and stop. Do not add caveats after a complete answer.
+
+    Only if Context and prior conversation give no relevant information at all, reply with exactly this single line (and nothing else):
+    I don't know
 
     Context:
     {context}
@@ -53,6 +59,7 @@ llm:
     - Use ``` for code blocks (always close them)
     - Do not output partial or broken Markdown
     - Do not switch formats mid-response
+    - After you finish answering, stop. Do not append "I don't know" or similar if you already answered.
   missing_api_key_message: "Set NVIDIA_API_KEY in .env or your environment."
   top_p: 0.95
   # Ignored for provider nvidia (LangChain would send max_completion_tokens; API returns 400).

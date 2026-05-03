@@ -19,6 +19,7 @@ class UploadResponse(BaseModel):
 
 class QueryRequest(BaseModel):
     question: str = Field(min_length=1)
+    session_id: str | None = Field(default=None)
 
 
 class RetrievedChunk(BaseModel):
