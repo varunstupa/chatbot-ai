@@ -1,0 +1,16 @@
+{
+  "name": "rag-website-crawler",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "crawl": "node crawler.js"
+  },
+  "dependencies": {
+    "crawlee": "^3.11.0",
+    "playwright": "^1.49.0"
+  }
+}

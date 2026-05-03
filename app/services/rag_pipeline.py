@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import asyncio
 import os
+import re
 from collections.abc import AsyncIterator
 from threading import Lock
 from typing import Any
 
+from langchain_core.messages import AIMessage
 from langchain_core.prompts import (
     ChatPromptTemplate,
     MessagesPlaceholder,
@@ -175,26 +177,83 @@ def _invoke_answer_text(response: Any) -> str:
     return str(raw).strip()
 
 
+# Trailing disclaimers models add after a valid answer (end-anchored only).
+_TRAILING_IDK = (
+    re.compile(
+        r"\n*(?:\*\*)?I\s+don'?t\s+know\.?(?:\*\*)?\s*$",
+        re.IGNORECASE | re.DOTALL,
+    ),
+    re.compile(
+        r"\n*(?:\*\*)?I\s+do\s+not\s+know\.?(?:\*\*)?\s*$",
+        re.IGNORECASE | re.DOTALL,
+    ),
+    re.compile(
+        r"\n*(?:\*\*)?(?:I\s+am\s+not\s+sure|I'?m\s+not\s+sure)\.?(?:\*\*)?\s*$",
+        re.IGNORECASE | re.DOTALL,
+    ),
+    re.compile(
+        r"\n+#{1,3}\s*(?:\*\*)?I\s+don'?t\s+know\.?(?:\*\*)?\s*$",
+        re.IGNORECASE | re.DOTALL,
+    ),
+)
+
+# Minimum chars left after strip (avoid gutting short or empty replies).
+_MIN_KEPT_AFTER_STRIP = 20
+
+
 def _strip_spurious_trailing_idk(text: str) -> str:
     """
-    Small LMs sometimes append \"I don't know\" after a full answer. Drop that
-    suffix only when it is the whole tail and there is already enough content.
+    Remove a trailing \"I don't know\" (and close variants) when the model
+    appends it after already answering. Only matches the response tail.
     """
-    raw = (text or "").strip()
-    if len(raw) < 60:
+    raw = (text or "").rstrip()
+    if len(raw) < _MIN_KEPT_AFTER_STRIP:
         return raw
-    needle = "i don't know"
-    idx = raw.lower().rfind(needle)
-    if idx < 0:
-        return raw
-    head = raw[:idx].rstrip()
-    tail = raw[idx:].strip()
-    if len(head) < 40:
-        return raw
-    tail_clean = tail.lower().rstrip(".!?: \n\t")
-    if tail_clean != needle:
-        return raw
-    return head
+    out = raw
+    changed = True
+    while changed:
+        changed = False
+        for pat in _TRAILING_IDK:
+            candidate = pat.sub("", out).rstrip()
+            if candidate != out and len(candidate) >= _MIN_KEPT_AFTER_STRIP:
+                out = candidate
+                changed = True
+                break
+    return out
+
+
+def _ai_message_text(msg: Any) -> str:
+    c = getattr(msg, "content", None)
+    if c is None:
+        return ""
+    if isinstance(c, str):
+        return c
+    if isinstance(c, list):
+        parts = []
+        for block in c:
+            if isinstance(block, str):
+                parts.append(block)
+            elif isinstance(block, dict) and block.get("type") == "text":
+                parts.append(block.get("text") or "")
+        return "".join(parts)
+    return str(c)
+
+
+def _apply_stripped_answer_to_history(session_id: str, stripped: str) -> None:
+    """Align last assistant turn with cleaned text (memory matches user-visible)."""
+    sid = (session_id or "").strip()
+    if not sid or not (stripped and stripped.strip()):
+        return
+    hist = get_message_history(sid)
+    msgs = hist.messages
+    if not msgs:
+        return
+    last = msgs[-1]
+    if not isinstance(last, AIMessage):
+        return
+    if _ai_message_text(last).strip() == stripped.strip():
+        return
+    msgs[-1] = AIMessage(content=stripped)
 
 
 def _stream_chunk_text(chunk: Any) -> str:
@@ -224,6 +283,7 @@ def answer_question(question: str, session_id: str) -> tuple[str, list[dict]]:
     sid = session_id.strip()
     response = chain.invoke(payload, config=cfg)
     text = _strip_spurious_trailing_idk(_invoke_answer_text(response))
+    _apply_stripped_answer_to_history(sid, text)
     logger.info(
         "rag_query_complete",
         extra={"question_len": len(q), "sources": len(sources)},
@@ -238,6 +298,9 @@ async def stream_answer(
 
     First event has type ``session`` and key ``session_id`` so stream clients
     can persist the id without reading response headers.
+
+    Final ``done`` may include ``answer`` (canonical text) if trailing disclaimers
+    were removed—clients may replace the assembled token buffer with it.
     """
     if not (session_id or "").strip():
         raise ValueError("session_id must be non-empty")
@@ -251,21 +314,30 @@ async def stream_answer(
     payload = _rag_invoke_payload(context, q)
     chain = get_chain_with_history()
     cfg = {"configurable": {"session_id": sid}}
+    accumulated: list[str] = []
     try:
         async for chunk in chain.astream(payload, config=cfg):
             text = _stream_chunk_text(chunk)
             if text:
+                accumulated.append(text)
                 yield {"type": "token", "text": text}
     except Exception as e:
         logger.exception("stream_failed", extra={"error": str(e)})
         yield {"type": "error", "message": str(e)}
         return
 
+    full = "".join(accumulated)
+    cleaned = _strip_spurious_trailing_idk(full)
+    _apply_stripped_answer_to_history(sid, cleaned)
+
     logger.info(
         "rag_stream_complete",
         extra={"question_len": len(q), "sources": len(sources)},
     )
-    yield {"type": "done"}
+    done_payload: dict[str, Any] = {"type": "done"}
+    if cleaned != full:
+        done_payload["answer"] = cleaned
+    yield done_payload
 
 
 class RAGPipeline:

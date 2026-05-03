@@ -17,6 +17,35 @@ class UploadResponse(BaseModel):
     message: str
 
 
+class IngestWebsiteRequest(BaseModel):
+    url: str = Field(min_length=1)
+    content: str = Field(min_length=1)
+
+
+class IngestWebsiteResponse(BaseModel):
+    url: str
+    chunks_indexed: int
+    message: str
+
+
+class CrawlRequest(BaseModel):
+    """Start the Node Crawlee worker for ``domain`` (hostname or full URL)."""
+
+    domain: str = Field(min_length=1, description="e.g. example.com or https://example.com/")
+    max_pages: int | None = Field(
+        default=None,
+        ge=1,
+        le=50_000,
+        description="Cap crawl depth; default 100 from env",
+    )
+
+
+class CrawlResponse(BaseModel):
+    status: str
+    message: str
+    pid: int | None = None
+
+
 class QueryRequest(BaseModel):
     question: str = Field(min_length=1)
     session_id: str | None = Field(default=None)

@@ -7,7 +7,7 @@ import json
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, HTTPException, Request, Response, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Response, UploadFile
 from fastapi.responses import StreamingResponse
 
 from app.config.settings import get_settings
@@ -112,13 +112,13 @@ async def upload(file: UploadFile = File(...)) -> UploadResponse:
     )
 
 
-@router.post("/query", response_model=QueryResponse)
-async def query(
+async def run_query(
     body: QueryRequest,
     request: Request,
     response: Response,
-    pipeline: RAGPipeline = Depends(get_rag_pipeline),
+    pipeline: RAGPipeline,
 ) -> QueryResponse:
+    """Shared non-streaming RAG (used by ``/query`` and ``/stupa-chat``)."""
     s = get_settings()
     q = (body.question or "").strip()
     if not q:
@@ -160,19 +160,12 @@ async def query(
     )
 
 
-@router.post("/query/stream")
-async def query_stream(
+def build_query_stream_response(
     body: QueryRequest,
     request: Request,
-    pipeline: RAGPipeline = Depends(get_rag_pipeline),
+    pipeline: RAGPipeline,
 ) -> StreamingResponse:
-    """Stream RAG answer as SSE: each event is ``data: <json>``.
-
-    JSON object ``type`` is one of:
-    ``session`` (with ``session_id`` — send back on the next request),
-    ``sources`` (with ``chunks``), ``token`` (with ``text``), ``done``,
-    or ``error`` (with ``message``).
-    """
+    """Shared SSE RAG stream (used by ``/query/stream`` and ``/stupa-chat/stream``)."""
     s = get_settings()
     q = (body.question or "").strip()
     if not q:
@@ -227,3 +220,80 @@ async def query_stream(
     )
     _attach_session(stream, session_id)
     return stream
+
+
+@router.post("/query", response_model=QueryResponse)
+async def query(
+    body: QueryRequest,
+    request: Request,
+    response: Response,
+    pipeline: RAGPipeline = Depends(get_rag_pipeline),
+) -> QueryResponse:
+    return await run_query(body, request, response, pipeline)
+
+
+@router.post("/query/stream")
+async def query_stream(
+    body: QueryRequest,
+    request: Request,
+    pipeline: RAGPipeline = Depends(get_rag_pipeline),
+) -> StreamingResponse:
+    """Stream RAG answer as SSE: each event is ``data: <json>``.
+
+    JSON object ``type`` is one of:
+    ``session`` (with ``session_id`` — send back on the next request),
+    ``sources`` (with ``chunks``), ``token`` (with ``text``), ``done``,
+    or ``error`` (with ``message``).
+    """
+    return build_query_stream_response(body, request, pipeline)
+
+
+@router.post(
+    "/stupa-chat",
+    tags=["stupa-chat"],
+    summary="Stupa chat",
+    description=(
+        "Returns **JSON** by default (waits for full answer). "
+        "For **incremental SSE** (same as `/stupa-chat/stream`), send "
+        "`stream=true` query param and/or header `Accept: text/event-stream`."
+    ),
+    response_model=None,
+)
+@router.post(
+    "/stupa-chat/",
+    tags=["stupa-chat"],
+    include_in_schema=False,
+    response_model=None,
+)
+async def stupa_chat(
+    body: QueryRequest,
+    request: Request,
+    response: Response,
+    pipeline: RAGPipeline = Depends(get_rag_pipeline),
+    stream: bool = Query(
+        False,
+        description="SSE stream (tokens as sent); same format as /stupa-chat/stream.",
+    ),
+) -> QueryResponse | StreamingResponse:
+    accept = (request.headers.get("accept") or "").lower()
+    if stream or "text/event-stream" in accept:
+        return build_query_stream_response(body, request, pipeline)
+    return await run_query(body, request, response, pipeline)
+
+
+@router.post(
+    "/stupa-chat/stream",
+    tags=["stupa-chat"],
+    summary="Stupa chat (SSE stream)",
+)
+@router.post(
+    "/stupa-chat/stream/",
+    tags=["stupa-chat"],
+    include_in_schema=False,
+)
+async def stupa_chat_stream(
+    body: QueryRequest,
+    request: Request,
+    pipeline: RAGPipeline = Depends(get_rag_pipeline),
+) -> StreamingResponse:
+    return build_query_stream_response(body, request, pipeline)

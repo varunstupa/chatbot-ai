@@ -42,13 +42,13 @@ rag:
     Question:
     {question}
 
-    Answer (follow system Markdown rules):
+    Answer (≤150 words Markdown OR exactly "I don't know"):
 
 llm:
-  # Use "local" or "ollama" for Ollama (http://localhost:11434 by default).
+  # Use "local" or "ollama" for Ollama → local_model_name must match `ollama list`.
   provider: "local"
   temperature: 0
-  model: "nvidia/llama-3.1-nemotron-nano-8b-v1"
+  model: "nvidia/llama-3.1-nemotron-nano-8b-v1"  # Only used when provider: nvidia
   base_url: "https://integrate.api.nvidia.com/v1"
   system_message: |
     You must respond in strict Markdown format.
@@ -62,12 +62,12 @@ llm:
     - After you finish answering, stop. Do not append "I don't know" or similar if you already answered.
   missing_api_key_message: "Set NVIDIA_API_KEY in .env or your environment."
   top_p: 0.95
-  # Ignored for provider nvidia (LangChain would send max_completion_tokens; API returns 400).
+  # Ignored for provider nvidia (LangChain maps max_tokens → that).
   max_tokens: null
   frequency_penalty: 0.0
   presence_penalty: 0.0
   local_base_url: "http://localhost:11434"
-  local_model_name: "llama3.2:1b"
+  local_model_name: "llama3.2:3b-instruct-q4_K_M"
 
 logging:
   level: "INFO"

@@ -8,3 +8,7 @@ __pycache__/
 .eggs/
 dist/
 build/
+node_modules/
+crawler/node_modules/
+crawler/storage/
+crawler/.tmp/

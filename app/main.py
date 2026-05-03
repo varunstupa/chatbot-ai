@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import os
 from contextlib import asynccontextmanager
 
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.crawl import router as crawl_router
 from app.api.routes import router
 from app.config.settings import get_settings
 from app.utils.logger import configure_logging, get_logger
@@ -49,12 +51,23 @@ def create_app() -> FastAPI:
         expose_headers=["X-Session-Id"],
     )
     application.include_router(router)
+    application.include_router(crawl_router)
     # Same routes under /api for SPAs and proxies (e.g. /api/query/stream).
     application.include_router(router, prefix="/api")
+    application.include_router(crawl_router, prefix="/api")
     return application
 
 
 app = create_app()
+
+
+def _uvicorn_reload_enabled() -> bool:
+    """Auto-reload on file changes (dev only)."""
+    flag = (os.environ.get("UVICORN_RELOAD") or "").strip().lower()
+    if flag in ("1", "true", "yes"):
+        return True
+    env = (os.environ.get("APP_ENV") or "").strip().lower()
+    return env == "development"
 
 
 def main() -> None:
@@ -63,7 +76,7 @@ def main() -> None:
         "app.main:app",
         host=s.server.host,
         port=s.server.port,
-        reload=False,
+        reload=_uvicorn_reload_enabled(),
     )
 
 

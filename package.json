@@ -1,0 +1,12 @@
+{
+  "name": "chatbot-rag-api",
+  "private": true,
+  "description": "Python FastAPI app; npm scripts are convenience wrappers.",
+  "scripts": {
+    "dev": "cross-env APP_ENV=development python -m app.main",
+    "start": "python -m app.main"
+  },
+  "devDependencies": {
+    "cross-env": "^7.0.3"
+  }
+}
