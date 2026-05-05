@@ -10,8 +10,9 @@ def reload_runtime_configuration() -> None:
     """
     Reload YAML and reset embedding, vector store, and LLM singletons.
 
-    Note: The vector store singleton is reset; on next use Chroma reopens
-    ``vector_store.persist_directory`` (data on disk remains unless you delete that folder).
+    Note: Vector store singletons reset; on next use Chroma reopens
+    ``vector_store`` and ``website_vector_store`` persist directories (data on
+    disk remains unless you delete those folders).
     """
     reload_settings()
     from app.services.embedding import reset_embeddings_for_tests

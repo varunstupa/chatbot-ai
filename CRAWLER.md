@@ -1,7 +1,9 @@
 # Website crawl → RAG (Crawlee + FastAPI)
 
-This stack indexes **public HTML pages** into the same Chroma pipeline as file
-uploads. Query the combined knowledge base with `/query` or `/query/stream`.
+This stack indexes **public HTML pages** into a **dedicated Chroma database**
+(`website_vector_store` in `config.yaml`, default `data/chroma_website`).
+File uploads use `data/chroma` only. RAG merges retrieval from both stores on
+`/query` and `/query/stream`.
 
 ## 1. Install Crawlee (Node)
 
@@ -115,8 +117,9 @@ Chunks are stored with metadata `source` = page URL and a synthetic
 - **PDF, Office, archives, etc.** are excluded from link discovery so the crawl
   does not hit Playwright’s “Download is starting” navigation errors. To index
   that content, use **`/upload`** (or extend the crawler with a PDF parser).
-- **Uploaded files** and **website pages** share one Chroma collection unless
-  you change `vector_store` / collection naming in code.
+- **Uploaded files** live in `vector_store.persist_directory`; **crawled pages**
+  live in `website_vector_store.persist_directory` only. Re-crawl after
+  switching this layout if old pages were indexed into the uploads DB.
 
 ## 6. Troubleshooting
 

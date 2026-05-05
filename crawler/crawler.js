@@ -7,6 +7,12 @@
 
 import { PlaywrightCrawler, EnqueueStrategy, log } from "crawlee";
 
+const DEBUG =
+  process.env.DEBUG === "1" || process.env.STUPA_DEBUG === "1";
+function dbg(...args) {
+  if (DEBUG) console.log("[crawler-debug]", ...args);
+}
+
 const INGEST_URL =
   process.env.INGEST_URL || "http://localhost:8000/ingest-website";
 const MAX_PAGES = Math.min(
@@ -128,6 +134,7 @@ const crawler = new PlaywrightCrawler({
       return;
     }
 
+    dbg("fetch", url);
     lg.info(`[crawler] fetching ${url}`);
 
     try {
@@ -154,19 +161,33 @@ const crawler = new PlaywrightCrawler({
     if (!content) {
       lg.warning(`[crawler] no text extracted: ${url}`);
     } else {
-      const res = await fetch(INGEST_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url, content }),
-      });
-      if (!res.ok) {
-        const errText = await res.text().catch(() => "");
+      try {
+        const res = await fetch(INGEST_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url, content }),
+        });
+        if (!res.ok) {
+          const errText = await res.text().catch(() => "");
+          lg.error(
+            `[crawler] ingest HTTP ${res.status} ${url}: ${errText.slice(0, 200)}`,
+          );
+        } else {
+          pagesDone += 1;
+          dbg("ingested", pagesDone, url);
+          lg.info(`[crawler] ingested pages=${pagesDone} url=${url}`);
+        }
+      } catch (e) {
+        const code = e?.cause?.code || e?.code || "";
+        const msg = e?.message || String(e);
         lg.error(
-          `[crawler] ingest failed ${res.status} ${url}: ${errText.slice(0, 200)}`,
+          `[crawler] ingest fetch failed (${INGEST_URL}): ${msg}` +
+            (code ? ` [${code}]` : ""),
         );
-      } else {
-        pagesDone += 1;
-        lg.info(`[crawler] ingested pages=${pagesDone} url=${url}`);
+        lg.error(
+          "[crawler] hint: start FastAPI on the ingest URL, e.g. " +
+            "uvicorn app.main:app --host 0.0.0.0 --port 8000",
+        );
       }
     }
 

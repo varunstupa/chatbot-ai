@@ -14,14 +14,17 @@ from app.config.settings import get_settings
 from app.api.dependencies import get_rag_pipeline
 from app.core import constants
 from app.models.schemas import (
+    DemoFlowState,
     HealthResponse,
     QueryRequest,
     QueryResponse,
     RetrievedChunk,
     UploadResponse,
 )
-from app.services import ingestion
+from app.services import demo_booking, ingestion
 from app.services.rag_pipeline import RAGPipeline
+from app.services.vector_store import CorpusMode
+from app.utils.debug_console import debug_log
 from app.utils.logger import get_logger
 
 router = APIRouter()
@@ -112,13 +115,57 @@ async def upload(file: UploadFile = File(...)) -> UploadResponse:
     )
 
 
-async def run_query(
+async def run_stupa_query(
     body: QueryRequest,
     request: Request,
     response: Response,
     pipeline: RAGPipeline,
 ) -> QueryResponse:
-    """Shared non-streaming RAG (used by ``/query`` and ``/stupa-chat``)."""
+    """RAG plus book-a-demo wizard when message matches demo intent or session."""
+    s = get_settings()
+    q = (body.question or "").strip()
+    if not q:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "message": s.messages.query_empty,
+                "code": constants.ERROR_QUERY_EMPTY,
+            },
+        )
+    session_id = _resolve_session_id(body.session_id, request)
+    demo = demo_booking.try_process(session_id, q)
+    if demo is not None:
+        debug_log("stupa JSON → demo", demo.flow.phase, demo.flow.step)
+        _attach_session(response, session_id)
+        return QueryResponse(
+            answer=demo.answer,
+            chunks=[],
+            session_id=session_id,
+            demo_flow=DemoFlowState(**demo.flow.as_dict()),
+        )
+    rag_corpus = s.stupa_chat.rag_corpus
+    rag = await run_query(
+        body,
+        request,
+        response,
+        pipeline,
+        corpus=rag_corpus,
+        prompt_template=s.stupa_chat.prompt_template,
+    )
+    debug_log("stupa JSON → rag", "chunks=", len(rag.chunks))
+    return rag
+
+
+async def run_query(
+    body: QueryRequest,
+    request: Request,
+    response: Response,
+    pipeline: RAGPipeline,
+    *,
+    corpus: CorpusMode = "merged",
+    prompt_template: str | None = None,
+) -> QueryResponse:
+    """Shared non-streaming RAG (``/query`` merged + default prompt; stupa overrides)."""
     s = get_settings()
     q = (body.question or "").strip()
     if not q:
@@ -131,7 +178,12 @@ async def run_query(
         )
     session_id = _resolve_session_id(body.session_id, request)
     try:
-        answer, sources = await pipeline.answer(q, session_id)
+        answer, sources = await pipeline.answer(
+            q,
+            session_id,
+            corpus,
+            prompt_template=prompt_template,
+        )
     except ValueError as e:
         raise HTTPException(
             status_code=400,
@@ -157,6 +209,7 @@ async def run_query(
     return QueryResponse(
         answer=answer,
         chunks=[RetrievedChunk(**s) for s in sources],
+        session_id=session_id,
     )
 
 
@@ -182,6 +235,103 @@ def build_query_stream_response(
     async def sse_events():
         try:
             async for item in pipeline.stream(q, session_id):
+                line = json.dumps(item, ensure_ascii=False)
+                yield f"data: {line}\n\n"
+        except ValueError as e:
+            payload = json.dumps(
+                {"type": "error", "message": str(e)},
+                ensure_ascii=False,
+            )
+            yield f"data: {payload}\n\n"
+        except RuntimeError as e:
+            logger.error("llm_unavailable_stream | %s", str(e))
+            payload = json.dumps(
+                {"type": "error", "message": str(e)},
+                ensure_ascii=False,
+            )
+            yield f"data: {payload}\n\n"
+        except Exception:
+            logger.exception("query_stream_failed")
+            payload = json.dumps(
+                {
+                    "type": "error",
+                    "message": s.messages.query_processing_failed,
+                },
+                ensure_ascii=False,
+            )
+            yield f"data: {payload}\n\n"
+
+    stream = StreamingResponse(
+        sse_events(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+            "X-Session-Id": session_id,
+        },
+    )
+    _attach_session(stream, session_id)
+    return stream
+
+
+def build_stupa_stream_response(
+    body: QueryRequest,
+    request: Request,
+    pipeline: RAGPipeline,
+) -> StreamingResponse:
+    """SSE for stupa-chat: demo wizard events + standard RAG stream."""
+    s = get_settings()
+    q = (body.question or "").strip()
+    if not q:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "message": s.messages.query_empty,
+                "code": constants.ERROR_QUERY_EMPTY,
+            },
+        )
+    session_id = _resolve_session_id(body.session_id, request)
+
+    async def sse_events():
+        demo = demo_booking.try_process(session_id, q)
+        if demo is not None:
+            debug_log("stupa SSE → demo", demo.flow.phase, demo.flow.step)
+            try:
+                sid_line = json.dumps(
+                    {"type": "session", "session_id": session_id},
+                    ensure_ascii=False,
+                )
+                yield f"data: {sid_line}\n\n"
+                src_line = json.dumps({"type": "sources", "chunks": []}, ensure_ascii=False)
+                yield f"data: {src_line}\n\n"
+                df = {
+                    "type": "demo_flow",
+                    "session_id": session_id,
+                    **demo.flow.as_dict(),
+                }
+                yield f"data: {json.dumps(df, ensure_ascii=False)}\n\n"
+                tok = json.dumps({"type": "token", "text": demo.answer}, ensure_ascii=False)
+                yield f"data: {tok}\n\n"
+                dn = json.dumps({"type": "done"}, ensure_ascii=False)
+                yield f"data: {dn}\n\n"
+            except Exception:
+                logger.exception("stupa_demo_stream_failed")
+                err = json.dumps(
+                    {"type": "error", "message": s.messages.query_processing_failed},
+                    ensure_ascii=False,
+                )
+                yield f"data: {err}\n\n"
+            return
+        debug_log("stupa SSE → rag", s.stupa_chat.rag_corpus)
+        rag_corpus = s.stupa_chat.rag_corpus
+        try:
+            async for item in pipeline.stream(
+                q,
+                session_id,
+                rag_corpus,
+                prompt_template=s.stupa_chat.prompt_template,
+            ):
                 line = json.dumps(item, ensure_ascii=False)
                 yield f"data: {line}\n\n"
         except ValueError as e:
@@ -255,7 +405,15 @@ async def query_stream(
     description=(
         "Returns **JSON** by default (waits for full answer). "
         "For **incremental SSE** (same as `/stupa-chat/stream`), send "
-        "`stream=true` query param and/or header `Accept: text/event-stream`."
+        "`stream=true` query param and/or header `Accept: text/event-stream`. "
+        "**Book a demo:** say e.g. \"book a demo\" to start the wizard; "
+        "send **`session_id` from the response** on every next turn. "
+        "`demo_flow` in the JSON (or SSE `demo_flow` event) carries "
+        "`interest_options` and `slots` for UI chips. "
+        "**RAG context** comes from `stupa_chat.rag_corpus` in config "
+        "(default **website** = crawled pages only; `/query` still uses "
+        "uploads + website merged). Stupa uses `stupa_chat.prompt_template` "
+        "(strict: no evidence → **I don't know**; empty retrieval skips the LLM)."
     ),
     response_model=None,
 )
@@ -277,8 +435,8 @@ async def stupa_chat(
 ) -> QueryResponse | StreamingResponse:
     accept = (request.headers.get("accept") or "").lower()
     if stream or "text/event-stream" in accept:
-        return build_query_stream_response(body, request, pipeline)
-    return await run_query(body, request, response, pipeline)
+        return build_stupa_stream_response(body, request, pipeline)
+    return await run_stupa_query(body, request, response, pipeline)
 
 
 @router.post(
@@ -296,4 +454,4 @@ async def stupa_chat_stream(
     request: Request,
     pipeline: RAGPipeline = Depends(get_rag_pipeline),
 ) -> StreamingResponse:
-    return build_query_stream_response(body, request, pipeline)
+    return build_stupa_stream_response(body, request, pipeline)

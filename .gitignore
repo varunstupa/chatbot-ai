@@ -1,5 +1,6 @@
 .env
 data/chroma/
+data/chroma_website/
 .venv/
 venv/
 __pycache__/

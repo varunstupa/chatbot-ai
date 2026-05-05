@@ -60,9 +60,23 @@ class RetrievedChunk(BaseModel):
     content: str = ""
 
 
+class DemoFlowState(BaseModel):
+    """Book-a-demo wizard state (stupa-chat only)."""
+
+    active: bool
+    phase: str
+    step: str | None = None
+    interest_options: list[str] | None = None
+    slots: dict[str, str] = Field(default_factory=dict)
+
+
 class QueryResponse(BaseModel):
     answer: str
     chunks: list[RetrievedChunk]
+    # Echo on every follow-up (body `session_id`, header, or cookie).
+    session_id: str | None = None
+    # Only set on /stupa-chat during book-a-demo flow.
+    demo_flow: DemoFlowState | None = None
 
 
 class ErrorResponse(BaseModel):

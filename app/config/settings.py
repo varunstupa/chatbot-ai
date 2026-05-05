@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 from threading import Lock
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 import yaml
 from pydantic import BaseModel, Field, SecretStr, field_validator
@@ -128,6 +128,29 @@ class RAGConfig(BaseModel):
     prompt_template: str
 
 
+StupaRagCorpus = Literal["merged", "website", "uploads"]
+
+
+class StupaChatConfig(BaseModel):
+    """Stupa public chat: corpus + strict RAG prompt (demo flow unchanged)."""
+
+    rag_corpus: StupaRagCorpus = "website"
+    prompt_template: str = Field(
+        min_length=20,
+        description="Must contain {context} and {question} placeholders.",
+    )
+
+    @field_validator("prompt_template")
+    @classmethod
+    def prompt_has_placeholders(cls, v: str) -> str:
+        t = (v or "").strip()
+        if "{context}" not in t or "{question}" not in t:
+            raise ValueError(
+                "stupa_chat.prompt_template must include {context} and {question}",
+            )
+        return t
+
+
 class LLMConfig(BaseModel):
     provider: str
     temperature: float = Field(ge=0.0, le=2.0)
@@ -179,7 +202,9 @@ class Settings(BaseSettings):
     chunking: ChunkingConfig
     embedding: EmbeddingConfig
     vector_store: VectorStoreConfig
+    website_vector_store: VectorStoreConfig
     rag: RAGConfig
+    stupa_chat: StupaChatConfig
     llm: LLMConfig
     logging: LoggingConfig
     messages: MessagesConfig

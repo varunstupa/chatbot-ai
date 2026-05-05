@@ -2,11 +2,32 @@
 
 Production-style FastAPI service for document ingestion and retrieval-augmented Q&A. Configuration lives in `app/config/config.yaml`; secrets (e.g. `NVIDIA_API_KEY`) load from `.env` / the environment via Pydantic Settings.
 
+## Stack (technologies & models)
+
+| Piece | Role in this project |
+|--------|----------------------|
+| **LangChain** (`langchain`, `langchain-core`, `langchain-community`, `langchain-chroma`, `langchain-openai`, `langchain-text-splitters`) | `Document` types, text splitters, Chroma integration, chat models (Ollama / NVIDIA), prompts, `RunnableWithMessageHistory` for multi-turn RAG. |
+| **Chroma** (`chromadb` + `langchain-chroma`) | Persistent vector DB: uploads collection + optional separate website crawl collection (`website_vector_store` in config). |
+| **sentence-transformers** (via `HuggingFaceEmbeddings`) | Embedding model configured in `embedding.model_name` — indexes chunks and embeds queries for retrieval. |
+| **Crawlee** + **Playwright** (Node, under `crawler/`) | Same-domain web crawl; extracts page text and POSTs to `POST /ingest-website`. See `CRAWLER.md`. |
+| **FastAPI** / **Uvicorn** | HTTP API (`/upload`, `/query`, `/stupa-chat`, crawl hooks, etc.). |
+| **MarkItDown** | Converts uploads (PDF, Office, …) to text before chunking. |
+| **Ollama** (optional) | Local LLM host when `llm.provider` is `local` — model name from `llm.local_model_name`. |
+| **NVIDIA NIM** (optional) | Remote chat when `llm.provider` is `nvidia` — model from `llm.model`. |
+
+**ML models in `config.yaml` (typical):**
+
+| Model id | Purpose |
+|----------|---------|
+| `sentence-transformers/all-mpnet-base-v2` | Embeddings for all Chroma ingestion and similarity search. |
+| `llm.local_model_name` (e.g. `llama3.2:3b-instruct-q4_K_M`) | Chat model when using **local** / Ollama. |
+| `llm.model` (e.g. NVIDIA Nemotron id) | Chat model when using **nvidia** provider. |
+
 ## Layout
 
 - **API**: `app/api/routes.py` — `POST /upload`, `POST /query`, `GET /health`
 - **Config**: `app/config/config.yaml` + validated `app/config/settings.py`
-- **Pipeline**: MarkItDown → LangChain `Document` → chunk → `HuggingFaceEmbeddings` → in-memory Chroma → LLM answer
+- **Pipeline**: MarkItDown → LangChain `Document` → chunk → `HuggingFaceEmbeddings` → Chroma (on disk) → LLM answer
 
 ## Setup
 

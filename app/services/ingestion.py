@@ -8,7 +8,7 @@ from langchain_core.documents import Document
 
 from app.config.settings import get_settings
 from app.services.chunking import split_documents
-from app.services.vector_store import add_documents
+from app.services.vector_store import add_documents, add_website_documents
 from app.utils.file_loader import documents_from_file
 from app.utils.logger import get_logger
 
@@ -49,7 +49,7 @@ def ingest_path(file_path: Path) -> int:
 
 def ingest_website_page(url: str, content: str) -> int:
     """
-    Chunk raw page text and index into Chroma (same pipeline as file upload).
+    Chunk raw page text and index into the **website-only** Chroma collection.
 
     Metadata uses ``source`` = page URL; ``filename`` = short path hint for UI.
     """
@@ -75,7 +75,7 @@ def ingest_website_page(url: str, content: str) -> int:
         },
     )
     chunks = split_documents([doc])
-    add_documents(chunks)
+    add_website_documents(chunks)
     logger.info(
         "website_ingestion_complete",
         extra={"url": u, "chunks": len(chunks)},

@@ -24,6 +24,38 @@ vector_store:
   persist_directory: "data/chroma"
   top_k: 4
 
+# Crawled pages (e.g. stupasports.ai) only — separate Chroma persist path.
+website_vector_store:
+  collection_name: "stupasports_website"
+  persist_directory: "data/chroma_website"
+  top_k: 4
+
+# Stupa web client: RAG corpus — website = crawled Chroma only.
+# Strict: no matching chunks → "I don't know" (see also rag_pipeline early exit).
+stupa_chat:
+  rag_corpus: "website"
+  prompt_template: |
+    You answer for Stupa's public website chat. Obey ALL rules below.
+
+    Grounding:
+    - Use ONLY the Context below (retrieved website chunks). Do not use outside knowledge, training data, guesses, or inference beyond what is explicitly written there.
+    - If the Context is empty, or no passage in the Context answers the Question (including partial or irrelevant matches), reply with exactly this single line and nothing else:
+    I don't know
+    - Do not hedge, apologize, or suggest contacting support unless that text appears in the Context.
+
+    Conversation:
+    - Prior messages may disambiguate the Question only; every factual claim must still be supported by the Context.
+
+    When the Context clearly answers the Question, reply in concise Markdown (## headings, short paragraphs). No filler.
+
+    Context:
+    {context}
+
+    Question:
+    {question}
+
+    Answer (Markdown, OR exactly "I don't know"):
+
 rag:
   prompt_template: |
     You are a helpful assistant.

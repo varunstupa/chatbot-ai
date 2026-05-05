@@ -19,10 +19,42 @@ from langchain_core.runnables.history import RunnableWithMessageHistory
 
 from app.config.settings import get_settings
 from app.services.chat_memory import get_message_history
-from app.services.vector_store import similarity_search
+from app.services.vector_store import CorpusMode, similarity_search
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+
+def _is_backend_llm_error(exc: BaseException) -> bool:
+    text = str(exc).lower()
+    return (
+        "ollama" in text
+        or "/api/chat" in text
+        or "11434" in text
+        or "chatopenai" in text
+        or "openai" in text
+        and "error" in text
+    )
+
+
+def _friendly_llm_error_message(exc: BaseException) -> str:
+    """Normalize vague LangChain / aiohttp error strings for operators."""
+    raw = str(exc).strip()
+    s = get_settings()
+    if "bound method" in raw or "clientresponse.text" in raw.lower():
+        raw = (
+            "LLM HTTP error (response body not included by the client). "
+            "Often Ollama HTTP 500: model missing, OOM, or context too long."
+        )
+    if s.llm.provider in ("local", "ollama"):
+        return (
+            f"{raw} "
+            f"— Ollama: {s.llm.local_base_url}, model `{s.llm.local_model_name}`. "
+            "Try: `ollama pull <model>` then `ollama run <model>` and check "
+            "`ollama ps` / server logs."
+        )
+    return f"{raw} — Check NVIDIA_API_KEY and llm.model / base_url."
+
 
 _llm_lock = Lock()
 _llm = None
@@ -139,19 +171,28 @@ def _sources_from_docs(docs: list) -> list[dict]:
     ]
 
 
-def _rag_retrieve(question: str) -> tuple[str, str, list[dict]]:
+def _rag_retrieve(
+    question: str,
+    corpus: CorpusMode = "merged",
+) -> tuple[str, str, list[dict]]:
     q = (question or "").strip()
     if not q:
         raise ValueError("Question must not be empty")
-    docs = similarity_search(q)
+    docs = similarity_search(q, corpus=corpus)
     context = _format_context(docs)
     sources = _sources_from_docs(docs)
     return context, q, sources
 
 
-def _rag_invoke_payload(context: str, q: str) -> dict[str, Any]:
+def _rag_invoke_payload(
+    context: str,
+    q: str,
+    *,
+    prompt_template: str | None = None,
+) -> dict[str, Any]:
     s = get_settings()
-    tmpl = PromptTemplate.from_template(s.rag.prompt_template)
+    tmpl_str = (prompt_template or "").strip() or s.rag.prompt_template
+    tmpl = PromptTemplate.from_template(tmpl_str)
     rag_turn = tmpl.format(context=context, question=q)
     sys_msg = (s.llm.system_message or "").strip()
     payload: dict[str, Any] = {"input": q, "rag_turn": rag_turn}
@@ -273,15 +314,46 @@ def _stream_chunk_text(chunk: Any) -> str:
     return str(raw)
 
 
-def answer_question(question: str, session_id: str) -> tuple[str, list[dict]]:
+def answer_question(
+    question: str,
+    session_id: str,
+    corpus: CorpusMode = "merged",
+    *,
+    prompt_template: str | None = None,
+) -> tuple[str, list[dict]]:
     if not (session_id or "").strip():
         raise ValueError("session_id must be non-empty")
-    context, q, sources = _rag_retrieve(question)
-    payload = _rag_invoke_payload(context, q)
-    chain = get_chain_with_history()
-    cfg = {"configurable": {"session_id": session_id.strip()}}
     sid = session_id.strip()
-    response = chain.invoke(payload, config=cfg)
+    context, q, sources = _rag_retrieve(question, corpus)
+    if not sources:
+        text = "I don't know"
+        _apply_stripped_answer_to_history(sid, text)
+        logger.info(
+            "rag_query_complete",
+            extra={
+                "question_len": len(q),
+                "sources": 0,
+                "no_chunks": True,
+            },
+        )
+        return text, sources
+    payload = _rag_invoke_payload(
+        context,
+        q,
+        prompt_template=prompt_template,
+    )
+    chain = get_chain_with_history()
+    cfg = {"configurable": {"session_id": sid}}
+    try:
+        response = chain.invoke(payload, config=cfg)
+    except (ValueError, OSError) as e:
+        if _is_backend_llm_error(e):
+            raise RuntimeError(_friendly_llm_error_message(e)) from e
+        raise
+    except Exception as e:
+        if _is_backend_llm_error(e):
+            raise RuntimeError(_friendly_llm_error_message(e)) from e
+        raise
     text = _strip_spurious_trailing_idk(_invoke_answer_text(response))
     _apply_stripped_answer_to_history(sid, text)
     logger.info(
@@ -292,7 +364,11 @@ def answer_question(question: str, session_id: str) -> tuple[str, list[dict]]:
 
 
 async def stream_answer(
-    question: str, session_id: str
+    question: str,
+    session_id: str,
+    corpus: CorpusMode = "merged",
+    *,
+    prompt_template: str | None = None,
 ) -> AsyncIterator[dict[str, Any]]:
     """Yield SSE payloads; history commits when ``astream`` completes.
 
@@ -308,10 +384,24 @@ async def stream_answer(
     # Lets browsers / fetch clients bind multi-turn memory without header/cookie.
     yield {"type": "session", "session_id": sid}
 
-    context, q, sources = await asyncio.to_thread(_rag_retrieve, question)
+    context, q, sources = await asyncio.to_thread(_rag_retrieve, question, corpus)
     yield {"type": "sources", "chunks": sources}
 
-    payload = _rag_invoke_payload(context, q)
+    if not sources:
+        yield {"type": "token", "text": "I don't know"}
+        _apply_stripped_answer_to_history(sid, "I don't know")
+        logger.info(
+            "rag_stream_complete",
+            extra={"question_len": len(q), "sources": 0, "no_chunks": True},
+        )
+        yield {"type": "done"}
+        return
+
+    payload = _rag_invoke_payload(
+        context,
+        q,
+        prompt_template=prompt_template,
+    )
     chain = get_chain_with_history()
     cfg = {"configurable": {"session_id": sid}}
     accumulated: list[str] = []
@@ -322,8 +412,15 @@ async def stream_answer(
                 accumulated.append(text)
                 yield {"type": "token", "text": text}
     except Exception as e:
-        logger.exception("stream_failed", extra={"error": str(e)})
-        yield {"type": "error", "message": str(e)}
+        if _is_backend_llm_error(e):
+            logger.exception("stream_failed_llm_backend")
+            yield {
+                "type": "error",
+                "message": _friendly_llm_error_message(e),
+            }
+        else:
+            logger.exception("stream_failed", extra={"error": str(e)})
+            yield {"type": "error", "message": str(e)}
         return
 
     full = "".join(accumulated)
@@ -344,12 +441,33 @@ class RAGPipeline:
     """Thin wrapper for dependency injection and testing."""
 
     async def answer(
-        self, question: str, session_id: str
+        self,
+        question: str,
+        session_id: str,
+        corpus: CorpusMode = "merged",
+        *,
+        prompt_template: str | None = None,
     ) -> tuple[str, list[dict]]:
-        return await asyncio.to_thread(answer_question, question, session_id)
+        return await asyncio.to_thread(
+            answer_question,
+            question,
+            session_id,
+            corpus,
+            prompt_template=prompt_template,
+        )
 
     async def stream(
-        self, question: str, session_id: str
+        self,
+        question: str,
+        session_id: str,
+        corpus: CorpusMode = "merged",
+        *,
+        prompt_template: str | None = None,
     ) -> AsyncIterator[dict[str, Any]]:
-        async for item in stream_answer(question, session_id):
+        async for item in stream_answer(
+            question,
+            session_id,
+            corpus,
+            prompt_template=prompt_template,
+        ):
             yield item
