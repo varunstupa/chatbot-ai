@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from threading import Lock
 
 from langchain_core.documents import Document
 
@@ -13,6 +14,8 @@ from app.utils.file_loader import documents_from_file
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+_website_ingest_lock = Lock()
 
 
 def _ensure_upload_dir() -> Path:
@@ -74,10 +77,12 @@ def ingest_website_page(url: str, content: str) -> int:
             "filename": f"web:{parsed.netloc}/{path_hint}",
         },
     )
-    chunks = split_documents([doc])
-    add_website_documents(chunks)
+    with _website_ingest_lock:
+        chunks = split_documents([doc])
+        add_website_documents(chunks)
+        n = len(chunks)
     logger.info(
         "website_ingestion_complete",
-        extra={"url": u, "chunks": len(chunks)},
+        extra={"url": u, "chunks": n},
     )
-    return len(chunks)
+    return n
