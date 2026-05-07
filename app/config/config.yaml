@@ -56,6 +56,10 @@ stupa_chat:
 
     Answer (Markdown, OR exactly "I don't know"):
 
+demo_booking:
+  send_email_url: "https://stupasports.ai/api/send-email"
+  enabled: true
+
 rag:
   prompt_template: |
     You are a helpful assistant.

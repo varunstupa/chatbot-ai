@@ -1,9 +1,21 @@
-"""Book-a-demo conversational flow for stupa-chat (in-memory per session)."""
+"""Book-a-demo wizard for `/stupa-chat` (in-memory per session_id).
+
+Flow: intent "book a demo" → collect full name, contact, email, interest,
+optional description → confirmation table → user replies **yes**.
+
+On **yes**, POSTs to Stupa send-email (`demo_booking.send_email_url` in
+`config.yaml`) with: fullName, contact, email, interests (array), description.
+The API response body is shown in the chat on success.
+
+Env: `DEMO_BOOKING_SEND_EMAIL_URL`, `DEMO_BOOKING_SEND_EMAIL_ENABLED` (0/false
+to skip HTTP). Stdout: lines prefixed `[demo-booking]` on trigger and status.
+"""
 
 from __future__ import annotations
 
 import json
 import logging
+import os
 import re
 import urllib.error
 import urllib.request
@@ -11,6 +23,7 @@ from dataclasses import dataclass
 from threading import Lock
 from typing import Any
 
+from app.config.settings import get_settings
 from app.utils.debug_console import debug_log
 
 logger = logging.getLogger(__name__)
@@ -78,26 +91,85 @@ _store: dict[str, _Session] = {}
 _lock = Lock()
 
 
-def _webhook_url() -> str:
-    import os
+def _send_email_enabled() -> bool:
+    v = (os.environ.get("DEMO_BOOKING_SEND_EMAIL_ENABLED") or "").strip().lower()
+    if v in ("0", "false", "no", "off"):
+        return False
+    return get_settings().demo_booking.enabled
 
-    return (os.environ.get("DEMO_BOOKING_WEBHOOK_URL") or "").strip()
+
+def _send_email_api_url() -> str:
+    env_u = (os.environ.get("DEMO_BOOKING_SEND_EMAIL_URL") or "").strip()
+    if env_u:
+        return env_u
+    return (get_settings().demo_booking.send_email_url or "").strip()
 
 
-def _post_webhook(payload: dict[str, Any]) -> None:
-    url = _webhook_url()
-    if not url:
-        logger.info("demo_booking_skip_webhook", extra={"payload_keys": list(payload)})
-        return
-    data = json.dumps(payload).encode("utf-8")
-    req = urllib.request.Request(
-        url,
-        data=data,
-        headers={"Content-Type": "application/json"},
-        method="POST",
+def _format_response_snippet(text: str, limit: int = 900) -> str:
+    t = (text or "").strip()
+    if not t:
+        return "_(empty body)_"
+    try:
+        obj = json.loads(t)
+        t = json.dumps(obj, ensure_ascii=False, indent=2)
+    except (json.JSONDecodeError, TypeError, ValueError):
+        pass
+    if len(t) > limit:
+        return t[: limit - 3] + "..."
+    return t
+
+
+def _user_facing_booking_success(response_text: str) -> str:
+    """Single friendly line for chat — no raw JSON."""
+    fallback = (
+        "Your demo request was submitted successfully. "
+        "Our team will reach out soon."
     )
-    with urllib.request.urlopen(req, timeout=45) as resp:
-        resp.read()
+    t = (response_text or "").strip()
+    if not t:
+        return fallback
+    try:
+        obj = json.loads(t)
+    except (json.JSONDecodeError, TypeError, ValueError):
+        debug_log("demo booking success body (non-JSON)", t[:300])
+        return fallback
+    if not isinstance(obj, dict):
+        return fallback
+    msg = obj.get("message")
+    if isinstance(msg, str) and msg.strip():
+        return msg.strip()
+    if obj.get("success") is True:
+        return fallback
+    return fallback
+
+
+def _post_stupa_send_email(api_url: str, body: dict[str, Any]) -> tuple[int, str]:
+    data = json.dumps(body, ensure_ascii=False).encode("utf-8")
+    req = urllib.request.Request(
+        api_url,
+        data=data,
+        method="POST",
+        headers={
+            "Content-Type": "application/json",
+            "Accept": "*/*",
+            "Origin": "https://stupasports.ai",
+            "Referer": "https://stupasports.ai/demo",
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/120.0.0.0 Safari/537.36"
+            ),
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=45) as resp:
+            raw = resp.read().decode("utf-8", errors="replace")
+            return resp.getcode(), raw
+    except urllib.error.HTTPError as e:
+        err_body = ""
+        if e.fp is not None:
+            err_body = e.read().decode("utf-8", errors="replace")
+        return e.code, err_body or (e.reason or str(e))
 
 
 def _match_interest(text: str) -> str | None:
@@ -210,36 +282,84 @@ def try_process(session_id: str, message: str) -> DemoTurnResult | None:
 
     if s.phase == "confirming":
         if _YES.match(raw):
-            payload_body = {
+            fields_only = {
                 "full_name": s.slots["full_name"],
                 "contact": s.slots["contact"],
                 "email": s.slots["email"],
                 "interest": s.slots["interest"],
                 "description": s.slots["description"],
-                "session_id": sid,
             }
+            api_url = _send_email_api_url()
+            enabled = _send_email_enabled()
+
+            if not enabled or not api_url:
+                logger.info(
+                    "demo_booking_send_email_skipped",
+                    extra={"enabled": enabled, "has_url": bool(api_url)},
+                )
+                print(
+                    "[demo-booking] send-email SKIPPED "
+                    "(disabled or empty DEMO_BOOKING_SEND_EMAIL_URL)",
+                    flush=True,
+                )
+                with _lock:
+                    _store.pop(sid, None)
+                done = DemoFlowPayload(
+                    active=False,
+                    phase="submitted",
+                    step=None,
+                    interest_options=None,
+                    slots=fields_only,
+                )
+                return DemoTurnResult(
+                    "## Thank you\n\n"
+                    "Your demo details were saved in chat only: the send-email "
+                    "integration is turned off or has no URL.",
+                    done,
+                )
+
+            stupa_body: dict[str, Any] = {
+                "fullName": s.slots["full_name"].strip(),
+                "contact": (s.slots["contact"] or "").strip(),
+                "email": s.slots["email"].strip(),
+                "interests": [s.slots["interest"]] if s.slots.get("interest") else [],
+                "description": (s.slots.get("description") or "").strip(),
+            }
+
+            print(f"[demo-booking] TRIGGER send-email → {api_url}", flush=True)
+            logger.info("demo_booking_send_email_trigger", extra={"url": api_url})
+            debug_log("demo send-email payload keys", list(stupa_body.keys()))
+
             try:
-                _post_webhook(payload_body)
+                status, response_text = _post_stupa_send_email(api_url, stupa_body)
             except (urllib.error.URLError, OSError) as e:
-                logger.exception("demo_booking_webhook_failed")
+                logger.exception("demo_booking_send_email_network_failed")
+                print(f"[demo-booking] send-email ERROR: {e!s}", flush=True)
                 return DemoTurnResult(
                     f"Submit failed ({e!s}). Check the server or try again. "
                     "Reply **yes** to retry or **no** to cancel.",
                     _payload(sid, s),
                 )
+
+            print(f"[demo-booking] send-email response status={status}", flush=True)
+            logger.info(
+                "demo_booking_send_email_done",
+                extra={"status": status, "body_len": len(response_text or "")},
+            )
+
+            if status >= 400:
+                snippet = _format_response_snippet(response_text, 400)
+                return DemoTurnResult(
+                    f"## Submit failed (HTTP {status})\n\n"
+                    f"```\n{snippet}\n```\n\n"
+                    "Reply **yes** to retry or **no** to cancel.",
+                    _payload(sid, s),
+                )
+
             with _lock:
                 _store.pop(sid, None)
-            debug_log("demo submitted ok")
-            fields_only = {
-                k: payload_body[k]
-                for k in (
-                    "full_name",
-                    "contact",
-                    "email",
-                    "interest",
-                    "description",
-                )
-            }
+            debug_log("demo submitted ok", (response_text or "")[:400])
+            user_line = _user_facing_booking_success(response_text)
             done = DemoFlowPayload(
                 active=False,
                 phase="submitted",
@@ -248,8 +368,7 @@ def try_process(session_id: str, message: str) -> DemoTurnResult | None:
                 slots=fields_only,
             )
             return DemoTurnResult(
-                "## Thank you\n\nYour demo request was submitted. "
-                "Our team will reach out soon.",
+                f"## Thank you\n\n{user_line}",
                 done,
             )
         if _NO.match(raw):

@@ -131,6 +131,13 @@ class RAGConfig(BaseModel):
 StupaRagCorpus = Literal["merged", "website", "uploads"]
 
 
+class DemoBookingConfig(BaseModel):
+    """After user confirms demo wizard, POST to Stupa send-email (or disable)."""
+
+    send_email_url: str = "https://stupasports.ai/api/send-email"
+    enabled: bool = True
+
+
 class StupaChatConfig(BaseModel):
     """Stupa public chat: corpus + strict RAG prompt (demo flow unchanged)."""
 
@@ -205,6 +212,7 @@ class Settings(BaseSettings):
     website_vector_store: VectorStoreConfig
     rag: RAGConfig
     stupa_chat: StupaChatConfig
+    demo_booking: DemoBookingConfig = Field(default_factory=DemoBookingConfig)
     llm: LLMConfig
     logging: LoggingConfig
     messages: MessagesConfig
