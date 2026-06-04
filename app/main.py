@@ -27,6 +27,17 @@ async def lifespan(_app: FastAPI):
         s.server.host,
         s.server.port,
     )
+    from app.services.jira_service import JiraService
+
+    ok, err = JiraService().validate_configuration()
+    if ok:
+        logger.info("startup | jira ticket creation configured")
+    else:
+        logger.warning(
+            "startup | jira not configured (%s) — copy .env.example to .env "
+            "and set JIRA_* variables",
+            err,
+        )
     yield
     logger.info("shutdown")
 

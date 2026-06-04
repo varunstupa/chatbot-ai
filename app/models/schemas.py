@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
+from app.models.ticket_schemas import TicketFlowState, TicketWorkflowResponse
+
 
 class HealthResponse(BaseModel):
     status: str
@@ -77,6 +79,9 @@ class QueryResponse(BaseModel):
     session_id: str | None = None
     # Only set on /stupa-chat during book-a-demo flow.
     demo_flow: DemoFlowState | None = None
+    # Only set on /stupa-chat during Jira ticket wizard.
+    ticket_flow: TicketFlowState | None = None
+    ticket_workflow: TicketWorkflowResponse | None = None
 
 
 class ErrorResponse(BaseModel):

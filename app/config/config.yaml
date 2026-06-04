@@ -60,6 +60,13 @@ demo_booking:
   send_email_url: "https://stupasports.ai/api/send-email"
   enabled: true
 
+# Non-secret Jira fields (override in .env: JIRA_BASE_URL, JIRA_EMAIL, …)
+jira:
+  base_url: ""
+  email: ""
+  project_key: ""
+  issue_type: "Bug"
+
 rag:
   prompt_template: |
     You are a helpful assistant.
@@ -115,3 +122,7 @@ messages:
   upload_empty: "Empty upload"
   query_empty: "Question must not be empty"
   query_processing_failed: "Query processing failed"
+  ticket_jira_not_configured: >-
+    Ticket creation is not configured on the server.
+    Please contact your administrator.
+  ticket_create_failed: "Unable to create ticket. Please try again."

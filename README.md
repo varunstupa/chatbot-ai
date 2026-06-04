@@ -103,6 +103,52 @@ curl -X POST http://127.0.0.1:8000/upload -F "file=@./sample.pdf"
 curl -X POST http://127.0.0.1:8000/query -H "Content-Type: application/json" -d "{\"question\":\"What is this document about?\"}"
 ```
 
+## Jira tickets (same chat API as RAG)
+
+1. Copy `.env.example` to `.env` in the project root (same folder as `app/`).
+2. Fill in Jira Cloud credentials (create an API token at
+   https://id.atlassian.com/manage-profile/security/api-tokens):
+
+```bash
+JIRA_BASE_URL=https://your-company.atlassian.net
+JIRA_EMAIL=you@company.com
+JIRA_API_TOKEN=your-api-token
+JIRA_PROJECT_KEY=PROJ
+JIRA_ISSUE_TYPE=Bug
+```
+
+3. **Restart** the API after changing `.env` (values load at startup).
+
+On startup you should see `jira ticket creation configured` in the logs.
+If you see `jira not configured`, the `.env` file is missing or incomplete.
+
+Tickets use the **same endpoints** as knowledge-base chat (`POST /query` or `POST /stupa-chat`), not a separate ticket API. Flow matches book-a-demo: send `session_id` on every turn.
+
+**Start ticket wizard**
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/stupa-chat \
+  -H "Content-Type: application/json" \
+  -d "{\"question\":\"report an issue\"}"
+```
+
+**Follow-up turns** (title, description, expected vs actual, then `done` or `skip` for attachments, then `yes` to create):
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/stupa-chat \
+  -H "Content-Type: application/json" \
+  -d "{\"question\":\"Login fails on mobile\",\"session_id\":\"<from prior response>\"}"
+```
+
+**Upload attachment during wizard** (echo same `session_id` via query, header `X-Session-Id`, or cookie):
+
+```bash
+curl -X POST "http://127.0.0.1:8000/api/stupa-chat/attachment?session_id=<id>" \
+  -F "file=@./screenshot.png"
+```
+
+JSON responses include `ticket_flow` and `ticket_workflow`; SSE streams emit `ticket_flow` / `ticket_workflow` events (like `demo_flow`).
+
 ## Edge cases
 
 - Invalid or incomplete YAML: process fails at startup with a clear validation error.

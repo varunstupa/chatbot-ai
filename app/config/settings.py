@@ -138,6 +138,15 @@ class DemoBookingConfig(BaseModel):
     enabled: bool = True
 
 
+class JiraConfig(BaseModel):
+    """Jira Cloud ticket creation (secrets via ``JIRA_API_TOKEN`` in ``.env``)."""
+
+    base_url: str = ""
+    email: str = ""
+    project_key: str = ""
+    issue_type: str = "Bug"
+
+
 class StupaChatConfig(BaseModel):
     """Stupa public chat: corpus + strict RAG prompt (demo flow unchanged)."""
 
@@ -192,6 +201,11 @@ class MessagesConfig(BaseModel):
     upload_empty: str
     query_empty: str
     query_processing_failed: str
+    ticket_jira_not_configured: str = (
+        "Ticket creation is not configured on the server. "
+        "Please contact your administrator."
+    )
+    ticket_create_failed: str = "Unable to create ticket. Please try again."
 
 
 class Settings(BaseSettings):
@@ -213,6 +227,7 @@ class Settings(BaseSettings):
     rag: RAGConfig
     stupa_chat: StupaChatConfig
     demo_booking: DemoBookingConfig = Field(default_factory=DemoBookingConfig)
+    jira: JiraConfig = Field(default_factory=JiraConfig)
     llm: LLMConfig
     logging: LoggingConfig
     messages: MessagesConfig
@@ -220,6 +235,18 @@ class Settings(BaseSettings):
     nvidia_api_key: Optional[SecretStr] = Field(
         default=None,
         validation_alias="NVIDIA_API_KEY",
+    )
+    jira_api_token: Optional[SecretStr] = Field(
+        default=None,
+        validation_alias="JIRA_API_TOKEN",
+    )
+    jira_base_url: str = Field(default="", validation_alias="JIRA_BASE_URL")
+    jira_email: str = Field(default="", validation_alias="JIRA_EMAIL")
+    jira_project_key: str = Field(default="", validation_alias="JIRA_PROJECT_KEY")
+    jira_issue_type: str = Field(default="Bug", validation_alias="JIRA_ISSUE_TYPE")
+    jira_issue_type_id: str = Field(
+        default="",
+        validation_alias="JIRA_ISSUE_TYPE_ID",
     )
 
     @classmethod

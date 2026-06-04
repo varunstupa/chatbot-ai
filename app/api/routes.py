@@ -21,11 +21,17 @@ from app.models.schemas import (
     RetrievedChunk,
     UploadResponse,
 )
-from app.services import demo_booking, ingestion
+from app.models.ticket_schemas import (
+    TicketAttachmentUploadResponse,
+    TicketFlowState,
+)
+from app.services import demo_booking, ingestion, ticket_workflow
 from app.services.rag_pipeline import RAGPipeline
+from app.services.ticket_upload import save_ticket_file
 from app.services.vector_store import CorpusMode
 from app.utils.debug_console import debug_log
 from app.utils.logger import get_logger
+from app.utils.rate_limit import check_rate_limit
 
 router = APIRouter()
 logger = get_logger(__name__)
@@ -49,6 +55,83 @@ def _resolve_session_id(body_session_id: str | None, request: Request) -> str:
         new_id,
     )
     return new_id
+
+
+def _client_key(request: Request) -> str:
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    if request.client:
+        return request.client.host
+    return "unknown"
+
+
+def _query_response_from_ticket(
+    session_id: str,
+    ticket: ticket_workflow.TicketTurnResult,
+    response: Response,
+) -> QueryResponse:
+    _attach_session(response, session_id)
+    return QueryResponse(
+        answer=ticket.answer,
+        chunks=[],
+        session_id=session_id,
+        ticket_flow=TicketFlowState(**ticket.flow.as_dict()),
+        ticket_workflow=ticket.workflow,
+    )
+
+
+async def _save_ticket_attachment(
+    request: Request,
+    file: UploadFile,
+    session_id: str,
+) -> TicketAttachmentUploadResponse:
+    try:
+        check_rate_limit(
+            f"ticket-upload:{_client_key(request)}",
+            max_calls=20,
+            window_seconds=60,
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=429,
+            detail={"message": str(e), "code": constants.ERROR_RATE_LIMIT},
+        ) from e
+
+    if not file.filename:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "message": get_settings().messages.missing_filename,
+                "code": constants.ERROR_UPLOAD_EMPTY,
+            },
+        )
+    raw = await file.read()
+    try:
+
+        def _run() -> tuple[str, str]:
+            return save_ticket_file(file.filename or "file", raw)
+
+        stored_name, rel_path = await asyncio.to_thread(_run)
+    except ValueError as e:
+        logger.warning("ticket_attachment_validation | %s", e)
+        raise HTTPException(
+            status_code=400,
+            detail={"message": str(e), "code": constants.ERROR_UPLOAD_UNSUPPORTED},
+        ) from e
+
+    ticket_workflow.register_session_attachment(
+        session_id,
+        stored_name,
+        rel_path,
+    )
+    return TicketAttachmentUploadResponse(
+        file_name=stored_name,
+        file_path=rel_path,
+        size_bytes=len(raw),
+        content_type=file.content_type,
+        session_id=session_id,
+    )
 
 
 def _attach_session(response: Response, session_id: str) -> None:
@@ -133,6 +216,14 @@ async def run_stupa_query(
             },
         )
     session_id = _resolve_session_id(body.session_id, request)
+    ticket = ticket_workflow.try_process(session_id, q)
+    if ticket is not None:
+        debug_log(
+            "stupa JSON → ticket",
+            ticket.flow.phase,
+            ticket.flow.step,
+        )
+        return _query_response_from_ticket(session_id, ticket, response)
     demo = demo_booking.try_process(session_id, q)
     if demo is not None:
         debug_log("stupa JSON → demo", demo.flow.phase, demo.flow.step)
@@ -177,6 +268,14 @@ async def run_query(
             },
         )
     session_id = _resolve_session_id(body.session_id, request)
+    ticket = ticket_workflow.try_process(session_id, q)
+    if ticket is not None:
+        debug_log(
+            "query JSON → ticket",
+            ticket.flow.phase,
+            ticket.flow.step,
+        )
+        return _query_response_from_ticket(session_id, ticket, response)
     try:
         answer, sources = await pipeline.answer(
             q,
@@ -233,6 +332,27 @@ def build_query_stream_response(
     session_id = _resolve_session_id(body.session_id, request)
 
     async def sse_events():
+        ticket = ticket_workflow.try_process(session_id, q)
+        if ticket is not None:
+            debug_log(
+                "query SSE → ticket",
+                ticket.flow.phase,
+                ticket.flow.step,
+            )
+            try:
+                for line in _ticket_sse_lines(session_id, ticket):
+                    yield line
+            except Exception:
+                logger.exception("query_ticket_stream_failed")
+                err = json.dumps(
+                    {
+                        "type": "error",
+                        "message": s.messages.query_processing_failed,
+                    },
+                    ensure_ascii=False,
+                )
+                yield f"data: {err}\n\n"
+            return
         try:
             async for item in pipeline.stream(q, session_id):
                 line = json.dumps(item, ensure_ascii=False)
@@ -275,6 +395,27 @@ def build_query_stream_response(
     return stream
 
 
+def _ticket_sse_lines(
+    session_id: str,
+    ticket: ticket_workflow.TicketTurnResult,
+) -> list[str]:
+    lines = [
+        json.dumps({"type": "session", "session_id": session_id}, ensure_ascii=False),
+        json.dumps({"type": "sources", "chunks": []}, ensure_ascii=False),
+        json.dumps(
+            {"type": "ticket_flow", "session_id": session_id, **ticket.flow.as_dict()},
+            ensure_ascii=False,
+        ),
+        json.dumps(
+            {"type": "ticket_workflow", **ticket.workflow.model_dump()},
+            ensure_ascii=False,
+        ),
+        json.dumps({"type": "token", "text": ticket.answer}, ensure_ascii=False),
+        json.dumps({"type": "done"}, ensure_ascii=False),
+    ]
+    return [f"data: {line}\n\n" for line in lines]
+
+
 def build_stupa_stream_response(
     body: QueryRequest,
     request: Request,
@@ -294,6 +435,27 @@ def build_stupa_stream_response(
     session_id = _resolve_session_id(body.session_id, request)
 
     async def sse_events():
+        ticket = ticket_workflow.try_process(session_id, q)
+        if ticket is not None:
+            debug_log(
+                "stupa SSE → ticket",
+                ticket.flow.phase,
+                ticket.flow.step,
+            )
+            try:
+                for line in _ticket_sse_lines(session_id, ticket):
+                    yield line
+            except Exception:
+                logger.exception("stupa_ticket_stream_failed")
+                err = json.dumps(
+                    {
+                        "type": "error",
+                        "message": s.messages.query_processing_failed,
+                    },
+                    ensure_ascii=False,
+                )
+                yield f"data: {err}\n\n"
+            return
         demo = demo_booking.try_process(session_id, q)
         if demo is not None:
             debug_log("stupa SSE → demo", demo.flow.phase, demo.flow.step)
@@ -392,8 +554,8 @@ async def query_stream(
 
     JSON object ``type`` is one of:
     ``session`` (with ``session_id`` — send back on the next request),
-    ``sources`` (with ``chunks``), ``token`` (with ``text``), ``done``,
-    or ``error`` (with ``message``).
+    ``sources`` (with ``chunks``), ``ticket_flow``, ``ticket_workflow``,
+    ``token`` (with ``text``), ``done``, or ``error`` (with ``message``).
     """
     return build_query_stream_response(body, request, pipeline)
 
@@ -410,6 +572,10 @@ async def query_stream(
         "send **`session_id` from the response** on every next turn. "
         "`demo_flow` in the JSON (or SSE `demo_flow` event) carries "
         "`interest_options` and `slots` for UI chips. "
+        "**Jira tickets:** say e.g. \"report an issue\" on this same endpoint; "
+        "echo `session_id` each turn. Use `POST /stupa-chat/attachment` for "
+        "files during the flow. `ticket_flow` / `ticket_workflow` mirror "
+        "`demo_flow`. "
         "**RAG context** comes from `stupa_chat.rag_corpus` in config "
         "(default **website** = crawled pages only; `/query` still uses "
         "uploads + website merged). Stupa uses `stupa_chat.prompt_template` "
@@ -455,3 +621,60 @@ async def stupa_chat_stream(
     pipeline: RAGPipeline = Depends(get_rag_pipeline),
 ) -> StreamingResponse:
     return build_stupa_stream_response(body, request, pipeline)
+
+
+async def _chat_attachment(
+    request: Request,
+    response: Response,
+    file: UploadFile,
+    body_session_id: str | None,
+) -> TicketAttachmentUploadResponse:
+    session_id = _resolve_session_id(body_session_id, request)
+    result = await _save_ticket_attachment(request, file, session_id)
+    _attach_session(response, session_id)
+    return result
+
+
+@router.post(
+    "/query/attachment",
+    tags=["query"],
+    response_model=TicketAttachmentUploadResponse,
+    summary="Upload file during ticket wizard (requires active session)",
+)
+@router.post(
+    "/query/attachment/",
+    tags=["query"],
+    include_in_schema=False,
+    response_model=TicketAttachmentUploadResponse,
+)
+async def query_ticket_attachment(
+    request: Request,
+    response: Response,
+    file: UploadFile = File(...),
+    session_id: str | None = Query(
+        default=None,
+        description="Chat session id (body field on /query also accepted via cookie/header)",
+    ),
+) -> TicketAttachmentUploadResponse:
+    return await _chat_attachment(request, response, file, session_id)
+
+
+@router.post(
+    "/stupa-chat/attachment",
+    tags=["stupa-chat"],
+    response_model=TicketAttachmentUploadResponse,
+    summary="Upload file during ticket wizard on stupa-chat",
+)
+@router.post(
+    "/stupa-chat/attachment/",
+    tags=["stupa-chat"],
+    include_in_schema=False,
+    response_model=TicketAttachmentUploadResponse,
+)
+async def stupa_chat_attachment(
+    request: Request,
+    response: Response,
+    file: UploadFile = File(...),
+    session_id: str | None = Query(default=None),
+) -> TicketAttachmentUploadResponse:
+    return await _chat_attachment(request, response, file, session_id)

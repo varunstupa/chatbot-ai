@@ -261,7 +261,12 @@ def try_process(session_id: str, message: str) -> DemoTurnResult | None:
 
     if existing is None:
         if not _INTENT.search(raw):
-            if _NAME_LIKE.match(raw) and not _EMAIL_OK.match(raw):
+            wizard_reply = _YES.match(raw) or _NO.match(raw) or _SKIP.match(raw)
+            if (
+                _NAME_LIKE.match(raw)
+                and not _EMAIL_OK.match(raw)
+                and not wizard_reply
+            ):
                 logger.warning(
                     "demo_booking | no session for this message; "
                     "echo session_id from the 'book a demo' reply (JSON "
