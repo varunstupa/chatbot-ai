@@ -132,7 +132,15 @@ curl -X POST http://127.0.0.1:8000/api/stupa-chat \
   -d "{\"question\":\"report an issue\"}"
 ```
 
-**Follow-up turns** (title, description, expected vs actual, then `done` or `skip` for attachments, then `yes` to create):
+**Client-driven form (Angular owns the steps):** send the draft with **yes**:
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/stupa-chat \
+  -H "Content-Type: application/json" \
+  -d "{\"question\":\"yes\",\"session_id\":\"<id>\",\"ticket_draft\":{\"title\":\"Login issue\",\"description\":\"Steps...\",\"expected_vs_actual\":\"Expected OK, got error\",\"attachments\":[{\"file_name\":\"a.png\",\"file_path\":\"/uploads/tickets/....png\"}]}}"
+```
+
+**Server-driven wizard** — follow-up turns (title, description, expected vs actual, then `done` or `skip` for attachments, then `yes` to create):
 
 ```bash
 curl -X POST http://127.0.0.1:8000/api/stupa-chat \

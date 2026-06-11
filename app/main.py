@@ -6,8 +6,10 @@ import os
 from contextlib import asynccontextmanager
 
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.api.crawl import router as crawl_router
 from app.api.routes import router
@@ -50,11 +52,36 @@ def create_app() -> FastAPI:
         version=s.app.version,
         lifespan=lifespan,
     )
+
+    @application.exception_handler(RequestValidationError)
+    async def validation_error_handler(
+        request: Request,
+        exc: RequestValidationError,
+    ) -> JSONResponse:
+        logger.warning(
+            "request_validation_failed | %s %s | errors=%s",
+            request.method,
+            request.url.path,
+            exc.errors(),
+        )
+        return JSONResponse(
+            status_code=422,
+            content={
+                "detail": exc.errors(),
+                "code": "validation_error",
+                "hint": (
+                    "POST JSON with non-empty ``question`` (or ``message``) "
+                    "and optional ``session_id``."
+                ),
+            },
+        )
     application.add_middleware(
         CORSMiddleware,
         allow_origins=[
             "http://localhost:4200",
             "http://127.0.0.1:4200",
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
         ],
         allow_credentials=True,
         allow_methods=["*"],

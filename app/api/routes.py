@@ -216,7 +216,11 @@ async def run_stupa_query(
             },
         )
     session_id = _resolve_session_id(body.session_id, request)
-    ticket = ticket_workflow.try_process(session_id, q)
+    ticket = ticket_workflow.try_process(
+        session_id,
+        q,
+        ticket_draft=body.ticket_draft,
+    )
     if ticket is not None:
         debug_log(
             "stupa JSON → ticket",
@@ -268,7 +272,11 @@ async def run_query(
             },
         )
     session_id = _resolve_session_id(body.session_id, request)
-    ticket = ticket_workflow.try_process(session_id, q)
+    ticket = ticket_workflow.try_process(
+        session_id,
+        q,
+        ticket_draft=body.ticket_draft,
+    )
     if ticket is not None:
         debug_log(
             "query JSON → ticket",
@@ -332,7 +340,11 @@ def build_query_stream_response(
     session_id = _resolve_session_id(body.session_id, request)
 
     async def sse_events():
-        ticket = ticket_workflow.try_process(session_id, q)
+        ticket = ticket_workflow.try_process(
+            session_id,
+            q,
+            ticket_draft=body.ticket_draft,
+        )
         if ticket is not None:
             debug_log(
                 "query SSE → ticket",
@@ -435,7 +447,11 @@ def build_stupa_stream_response(
     session_id = _resolve_session_id(body.session_id, request)
 
     async def sse_events():
-        ticket = ticket_workflow.try_process(session_id, q)
+        ticket = ticket_workflow.try_process(
+            session_id,
+            q,
+            ticket_draft=body.ticket_draft,
+        )
         if ticket is not None:
             debug_log(
                 "stupa SSE → ticket",
@@ -572,10 +588,10 @@ async def query_stream(
         "send **`session_id` from the response** on every next turn. "
         "`demo_flow` in the JSON (or SSE `demo_flow` event) carries "
         "`interest_options` and `slots` for UI chips. "
-        "**Jira tickets:** say e.g. \"report an issue\" on this same endpoint; "
-        "echo `session_id` each turn. Use `POST /stupa-chat/attachment` for "
-        "files during the flow. `ticket_flow` / `ticket_workflow` mirror "
-        "`demo_flow`. "
+        "**Jira tickets:** say e.g. \"report an issue\" on this same endpoint, "
+        "or send `ticket_draft` with question **yes** when the UI owns the "
+        "form. Use `POST /stupa-chat/attachment` for files. "
+        "`ticket_flow` / `ticket_workflow` mirror `demo_flow`. "
         "**RAG context** comes from `stupa_chat.rag_corpus` in config "
         "(default **website** = crawled pages only; `/query` still uses "
         "uploads + website merged). Stupa uses `stupa_chat.prompt_template` "

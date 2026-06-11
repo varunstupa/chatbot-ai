@@ -206,6 +206,10 @@ class MessagesConfig(BaseModel):
         "Please contact your administrator."
     )
     ticket_create_failed: str = "Unable to create ticket. Please try again."
+    ticket_session_lost: str = (
+        "This ticket draft expired or was interrupted. "
+        "Say **report an issue** to start again."
+    )
 
 
 class Settings(BaseSettings):

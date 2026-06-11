@@ -126,3 +126,6 @@ messages:
     Ticket creation is not configured on the server.
     Please contact your administrator.
   ticket_create_failed: "Unable to create ticket. Please try again."
+  ticket_session_lost: >-
+    This ticket draft expired or was interrupted.
+    Say **report an issue** to start again.

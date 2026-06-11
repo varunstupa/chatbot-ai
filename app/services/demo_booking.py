@@ -1,4 +1,4 @@
-"""Book-a-demo wizard for `/stupa-chat` (in-memory per session_id).
+"""Book-a-demo wizard for `/stupa-chat` (persisted per session_id).
 
 Flow: intent "book a demo" → collect full name, contact, email, interest,
 optional description → confirmation table → user replies **yes**.
@@ -20,6 +20,7 @@ import re
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
+from pathlib import Path
 from threading import Lock
 from typing import Any
 
@@ -89,6 +90,77 @@ class _Session:
 
 _store: dict[str, _Session] = {}
 _lock = Lock()
+
+
+def _sessions_dir() -> Path:
+    base = Path(get_settings().paths.upload_dir).resolve().parent
+    root = base / "demo_sessions"
+    root.mkdir(parents=True, exist_ok=True)
+    return root
+
+
+def _session_file(sid: str) -> Path:
+    safe = re.sub(r"[^a-zA-Z0-9-]", "", sid)
+    return _sessions_dir() / f"{safe}.json"
+
+
+def _session_to_dict(s: _Session) -> dict[str, Any]:
+    return {
+        "phase": s.phase,
+        "step": s.step,
+        "slots": dict(s.slots),
+    }
+
+
+def _session_from_dict(data: dict[str, Any]) -> _Session:
+    s = _Session()
+    s.phase = str(data.get("phase") or "collecting")
+    s.step = str(data.get("step") or "full_name")
+    slots = data.get("slots")
+    if isinstance(slots, dict):
+        for key in s.slots:
+            s.slots[key] = str(slots.get(key) or "")
+    return s
+
+
+def _load_session(sid: str) -> _Session | None:
+    with _lock:
+        cached = _store.get(sid)
+    if cached is not None:
+        return cached
+    path = _session_file(sid)
+    if not path.is_file():
+        return None
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(raw, dict):
+            return None
+        sess = _session_from_dict(raw)
+    except (OSError, json.JSONDecodeError, TypeError, ValueError):
+        logger.warning("demo_session_load_failed | sid=%s", sid[:12])
+        return None
+    with _lock:
+        _store[sid] = sess
+    logger.info("demo_session_restored | sid=%s step=%s", sid[:12], sess.step)
+    return sess
+
+
+def _save_session(sid: str, s: _Session) -> None:
+    with _lock:
+        _store[sid] = s
+    path = _session_file(sid)
+    path.write_text(
+        json.dumps(_session_to_dict(s), ensure_ascii=False),
+        encoding="utf-8",
+    )
+
+
+def _delete_session(sid: str) -> None:
+    with _lock:
+        _store.pop(sid, None)
+    path = _session_file(sid)
+    if path.is_file():
+        path.unlink(missing_ok=True)
 
 
 def _send_email_enabled() -> bool:
@@ -190,6 +262,7 @@ def _match_interest(text: str) -> str | None:
 
 
 def _payload(session_id: str, s: _Session) -> DemoFlowPayload:
+    _save_session(session_id, s)
     opts = list(INTEREST_OPTIONS) if s.step == "interest" else None
     return DemoFlowPayload(
         active=True,
@@ -240,8 +313,7 @@ def try_process(session_id: str, message: str) -> DemoTurnResult | None:
     if not sid or not raw:
         return None
 
-    with _lock:
-        existing = _store.get(sid)
+    existing = _load_session(sid)
 
     debug_log(
         "demo try_process",
@@ -251,8 +323,9 @@ def try_process(session_id: str, message: str) -> DemoTurnResult | None:
     )
 
     if _CANCEL.match(raw):
-        with _lock:
-            _store.pop(sid, None)
+        if existing is None:
+            return None
+        _delete_session(sid)
         debug_log("demo cancel")
         return DemoTurnResult(
             "Demo booking cancelled. You can ask me anything else anytime.",
@@ -275,12 +348,11 @@ def try_process(session_id: str, message: str) -> DemoTurnResult | None:
                     raw[:80],
                 )
             return None
-        with _lock:
-            _store[sid] = _Session()
+        sess = _Session()
         debug_log("demo started", "step=full_name")
         return DemoTurnResult(
             "## Book a demo\n\nWhat is your **full name**?",
-            _payload(sid, _store[sid]),
+            _payload(sid, sess),
         )
 
     s = existing
@@ -307,8 +379,7 @@ def try_process(session_id: str, message: str) -> DemoTurnResult | None:
                     "(disabled or empty DEMO_BOOKING_SEND_EMAIL_URL)",
                     flush=True,
                 )
-                with _lock:
-                    _store.pop(sid, None)
+                _delete_session(sid)
                 done = DemoFlowPayload(
                     active=False,
                     phase="submitted",
@@ -361,8 +432,7 @@ def try_process(session_id: str, message: str) -> DemoTurnResult | None:
                     _payload(sid, s),
                 )
 
-            with _lock:
-                _store.pop(sid, None)
+            _delete_session(sid)
             debug_log("demo submitted ok", (response_text or "")[:400])
             user_line = _user_facing_booking_success(response_text)
             done = DemoFlowPayload(
@@ -377,8 +447,7 @@ def try_process(session_id: str, message: str) -> DemoTurnResult | None:
                 done,
             )
         if _NO.match(raw):
-            with _lock:
-                _store.pop(sid, None)
+            _delete_session(sid)
             return DemoTurnResult(
                 "Booking cancelled. Let me know if you need anything else.",
                 _idle_payload(),
@@ -467,3 +536,6 @@ def try_process(session_id: str, message: str) -> DemoTurnResult | None:
 def reset_demo_state_for_tests() -> None:
     with _lock:
         _store.clear()
+    root = _sessions_dir()
+    for path in root.glob("*.json"):
+        path.unlink(missing_ok=True)

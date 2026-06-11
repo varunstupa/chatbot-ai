@@ -2,9 +2,15 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from typing import Any
 
-from app.models.ticket_schemas import TicketFlowState, TicketWorkflowResponse
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+from app.models.ticket_schemas import (
+    TicketDraftPayload,
+    TicketFlowState,
+    TicketWorkflowResponse,
+)
 
 
 class HealthResponse(BaseModel):
@@ -49,8 +55,49 @@ class CrawlResponse(BaseModel):
 
 
 class QueryRequest(BaseModel):
-    question: str = Field(min_length=1)
+    question: str = Field(
+        min_length=1,
+        description="User message. Alias: ``message``.",
+    )
     session_id: str | None = Field(default=None)
+    ticket_draft: TicketDraftPayload | None = Field(
+        default=None,
+        description=(
+            "When the UI collects the ticket form client-side, send the "
+            "filled draft with question **yes** to create the Jira issue."
+        ),
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_chat_body(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+        out = dict(data)
+        raw_q = (
+            out.get("question")
+            or out.get("message")
+            or out.get("text")
+            or out.get("content")
+            or ""
+        )
+        out["question"] = str(raw_q).strip()
+        draft = out.get("ticket_draft")
+        if draft in (None, {}, ""):
+            out["ticket_draft"] = None
+        elif isinstance(draft, dict):
+            title = str(draft.get("title") or "").strip()
+            if not title:
+                out["ticket_draft"] = None
+        return out
+
+    @field_validator("question")
+    @classmethod
+    def question_not_blank(cls, v: str) -> str:
+        t = (v or "").strip()
+        if not t:
+            raise ValueError("question must not be empty")
+        return t
 
 
 class RetrievedChunk(BaseModel):

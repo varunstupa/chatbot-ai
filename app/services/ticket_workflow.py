@@ -1,15 +1,17 @@
-"""Conversational Jira ticket wizard for ``/stupa-chat`` (in-memory per session)."""
+"""Conversational Jira ticket wizard for ``/stupa-chat`` (persisted per session)."""
 
 from __future__ import annotations
 
+import json
 import logging
 import re
 from dataclasses import dataclass
+from pathlib import Path
 from threading import Lock
 from typing import Any
 
-from app.models.ticket_schemas import TicketWorkflowResponse
 from app.config.settings import get_settings
+from app.models.ticket_schemas import TicketDraftPayload, TicketWorkflowResponse
 from app.services.jira_service import JiraService
 from app.services.ticket_providers.jira_provider import (
     JiraApiError,
@@ -36,13 +38,6 @@ _YES = re.compile(
 _NO = re.compile(r"^\s*(no|n|abort)\s*\.?\s*$", re.IGNORECASE)
 _SKIP = re.compile(r"^\s*(skip|none|n/?a|done|-)\s*\.?\s*$", re.IGNORECASE)
 
-_SESSION_HINT = (
-    "Your ticket session was not found on the server. "
-    "Send the **`session_id`** from the previous chat response on **every** "
-    "message (JSON body, `X-Session-Id` header, or browser cookie). "
-    "If the API was restarted, say **report an issue** to start again."
-)
-
 _STEPS: tuple[str, ...] = (
     "title",
     "description",
@@ -64,6 +59,9 @@ _PROMPTS: dict[str, str] = {
         "using the attachment area, then reply **done** or **skip**."
     ),
 }
+
+_store: dict[str, "_Session"] = {}
+_lock = Lock()
 
 
 @dataclass
@@ -107,8 +105,79 @@ class _Session:
         }
 
 
-_store: dict[str, _Session] = {}
-_lock = Lock()
+def _sessions_dir() -> Path:
+    base = Path(get_settings().paths.upload_dir).resolve().parent
+    root = base / "ticket_sessions"
+    root.mkdir(parents=True, exist_ok=True)
+    return root
+
+
+def _session_file(sid: str) -> Path:
+    safe = re.sub(r"[^a-zA-Z0-9-]", "", sid)
+    return _sessions_dir() / f"{safe}.json"
+
+
+def _session_to_dict(s: _Session) -> dict[str, Any]:
+    return {
+        "phase": s.phase,
+        "step": s.step,
+        "slots": dict(s.slots),
+    }
+
+
+def _session_from_dict(data: dict[str, Any]) -> _Session:
+    s = _Session()
+    s.phase = str(data.get("phase") or "collecting")
+    s.step = str(data.get("step") or "title")
+    slots = data.get("slots")
+    if isinstance(slots, dict):
+        s.slots = {
+            "title": str(slots.get("title") or ""),
+            "description": str(slots.get("description") or ""),
+            "expected_vs_actual": str(slots.get("expected_vs_actual") or ""),
+            "attachments": list(slots.get("attachments") or []),
+        }
+    return s
+
+
+def _load_session(sid: str) -> _Session | None:
+    with _lock:
+        cached = _store.get(sid)
+    if cached is not None:
+        return cached
+    path = _session_file(sid)
+    if not path.is_file():
+        return None
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(raw, dict):
+            return None
+        sess = _session_from_dict(raw)
+    except (OSError, json.JSONDecodeError, TypeError, ValueError):
+        logger.warning("ticket_session_load_failed | sid=%s", sid[:12])
+        return None
+    with _lock:
+        _store[sid] = sess
+    logger.info("ticket_session_restored | sid=%s step=%s", sid[:12], sess.step)
+    return sess
+
+
+def _save_session(sid: str, s: _Session) -> None:
+    with _lock:
+        _store[sid] = s
+    path = _session_file(sid)
+    path.write_text(
+        json.dumps(_session_to_dict(s), ensure_ascii=False),
+        encoding="utf-8",
+    )
+
+
+def _delete_session(sid: str) -> None:
+    with _lock:
+        _store.pop(sid, None)
+    path = _session_file(sid)
+    if path.is_file():
+        path.unlink(missing_ok=True)
 
 
 def detect_ticket_intent(message: str) -> bool:
@@ -160,15 +229,20 @@ def register_session_attachment(
     sid = (session_id or "").strip()
     if not sid:
         return
-    with _lock:
-        sess = _store.get(sid)
+    sess = _load_session(sid)
     if sess is None:
-        return
+        sess = _Session()
+        sess.step = "attachments"
+        logger.info(
+            "ticket_session_bootstrapped | sid=%s reason=attachment",
+            sid[:12],
+        )
     items = sess.slots.setdefault("attachments", [])
     if not isinstance(items, list):
         items = []
         sess.slots["attachments"] = items
     items.append({"file_name": file_name, "file_path": file_path})
+    _save_session(sid, sess)
     logger.info(
         "ticket_session_attachment | sid=%s count=%s",
         sid[:10],
@@ -197,19 +271,6 @@ def _preview_markdown(s: _Session) -> str:
     )
 
 
-def _session_lost_result() -> TicketTurnResult:
-    return TicketTurnResult(
-        f"## Ticket session lost\n\n{_SESSION_HINT}",
-        _idle_payload(),
-        TicketWorkflowResponse(
-            action="session_required",
-            active=False,
-            phase="idle",
-            next_field=None,
-        ),
-    )
-
-
 def _is_wizard_only_reply(raw: str) -> bool:
     return bool(
         _YES.match(raw)
@@ -219,19 +280,30 @@ def _is_wizard_only_reply(raw: str) -> bool:
     )
 
 
-def _advance_after_field(s: _Session, field: str) -> str | None:
-    try:
-        idx = _STEPS.index(field)
-    except ValueError:
-        return None
-    if idx + 1 < len(_STEPS):
-        return _STEPS[idx + 1]
-    return "confirm"
+def _session_from_draft(draft: TicketDraftPayload) -> _Session:
+    s = _Session()
+    s.phase = "confirming"
+    s.step = "confirm"
+    s.slots = {
+        "title": draft.title.strip(),
+        "description": draft.description.strip(),
+        "expected_vs_actual": draft.expected_vs_actual.strip(),
+        "attachments": [
+            {"file_name": a.file_name, "file_path": a.file_path}
+            for a in draft.attachments
+        ],
+    }
+    return s
 
 
-def try_process(session_id: str, message: str) -> TicketTurnResult | None:
+def try_process(
+    session_id: str,
+    message: str,
+    *,
+    ticket_draft: TicketDraftPayload | None = None,
+) -> TicketTurnResult | None:
     """
-    If this turn belongs to the ticket flow, return assistant reply + payload.
+    If this turn belongs to the ticket flow, return the assistant reply + payload.
     Return None to let demo/RAG handle the message.
     """
     sid = (session_id or "").strip()
@@ -239,36 +311,36 @@ def try_process(session_id: str, message: str) -> TicketTurnResult | None:
     if not sid or not raw:
         return None
 
-    with _lock:
-        existing = _store.get(sid)
+    existing = _load_session(sid)
 
     if _CANCEL.match(raw):
-        with _lock:
-            _store.pop(sid, None)
-        return TicketTurnResult(
-            "Ticket creation cancelled. Ask me anything else anytime.",
-            _idle_payload(),
-            TicketWorkflowResponse(
-                action="ticket_cancelled",
-                active=False,
-                phase="idle",
-                next_field=None,
-            ),
-        )
+        if existing is not None:
+            _delete_session(sid)
+            return TicketTurnResult(
+                "Ticket creation cancelled. Ask me anything else anytime.",
+                _idle_payload(),
+                TicketWorkflowResponse(
+                    action="ticket_cancelled",
+                    active=False,
+                    phase="idle",
+                    next_field=None,
+                ),
+            )
+        return None
 
     if existing is None:
-        if _is_wizard_only_reply(raw):
-            logger.warning(
-                "ticket_workflow | wizard reply without session | sid=%s msg=%r",
+        if _YES.match(raw) and ticket_draft is not None:
+            logger.info(
+                "ticket_workflow | confirm from client draft | sid=%s",
                 sid[:12],
-                raw[:40],
             )
-            return _session_lost_result()
+            return _submit_ticket(sid, _session_from_draft(ticket_draft))
+        if _is_wizard_only_reply(raw):
+            return None
         if not detect_ticket_intent(raw):
             return None
-        with _lock:
-            _store[sid] = _Session()
-        sess = _store[sid]
+        sess = _Session()
+        _save_session(sid, sess)
         debug_log("ticket started", "step=title")
         wf = _workflow_from_session(sess)
         return TicketTurnResult(
@@ -283,8 +355,7 @@ def try_process(session_id: str, message: str) -> TicketTurnResult | None:
         if _YES.match(raw):
             return _submit_ticket(sid, s)
         if _NO.match(raw):
-            with _lock:
-                _store.pop(sid, None)
+            _delete_session(sid)
             return TicketTurnResult(
                 "Ticket creation cancelled.",
                 _idle_payload(),
@@ -339,6 +410,7 @@ def try_process(session_id: str, message: str) -> TicketTurnResult | None:
                 )
         s.phase = "confirming"
         s.step = "confirm"
+        _save_session(sid, s)
         return TicketTurnResult(
             _preview_markdown(s),
             _payload(sid, s),
@@ -349,6 +421,7 @@ def try_process(session_id: str, message: str) -> TicketTurnResult | None:
 
 
 def _reply(sid: str, s: _Session, text: str) -> TicketTurnResult:
+    _save_session(sid, s)
     return TicketTurnResult(
         text,
         _payload(sid, s),
@@ -378,14 +451,20 @@ def _submit_ticket(sid: str, s: _Session) -> TicketTurnResult:
             attachment_paths=paths,
         )
     except JiraConfigurationError:
-        logger.error("ticket_submit_failed | sid=%s reason=jira_not_configured", sid[:10])
+        logger.error(
+            "ticket_submit_failed | sid=%s reason=jira_not_configured",
+            sid[:10],
+        )
         return TicketTurnResult(
             msgs.ticket_jira_not_configured,
             _payload(sid, s),
             _workflow_from_session(s),
         )
     except JiraApiError:
-        logger.exception("ticket_submit_failed | sid=%s reason=jira_api", sid[:10])
+        logger.exception(
+            "ticket_submit_failed | sid=%s reason=jira_api",
+            sid[:10],
+        )
         return TicketTurnResult(
             msgs.ticket_create_failed,
             _payload(sid, s),
@@ -399,8 +478,7 @@ def _submit_ticket(sid: str, s: _Session) -> TicketTurnResult:
             _workflow_from_session(s),
         )
 
-    with _lock:
-        _store.pop(sid, None)
+    _delete_session(sid)
 
     done = TicketFlowPayload(
         active=False,
@@ -433,3 +511,6 @@ def _submit_ticket(sid: str, s: _Session) -> TicketTurnResult:
 def reset_ticket_state_for_tests() -> None:
     with _lock:
         _store.clear()
+    root = _sessions_dir()
+    for path in root.glob("*.json"):
+        path.unlink(missing_ok=True)

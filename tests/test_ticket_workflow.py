@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 
+from app.models.ticket_schemas import TicketDraftPayload
 from app.services import ticket_workflow
 
 
@@ -42,3 +43,20 @@ def test_ticket_flow_cancel():
     cancelled = ticket_workflow.try_process(sid, "cancel")
     assert cancelled is not None
     assert not cancelled.flow.active
+
+
+def test_confirm_from_client_draft_without_server_session():
+    sid = "test-session-3"
+    draft = TicketDraftPayload(
+        title="Login issue",
+        description="Steps to reproduce the login failure on mobile.",
+        expected_vs_actual="Expected login, got error page.",
+        attachments=[],
+    )
+    result = ticket_workflow.try_process(
+        sid,
+        "yes",
+        ticket_draft=draft,
+    )
+    assert result is not None
+    assert result.flow.action in ("ticket_created", "collect_ticket_information")

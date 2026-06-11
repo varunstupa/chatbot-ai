@@ -30,6 +30,20 @@ class TicketFlowState(BaseModel):
     slots: dict[str, Any] = Field(default_factory=dict)
 
 
+class TicketAttachmentRef(BaseModel):
+    file_name: str = Field(min_length=1, max_length=255)
+    file_path: str = Field(min_length=1, max_length=512)
+
+
+class TicketDraftPayload(BaseModel):
+    """Optional on ``POST /stupa-chat`` when the UI confirms with **yes**."""
+
+    title: str = Field(min_length=1, max_length=255)
+    description: str = Field(min_length=1, max_length=8000)
+    expected_vs_actual: str = Field(min_length=1, max_length=4000)
+    attachments: list[TicketAttachmentRef] = Field(default_factory=list)
+
+
 class TicketAttachmentUploadResponse(BaseModel):
     file_name: str
     file_path: str
