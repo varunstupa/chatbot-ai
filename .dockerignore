@@ -1,0 +1,31 @@
+# Keep the build context small and avoid leaking local state into the image.
+.git
+.gitignore
+.venv
+venv
+__pycache__
+**/__pycache__
+*.py[cod]
+*.egg-info
+.eggs
+dist
+build
+
+# Secrets — provided at runtime via env_file / -e, never baked into the image.
+.env
+
+# Local data + caches (recreated inside the container / mounted as volumes).
+data/
+crawler/node_modules/
+crawler/storage/
+crawler/.tmp/
+node_modules/
+.cache/
+
+# Docs / editor / OS noise
+*.md
+.claude/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

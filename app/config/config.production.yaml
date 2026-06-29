@@ -1,0 +1,131 @@
+# Production config — loaded automatically when APP_ENV=production (see settings.py).
+# Mirrors config.yaml; the ONLY deployment-specific change is llm.local_base_url, which
+# points at the `ollama` Docker service instead of localhost. Keep this file in sync with
+# config.yaml when you change non-LLM settings (the YAML loader reads ONE file, not a merge).
+
+app:
+  name: "RAG Backend"
+  version: "1.0"
+
+server:
+  host: "0.0.0.0"
+  port: 8000
+
+paths:
+  upload_dir: "data/uploads"
+
+chunking:
+  chunk_size: 3000
+  chunk_overlap: 500
+
+embedding:
+  model_name: "sentence-transformers/all-mpnet-base-v2"
+  model_kwargs: {}
+  encode_kwargs: {}
+
+vector_store:
+  collection_name: "rag_collection"
+  persist_directory: "data/chroma"
+  top_k: 4
+
+website_vector_store:
+  collection_name: "stupasports_website"
+  persist_directory: "data/chroma_website"
+  top_k: 4
+
+stupa_chat:
+  rag_corpus: "website"
+  prompt_template: |
+    You answer for Stupa's public website chat. Obey ALL rules below.
+
+    Grounding:
+    - Use ONLY the Context below (retrieved website chunks). Do not use outside knowledge, training data, guesses, or inference beyond what is explicitly written there.
+    - If the Context is empty, or no passage in the Context answers the Question (including partial or irrelevant matches), reply with exactly this single line and nothing else:
+    I don't know
+    - Do not hedge, apologize, or suggest contacting support unless that text appears in the Context.
+
+    Conversation:
+    - Prior messages may disambiguate the Question only; every factual claim must still be supported by the Context.
+
+    When the Context clearly answers the Question, reply in concise Markdown (## headings, short paragraphs). No filler.
+
+    Context:
+    {context}
+
+    Question:
+    {question}
+
+    Answer (Markdown, OR exactly "I don't know"):
+
+demo_booking:
+  send_email_url: "https://stupasports.ai/api/send-email"
+  enabled: true
+
+jira:
+  base_url: ""
+  email: ""
+  project_key: ""
+  issue_type: "Bug"
+
+rag:
+  prompt_template: |
+    You are a helpful assistant.
+    Use the Context block below for facts from uploaded documents.
+    For follow-ups about this chat (e.g. what the user said earlier, the previous question, or details they already gave like an event name), use the prior messages in the conversation.
+    If the user names a topic, section, or heading that appears in the Context, summarize what the Context says about it.
+
+    When you have enough information, give a direct answer and stop. Do not add caveats after a complete answer.
+
+    Only if Context and prior conversation give no relevant information at all, reply with exactly this single line (and nothing else):
+    I don't know
+
+    Context:
+    {context}
+
+    Question:
+    {question}
+
+    Answer (≤150 words Markdown OR exactly "I don't know"):
+
+llm:
+  # provider "local" → ChatOllama(base_url=local_base_url, model=local_model_name).
+  provider: "local"
+  temperature: 0
+  model: "nvidia/llama-3.1-nemotron-nano-8b-v1"  # Only used when provider: nvidia
+  base_url: "https://integrate.api.nvidia.com/v1"
+  system_message: |
+    You must respond in strict Markdown format.
+
+    Rules:
+    - Use ## for headings (not #)
+    - Use proper Markdown tables
+    - Use ``` for code blocks (always close them)
+    - Do not output partial or broken Markdown
+    - Do not switch formats mid-response
+    - After you finish answering, stop. Do not append "I don't know" or similar if you already answered.
+  missing_api_key_message: "Set NVIDIA_API_KEY in .env or your environment."
+  top_p: 0.95
+  max_tokens: null
+  frequency_penalty: 0.0
+  presence_penalty: 0.0
+  # Docker: reach the Ollama container by its compose service name, not localhost.
+  local_base_url: "http://ollama:11434"
+  local_model_name: "llama3.2:3b-instruct-q4_K_M"
+
+logging:
+  level: "INFO"
+  json_format: true
+
+messages:
+  upload_success: "File ingested successfully"
+  missing_filename: "Missing filename"
+  upload_empty: "Empty upload"
+  query_empty: "Question must not be empty"
+  query_processing_failed: "Query processing failed"
+  ticket_jira_not_configured: >-
+    Ticket creation is not configured on the server.
+    Please contact your administrator.
+  ticket_create_failed: "Unable to create ticket. Please try again."
+  ticket_session_lost: >-
+    This ticket draft expired or was interrupted.
+    Say **report an issue** to start again.

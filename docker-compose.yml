@@ -1,0 +1,78 @@
+# Stupa RAG chatbot — full stack.
+#
+# Containers:
+#   1. ollama        — the LLM server (serves llama3.2:3b-instruct-q4_K_M on :11434)
+#   2. ollama-pull   — one-shot helper that pulls the model into ollama, then exits
+#   3. backend       — FastAPI API + bundled Node/Playwright crawler (:8000)
+#
+# ChromaDB is NOT a container: it runs embedded inside `backend` and persists to the
+# `app-data` volume. So steady state = 2 running containers (ollama + backend).
+#
+# Bring up:   docker compose up -d --build
+# Logs:       docker compose logs -f backend
+# Stop:       docker compose down            (add -v to also wipe volumes/data)
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: stupa-ollama
+    volumes:
+      - ollama-models:/root/.ollama        # downloaded models persist here
+    ports:
+      - "11434:11434"                       # optional: expose to host for debugging
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+    restart: unless-stopped
+    # --- GPU (NVIDIA) — optional. Requires nvidia-container-toolkit on the host. ---
+    # Uncomment to give Ollama the GPU (much faster). CPU-only works without this.
+    # gpus: all
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+  # One-shot: waits for Ollama to be healthy, pulls the model, then exits 0.
+  # Keep OLLAMA_MODEL in sync with local_model_name in app/config/config.production.yaml.
+  ollama-pull:
+    image: ollama/ollama:latest
+    container_name: stupa-ollama-pull
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+    entrypoint: ["/bin/sh", "-c", "ollama pull ${OLLAMA_MODEL:-llama3.2:3b-instruct-q4_K_M}"]
+    restart: "no"
+
+  backend:
+    build: .
+    image: stupa-chatbot-backend:latest
+    container_name: stupa-backend
+    depends_on:
+      ollama:
+        condition: service_healthy
+      ollama-pull:
+        condition: service_completed_successfully   # model is present before API starts
+    env_file:
+      - path: .env                            # JIRA_* + NVIDIA_API_KEY — OPTIONAL.
+        required: false                       # Missing .env? Still boots (Jira just reports "not configured").
+    environment:
+      - APP_ENV=production                    # loads app/config/config.production.yaml (ollama URL)
+    ports:
+      - "8000:8000"
+    volumes:
+      - app-data:/app/data                    # chroma, uploads, ticket/demo sessions, attachments
+    # Embedding model is baked into the image (no runtime download), so no cache volume needed.
+    # Healthcheck is inherited from the Dockerfile HEALTHCHECK.
+    restart: unless-stopped
+
+volumes:
+  ollama-models:    # pulled LLMs — survives `docker compose down`
+  app-data:         # all RAG/ticket/demo persisted state
