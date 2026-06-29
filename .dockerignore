@@ -14,8 +14,14 @@ build
 # Secrets — provided at runtime via env_file / -e, never baked into the image.
 .env
 
-# Local data + caches (recreated inside the container / mounted as volumes).
-data/
+# Generated runtime data — recreated inside the container / mounted as volumes.
+# NOTE: data/uploads is intentionally NOT ignored so the bundled seed documents
+# get baked into the image and ingested on first run (see docker/entrypoint.sh).
+data/chroma/
+data/chroma_website/
+data/ticket_attachments/
+data/ticket_sessions/
+data/demo_sessions/
 crawler/node_modules/
 crawler/storage/
 crawler/.tmp/

@@ -65,6 +65,8 @@ services:
         required: false                       # Missing .env? Still boots (Jira just reports "not configured").
     environment:
       - APP_ENV=production                    # loads app/config/config.production.yaml (ollama URL)
+      - SEED_ON_START=1                        # first run: build the vector DBs automatically
+      - SEED_CRAWL_DOMAIN=stupasports.ai       # crawl this site into the website corpus (set "" to skip)
     ports:
       - "8000:8000"
     volumes:

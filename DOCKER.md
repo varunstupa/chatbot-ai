@@ -67,6 +67,26 @@ Watch it come up (first model pull takes a few minutes):
 docker compose logs -f
 ```
 
+### Vector DBs are built automatically on first run
+
+The Chroma databases are **not** in git (they're generated data). The container builds them
+itself on first boot, via `docker/entrypoint.sh` — no manual crawl/upload needed:
+
+1. **Uploads corpus** — ingests every file in `data/uploads/` (the bundled `.docx` docs) into
+   `data/chroma`.
+2. **Website corpus** — crawls `SEED_CRAWL_DOMAIN` (default `stupasports.ai`) in the background
+   once the API is up, populating `data/chroma_website`.
+
+Both are guarded by marker files (`.seeded_docs`, `.seeded_web`) in the `app-data` volume, so
+**restarts never re-ingest or re-crawl**. Controls (in `docker-compose.yml`):
+
+- `SEED_ON_START=0` — disable all auto-seeding.
+- `SEED_CRAWL_DOMAIN=""` — keep doc ingestion but skip the website crawl.
+- `SEED_CRAWL_DOMAIN=example.com` — crawl a different site.
+
+To force a fresh rebuild of the DBs: `docker compose down -v` (wipes the volume) then
+`docker compose up -d` re-seeds from scratch.
+
 ### `.env` is optional
 
 The stack boots **with no `.env` file**. You only need one to turn on **Jira ticketing**

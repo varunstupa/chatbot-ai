@@ -1,9 +1,8 @@
 .env
 data/chroma/
 data/chroma_website/
-data/ticket_attachments/
-data/ticket_sessions/
-data/demo_sessions/
+
+
 .venv/
 venv/
 __pycache__/

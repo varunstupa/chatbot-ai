@@ -50,6 +50,7 @@ COPY . .
 # means fresh named volumes (data/, cache) inherit appuser ownership and stay writable.
 RUN useradd --create-home --uid 10001 appuser \
     && mkdir -p /app/data /app/.cache/huggingface /app/crawler/storage \
+    && chmod +x /app/docker/entrypoint.sh \
     && chown -R appuser:appuser /app /home/appuser
 USER appuser
 
@@ -65,7 +66,7 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
   CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
 
-# Single Uvicorn worker: in-memory chat history + LLM/vector singletons are per-process.
-# --proxy-headers/--forwarded-allow-ips so client IPs are correct behind a reverse proxy.
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", \
-     "--proxy-headers", "--forwarded-allow-ips=*"]
+# entrypoint.sh seeds the vector DBs on first run (idempotent via marker files), then
+# exec's a single Uvicorn worker (in-memory chat history + LLM/vector singletons are
+# per-process; --proxy-headers makes client IPs correct behind a reverse proxy).
+ENTRYPOINT ["/app/docker/entrypoint.sh"]
