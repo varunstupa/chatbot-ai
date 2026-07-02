@@ -87,7 +87,7 @@ def _build_llm():
         # NVIDIA chat API rejects max_completion_tokens; LangChain maps max_tokens → that.
         # Omit max_tokens here (NVIDIA uses a server default). See config max_tokens note.
         return ChatOpenAI(**kwargs)
-    from langchain_community.chat_models import ChatOllama
+    from langchain_ollama import ChatOllama
 
     return ChatOllama(
         base_url=s.llm.local_base_url,

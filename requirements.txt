@@ -3,6 +3,7 @@ uvicorn[standard]
 langchain
 langchain-core
 langchain-community
+langchain-ollama
 langchain-chroma
 langchain-openai
 langchain-text-splitters
