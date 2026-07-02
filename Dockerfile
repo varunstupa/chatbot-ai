@@ -20,8 +20,10 @@ WORKDIR /app
 
 # --- System deps + Node.js 20 (NodeSource) ---
 # build-essential + libgomp1 are needed by torch / sentence-transformers wheels.
+# procps provides `ps`, which Crawlee's memory monitor spawns; slim images omit it
+# and the crawler crashes with "spawn ps ENOENT" before fetching any page.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        curl ca-certificates gnupg build-essential libgomp1 \
+        curl ca-certificates gnupg build-essential libgomp1 procps \
     && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y --no-install-recommends nodejs \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
