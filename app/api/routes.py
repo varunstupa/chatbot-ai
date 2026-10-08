@@ -26,6 +26,7 @@ from app.models.ticket_schemas import (
     TicketFlowState,
 )
 from app.services import demo_booking, ingestion, ticket_workflow
+from app.services.auth import require_service_key
 from app.services.rag_pipeline import RAGPipeline
 from app.services.ticket_upload import save_ticket_file
 from app.services.vector_store import CorpusMode
@@ -156,7 +157,11 @@ async def health() -> HealthResponse:
     )
 
 
-@router.post("/upload", response_model=UploadResponse)
+@router.post(
+    "/upload",
+    response_model=UploadResponse,
+    dependencies=[Depends(require_service_key)],
+)
 async def upload(file: UploadFile = File(...)) -> UploadResponse:
     s = get_settings()
     if not file.filename:

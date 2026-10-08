@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import os
 import re
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from threading import Lock
 from typing import Any
 
@@ -23,6 +23,9 @@ from app.services.vector_store import CorpusMode, similarity_search
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+# Custom retrieval: question -> (context text, sources). Replaces the corpus search.
+Retriever = Callable[[str], tuple[str, list[dict]]]
 
 
 def _is_backend_llm_error(exc: BaseException) -> bool:
@@ -93,6 +96,7 @@ def _build_llm():
         base_url=s.llm.local_base_url,
         model=s.llm.local_model_name,
         temperature=s.llm.temperature,
+        keep_alive=s.llm.local_keep_alive,
     )
 
 
@@ -181,6 +185,20 @@ def _rag_retrieve(
     docs = similarity_search(q, corpus=corpus)
     context = _format_context(docs)
     sources = _sources_from_docs(docs)
+    return context, q, sources
+
+
+def _retrieve_with(
+    retriever: Retriever | None,
+    question: str,
+    corpus: CorpusMode,
+) -> tuple[str, str, list[dict]]:
+    if retriever is None:
+        return _rag_retrieve(question, corpus)
+    q = (question or "").strip()
+    if not q:
+        raise ValueError("Question must not be empty")
+    context, sources = retriever(q)
     return context, q, sources
 
 
@@ -320,13 +338,15 @@ def answer_question(
     corpus: CorpusMode = "merged",
     *,
     prompt_template: str | None = None,
+    retriever: Retriever | None = None,
+    no_answer_text: str | None = None,
 ) -> tuple[str, list[dict]]:
     if not (session_id or "").strip():
         raise ValueError("session_id must be non-empty")
     sid = session_id.strip()
-    context, q, sources = _rag_retrieve(question, corpus)
+    context, q, sources = _retrieve_with(retriever, question, corpus)
     if not sources:
-        text = "I don't know"
+        text = no_answer_text or "I don't know"
         _apply_stripped_answer_to_history(sid, text)
         logger.info(
             "rag_query_complete",
@@ -369,6 +389,8 @@ async def stream_answer(
     corpus: CorpusMode = "merged",
     *,
     prompt_template: str | None = None,
+    retriever: Retriever | None = None,
+    no_answer_text: str | None = None,
 ) -> AsyncIterator[dict[str, Any]]:
     """Yield SSE payloads; history commits when ``astream`` completes.
 
@@ -384,12 +406,15 @@ async def stream_answer(
     # Lets browsers / fetch clients bind multi-turn memory without header/cookie.
     yield {"type": "session", "session_id": sid}
 
-    context, q, sources = await asyncio.to_thread(_rag_retrieve, question, corpus)
+    context, q, sources = await asyncio.to_thread(
+        _retrieve_with, retriever, question, corpus
+    )
     yield {"type": "sources", "chunks": sources}
 
     if not sources:
-        yield {"type": "token", "text": "I don't know"}
-        _apply_stripped_answer_to_history(sid, "I don't know")
+        idk = no_answer_text or "I don't know"
+        yield {"type": "token", "text": idk}
+        _apply_stripped_answer_to_history(sid, idk)
         logger.info(
             "rag_stream_complete",
             extra={"question_len": len(q), "sources": 0, "no_chunks": True},
@@ -447,6 +472,8 @@ class RAGPipeline:
         corpus: CorpusMode = "merged",
         *,
         prompt_template: str | None = None,
+        retriever: Retriever | None = None,
+        no_answer_text: str | None = None,
     ) -> tuple[str, list[dict]]:
         return await asyncio.to_thread(
             answer_question,
@@ -454,6 +481,8 @@ class RAGPipeline:
             session_id,
             corpus,
             prompt_template=prompt_template,
+            retriever=retriever,
+            no_answer_text=no_answer_text,
         )
 
     async def stream(
@@ -463,11 +492,15 @@ class RAGPipeline:
         corpus: CorpusMode = "merged",
         *,
         prompt_template: str | None = None,
+        retriever: Retriever | None = None,
+        no_answer_text: str | None = None,
     ) -> AsyncIterator[dict[str, Any]]:
         async for item in stream_answer(
             question,
             session_id,
             corpus,
             prompt_template=prompt_template,
+            retriever=retriever,
+            no_answer_text=no_answer_text,
         ):
             yield item

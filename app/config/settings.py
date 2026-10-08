@@ -167,6 +167,96 @@ class StupaChatConfig(BaseModel):
         return t
 
 
+class AuthConfig(BaseModel):
+    """Login JWT verification for the admin-app chat (keys come from ``.env``)."""
+
+    # "jwt": the browser calls the chatbot with the login token (local development).
+    # "gateway": only requests signed by the API gateway are accepted
+    # (CHATBOT_INTERNAL_SECRET); the gateway has already verified the login token.
+    mode: Literal["jwt", "gateway"] = "jwt"
+    jwt_algorithms: list[str] = Field(default_factory=lambda: ["HS256"])
+    # Tenants this deployment answers for. Empty means any tenant in a valid token.
+    allowed_tenants: list[str] = Field(default_factory=list)
+    # First claim present in the token wins.
+    tenant_claims: list[str] = Field(
+        default_factory=lambda: ["tenant", "tenant_code", "tenant_name"],
+    )
+    user_claims: list[str] = Field(
+        default_factory=lambda: ["user_id", "sub", "id"],
+    )
+    role_claims: list[str] = Field(
+        default_factory=lambda: ["role_id", "role"],
+    )
+
+
+class CorsConfig(BaseModel):
+    allow_origins: list[str] = Field(
+        default_factory=lambda: [
+            "http://localhost:4200",
+            "http://127.0.0.1:4200",
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+        ],
+    )
+
+
+class AppChatConfig(BaseModel):
+    """Admin-app chat: screen guides stored per tenant, screen-aware retrieval."""
+
+    persist_directory: str = "data/chroma_kb"
+    # One collection for every tenant; access is decided by the document registry.
+    collection_name: str = "knowledge_chunks"
+    registry_file: str = "document_registry.json"
+    # Guide Markdown files, loaded at every backend start (app.knowledge.guide_loader).
+    guides_directory: str = "guides"
+    top_k: int = Field(default=5, ge=1, le=20)
+    # Chroma distance (lower is closer). Hits above the limit count as no match.
+    # Measured with all-mpnet-base-v2 on the Event Details guide: right answers
+    # scored 0.35-1.33, unrelated questions 1.37 and above.
+    # Limit for the screen the user is on (lenient: the model still has to find
+    # the answer in the passage).
+    screen_max_distance: float = Field(default=1.4, gt=0)
+    # Limit for guides of other screens, and for guides named in the question.
+    max_distance: float = Field(default=1.35, gt=0)
+    # Another screen's guide wins over the current one only if this much closer.
+    other_screen_margin: float = Field(default=0.15, ge=0)
+    # all-mpnet-base-v2 reads ~384 tokens, so guide chunks stay small.
+    chunk_size: int = Field(default=1500, ge=200)
+    chunk_overlap: int = Field(default=150, ge=0)
+    # Earlier messages resent with each question; fewer keeps follow-ups fast.
+    history_messages: int = Field(default=6, ge=0, le=30)
+    no_answer_message: str = (
+        "I couldn't find that in the guides available to you. "
+        "Say **report an issue** if you want to raise a support ticket."
+    )
+    prompt_template: str = Field(
+        default=(
+            "You are the in-app assistant of an event management system.\n"
+            "The user is currently on the screen: {screen}.\n"
+            "Answer ONLY from the Context below. Each passage names the screen "
+            "it describes. If the passage is about a different screen than the "
+            "one the user is on, say which screen it is done on.\n"
+            "Use the exact button and field names from the Context and keep steps in "
+            "the order the Context gives them. Never mention other organisations or "
+            "tenants.\n"
+            "Write only the answer, in plain sentences or a short list. Do not "
+            "repeat passage titles and do not add headings.\n"
+            "If the Context does not answer the Question, reply with exactly: "
+            "I don't know\n\n"
+            "Context:\n{context}\n\nQuestion:\n{question}\n\n"
+            "Answer (concise Markdown):"
+        ),
+    )
+
+    @field_validator("prompt_template")
+    @classmethod
+    def prompt_has_placeholders(cls, v: str) -> str:
+        for name in ("{context}", "{question}", "{screen}"):
+            if name not in v:
+                raise ValueError(f"app_chat.prompt_template must include {name}")
+        return v
+
+
 class LLMConfig(BaseModel):
     provider: str
     temperature: float = Field(ge=0.0, le=2.0)
@@ -180,6 +270,8 @@ class LLMConfig(BaseModel):
     presence_penalty: float = Field(default=0.0, ge=-2.0, le=2.0)
     local_base_url: str = "http://localhost:11434"
     local_model_name: str = "llama3.2:1b"
+    # How long Ollama keeps the model in memory after a request.
+    local_keep_alive: str = "30m"
 
     @field_validator("provider")
     @classmethod
@@ -232,9 +324,37 @@ class Settings(BaseSettings):
     stupa_chat: StupaChatConfig
     demo_booking: DemoBookingConfig = Field(default_factory=DemoBookingConfig)
     jira: JiraConfig = Field(default_factory=JiraConfig)
+    auth: AuthConfig = Field(default_factory=AuthConfig)
+    cors: CorsConfig = Field(default_factory=CorsConfig)
+    app_chat: AppChatConfig = Field(default_factory=AppChatConfig)
     llm: LLMConfig
     logging: LoggingConfig
     messages: MessagesConfig
+
+    # HS* shared secret or RS*/ES* public key (PEM) used to verify login tokens.
+    app_chat_jwt_secret: Optional[SecretStr] = Field(
+        default=None,
+        validation_alias="APP_CHAT_JWT_SECRET",
+    )
+    app_chat_jwt_public_key: Optional[SecretStr] = Field(
+        default=None,
+        validation_alias="APP_CHAT_JWT_PUBLIC_KEY",
+    )
+    # Local development only: accept tokens without checking the signature.
+    app_chat_allow_unverified_dev_tokens: bool = Field(
+        default=False,
+        validation_alias="APP_CHAT_ALLOW_UNVERIFIED_DEV_TOKENS",
+    )
+    # Shared with the API gateway; verifies the identity it forwards (auth.mode: gateway).
+    chatbot_internal_secret: Optional[SecretStr] = Field(
+        default=None,
+        validation_alias="CHATBOT_INTERNAL_SECRET",
+    )
+    # Required by the guide listing and /upload (header X-Service-Key).
+    knowledge_service_key: Optional[SecretStr] = Field(
+        default=None,
+        validation_alias="KNOWLEDGE_SERVICE_KEY",
+    )
 
     nvidia_api_key: Optional[SecretStr] = Field(
         default=None,

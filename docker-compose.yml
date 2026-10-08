@@ -1,7 +1,7 @@
 # Stupa RAG chatbot — full stack.
 #
 # Containers:
-#   1. ollama        — the LLM server (serves llama3.2:3b-instruct-q4_K_M on :11434)
+#   1. ollama        — the LLM server (serves llama3.1:8b-instruct-q4_K_M on :11434)
 #   2. ollama-pull   — one-shot helper that pulls the model into ollama, then exits
 #   3. backend       — FastAPI API + bundled Node/Playwright crawler (:8000)
 #
@@ -48,7 +48,7 @@ services:
         condition: service_healthy
     environment:
       - OLLAMA_HOST=http://ollama:11434
-    entrypoint: ["/bin/sh", "-c", "ollama pull ${OLLAMA_MODEL:-llama3.2:3b-instruct-q4_K_M}"]
+    entrypoint: ["/bin/sh", "-c", "ollama pull ${OLLAMA_MODEL:-llama3.1:8b-instruct-q4_K_M}"]
     restart: "no"
 
   backend:
@@ -61,16 +61,23 @@ services:
       ollama-pull:
         condition: service_completed_successfully   # model is present before API starts
     env_file:
-      - path: .env                            # JIRA_* + NVIDIA_API_KEY — OPTIONAL.
+      - path: .env                            # see .env.example for every key.
         required: false                       # Missing .env? Still boots (Jira just reports "not configured").
+    # Admin-app chat (/app-chat) keys, read from .env:
+    #   CHATBOT_INTERNAL_SECRET  REQUIRED — same value as the API gateway's; without it
+    #                            /app-chat answers 503 (auth.mode: gateway in production).
+    #   KNOWLEDGE_SERVICE_KEY    guide listing and /upload (header X-Service-Key).
+    # Never set APP_CHAT_ALLOW_UNVERIFIED_DEV_TOKENS here.
     environment:
       - APP_ENV=production                    # loads app/config/config.production.yaml (ollama URL)
       - SEED_ON_START=1                        # first run: build the vector DBs automatically
       - SEED_CRAWL_DOMAIN=stupasports.ai       # crawl this site into the website corpus (set "" to skip)
     ports:
-      - "8000:8000"
+      # Host port is configurable: set CHATBOT_HOST_PORT=8001 when the API gateway
+      # already uses 8000 on this host, and point the gateway's CHATBOT_SERVICE_URL at it.
+      - "${CHATBOT_HOST_PORT:-8000}:8000"
     volumes:
-      - app-data:/app/data                    # chroma, uploads, ticket/demo sessions, attachments
+      - app-data:/app/data                    # chroma (incl. chroma_kb guides), uploads, sessions, logs
     # Embedding model is baked into the image (no runtime download), so no cache volume needed.
     # Healthcheck is inherited from the Dockerfile HEALTHCHECK.
     restart: unless-stopped

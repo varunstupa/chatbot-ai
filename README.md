@@ -20,7 +20,7 @@ Production-style FastAPI service for document ingestion and retrieval-augmented 
 | Model id | Purpose |
 |----------|---------|
 | `sentence-transformers/all-mpnet-base-v2` | Embeddings for all Chroma ingestion and similarity search. |
-| `llm.local_model_name` (e.g. `llama3.2:3b-instruct-q4_K_M`) | Chat model when using **local** / Ollama. |
+| `llm.local_model_name` (e.g. `llama3.1:8b-instruct-q4_K_M`) | Chat model when using **local** / Ollama. |
 | `llm.model` (e.g. NVIDIA Nemotron id) | Chat model when using **nvidia** provider. |
 
 ## Layout
@@ -162,3 +162,35 @@ JSON responses include `ticket_flow` and `ticket_workflow`; SSE streams emit `ti
 - Invalid or incomplete YAML: process fails at startup with a clear validation error.
 - Empty upload or unreadable binary: `400` with a structured `detail` payload.
 - Missing `NVIDIA_API_KEY` when `provider` is `nvidia`: `503` on `/query`.
+
+## Admin-app chat (`/app-chat`)
+
+Screen-aware assistant for the admin app. It is separate from `/stupa-chat` and `/query` and uses its own storage (`app_chat.persist_directory`).
+
+- **Through the API gateway (production, `auth.mode: gateway`):** the frontend calls the gateway at `/chatbot/v1/app-chat` (streams when `Accept: text/event-stream`), `/chatbot/v1/app-chat/attachment` and `/chatbot/v1/knowledge/screen`. The gateway verifies the login token (`@auth_decorator`) and forwards to `/api/...` here with `X-Chat-Tenant`, `X-Chat-User`, `X-Chat-Role`, `X-Chat-Timestamp` and an HMAC-SHA256 `X-Chat-Signature` keyed with `CHATBOT_INTERNAL_SECRET` (same value on both sides; gateway also needs `CHATBOT_SERVICE_URL`). In this mode a login token sent directly is refused, so the chatbot must not be reachable except from the gateway.
+- **Direct (local development, `auth.mode: jwt`):** every request needs the login JWT in the `auth` (or `Authorization`) header. The tenant is read from the verified token (`auth.tenant_claims`); a `tenant` header that disagrees is rejected. Nothing in the request body can set the tenant.
+- **Storage:** every guide's chunks go into one Chroma collection (`knowledge_chunks`) with content-only metadata. Who may read each guide (`tenants`, `exclude_tenants`, `roles`) is kept per document in `document_registry.json`; a request queries only the doc_ids the caller may read and drops anything else. Changing only access updates the registry without re-embedding. Design and migration: `docs/knowledge-architecture.md`.
+- **Screen routing:** the client sends `screen: { route, url }`. Each guide lists its `routes`; the current screen's guide is searched first, a guide named in the question wins, and other screens are used only when clearly closer (`app_chat.*_distance`).
+- **Guides:** Markdown with front matter in `guides/` (how to write one: `guides/README.md`). They are loaded at every start; after editing one, restart the backend (run `python -m app.knowledge.guide_loader` by hand only while it is stopped). A deleted file removes its guide.
+
+`.env`:
+
+```bash
+APP_CHAT_JWT_SECRET=...          # HS256 secret of the main API, or
+APP_CHAT_JWT_PUBLIC_KEY=...      # PEM public key (set auth.jwt_algorithms to match)
+KNOWLEDGE_SERVICE_KEY=...        # required by the guide listing and /upload
+CHATBOT_INTERNAL_SECRET=...      # auth.mode: gateway; must equal the gateway's value
+# Local development only, never in production: accept tokens without checking
+# the signature and take the tenant from the `tenant` header if the token has none.
+# APP_CHAT_ALLOW_UNVERIFIED_DEV_TOKENS=true
+```
+
+| Route | Auth | Purpose |
+|-------|------|---------|
+| `POST /api/app-chat`, `/api/app-chat/stream` | login JWT | Ask a question (JSON or SSE) |
+| `POST /api/app-chat/attachment` | login JWT | Ticket attachment |
+| `GET /api/knowledge/screen?route=` | login JWT | Screen title and suggested questions |
+| `GET /api/knowledge/documents` | `X-Service-Key` | List loaded guides (read-only) |
+| `POST /upload` | `X-Service-Key` | Existing upload route, now protected |
+
+Tests: `python -m pytest tests/test_app_chat_isolation.py`.

@@ -22,6 +22,8 @@ data/chroma_website/
 data/ticket_attachments/
 data/ticket_sessions/
 data/demo_sessions/
+data/chroma_kb/
+data/logs/
 crawler/node_modules/
 crawler/storage/
 crawler/.tmp/
@@ -30,6 +32,11 @@ node_modules/
 
 # Docs / editor / OS noise
 *.md
+# Admin-app chat guides ARE needed in the image (loaded by docker/entrypoint.sh).
+!guides/**/*.md
+docs/
+tests/
+.pytest_cache/
 .claude/
 .vscode/
 .idea/

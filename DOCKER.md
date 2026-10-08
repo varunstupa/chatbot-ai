@@ -9,7 +9,7 @@ the Node/Playwright website crawler, and a local Ollama LLM.
 
 | # | Container | Image | Role | Lifetime |
 |---|-----------|-------|------|----------|
-| 1 | `stupa-ollama` | `ollama/ollama` | Serves the LLM (`llama3.2:3b-instruct-q4_K_M`) on port 11434 | long-running |
+| 1 | `stupa-ollama` | `ollama/ollama` | Serves the LLM (`llama3.1:8b-instruct-q4_K_M`) on port 11434 | long-running |
 | 2 | `stupa-ollama-pull` | `ollama/ollama` | Pulls the model into Ollama, then **exits 0** | one-shot |
 | 3 | `stupa-backend` | built from `Dockerfile` | FastAPI API on port 8000 **+ bundled crawler** | long-running |
 
@@ -29,9 +29,10 @@ the Node/Playwright website crawler, and a local Ollama LLM.
 ## 2. Prerequisites
 
 - Docker Engine 24+ and Docker Compose v2 (`docker compose`, not `docker-compose`).
-- **Disk:** ~7 GB (backend image ~2.5 GB incl. baked embedding model, Ollama image ~1.5 GB,
-  model weights ~2 GB).
-- **RAM:** ~8 GB recommended (Ollama 3B model ~4 GB + backend/embeddings ~1.5 GB).
+- **Disk:** ~10 GB (backend image ~2.5 GB incl. baked embedding model, Ollama image ~1.5 GB,
+  model weights ~5 GB).
+- **RAM:** ~12 GB recommended (Ollama 8B q4 model ~6 GB + backend/embeddings ~1.5 GB).
+  On CPU only, expect noticeably slower answers than with a GPU.
 - (Optional) NVIDIA GPU + [nvidia-container-toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)
   for fast inference. **CPU-only works without any of this.**
 
@@ -111,7 +112,7 @@ Interactive API docs: <http://localhost:8000/docs>
    Pulled models persist in the **`ollama-models`** volume (`/root/.ollama`) — pulled once,
    reused across restarts.
 2. The `ollama-pull` one-shot container waits until Ollama is healthy, then runs
-   `ollama pull llama3.2:3b-instruct-q4_K_M` against it and exits.
+   `ollama pull llama3.1:8b-instruct-q4_K_M` against it and exits.
 3. The `backend` connects to it at **`http://ollama:11434`** (the compose service name),
    configured in `app/config/config.production.yaml` → `llm.local_base_url`.
 
@@ -121,12 +122,12 @@ Two places must agree:
 
 ```bash
 # .env  (drives the ollama-pull container)
-OLLAMA_MODEL=llama3.1:8b
+OLLAMA_MODEL=llama3.2:3b-instruct-q4_K_M   # e.g. a smaller model
 ```
 ```yaml
 # app/config/config.production.yaml  (drives the backend)
 llm:
-  local_model_name: "llama3.1:8b"
+  local_model_name: "llama3.2:3b-instruct-q4_K_M"
 ```
 Then `docker compose up -d --build backend ollama-pull`.
 

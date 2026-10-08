@@ -4,7 +4,7 @@ app:
 
 server:
   host: "0.0.0.0"
-  port: 8000
+  port: 8001  # 8000 is the local API gateway
 
 paths:
   upload_dir: "data/uploads"
@@ -87,6 +87,43 @@ rag:
 
     Answer (≤150 words Markdown OR exactly "I don't know"):
 
+# Admin-app chat (/app-chat): screen guides, one Chroma collection per tenant.
+# Keys live in .env: APP_CHAT_JWT_SECRET (or APP_CHAT_JWT_PUBLIC_KEY) and
+# KNOWLEDGE_SERVICE_KEY. See README "Admin-app chat".
+auth:
+  # Reached through the local API gateway (/chatbot/v1/*); see README.
+  mode: "gateway"
+  # The user-role service signs login tokens with RS256; verify with its public key.
+  jwt_algorithms: ["RS256"]
+  # Tenants this deployment answers for; a token for any other tenant is refused.
+  allowed_tenants: ["staging"]
+  tenant_claims: ["tenant", "tenant_code", "tenant_name"]
+  user_claims: ["user_role_id", "user_id", "sub"]
+  role_claims: ["role_name", "role_id"]
+
+cors:
+  allow_origins:
+    - "http://localhost:4200"
+    - "http://127.0.0.1:4200"
+    - "http://localhost:4300"
+    - "http://127.0.0.1:4300"
+    - "http://localhost:3000"
+    - "http://127.0.0.1:3000"
+
+app_chat:
+  persist_directory: "data/chroma_kb"
+  collection_name: "knowledge_chunks"        # single collection for all tenants
+  registry_file: "document_registry.json"    # per-document access, in persist_directory
+  guides_directory: "guides"                 # guide Markdown, loaded at every start
+  top_k: 3
+  history_messages: 6
+  # Chroma distance (lower is closer); hits above the limit count as no match.
+  screen_max_distance: 1.4   # guide of the screen the user is on
+  max_distance: 1.35         # guides of other screens
+  other_screen_margin: 0.15  # how much closer another screen must be to win
+  chunk_size: 1500
+  chunk_overlap: 150
+
 llm:
   # Use "local" or "ollama" for Ollama → local_model_name must match `ollama list`.
   provider: "local"
@@ -110,7 +147,8 @@ llm:
   frequency_penalty: 0.0
   presence_penalty: 0.0
   local_base_url: "http://localhost:11434"
-  local_model_name: "llama3.2:3b-instruct-q4_K_M"
+  local_model_name: "llama3.1:8b-instruct-q4_K_M"
+  local_keep_alive: "30m"
 
 logging:
   level: "INFO"

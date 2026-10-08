@@ -1,0 +1,62 @@
+name: Chatbot backend CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'   # same as the Dockerfile base image
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+
+      # CPU-only torch first (as in the Dockerfile) to avoid the multi-GB CUDA wheel.
+      - name: Install dependencies
+        run: |
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -r requirements-dev.txt
+
+      # Admin-app chat: tenant isolation, screen routing, auth. Uses fake embeddings,
+      # so no model download or Ollama is needed. The ticket/Jira tests are left out:
+      # test_ticket_workflow deletes tracked files in data/ticket_sessions/.
+      - name: Run tests
+        run: python -m pytest tests/test_app_chat_isolation.py -q
+
+  docker-build:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      # Build only (no push) so a broken Dockerfile or missing dependency fails the PR.
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          tags: stupa-chatbot-backend:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Guides are in the image
+        run: |
+          docker run --rm --entrypoint sh stupa-chatbot-backend:ci \
+            -c 'ls guides/tms/event-settings/*.md'

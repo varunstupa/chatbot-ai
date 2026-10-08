@@ -54,12 +54,24 @@ class CrawlResponse(BaseModel):
     pid: int | None = None
 
 
+class ScreenContext(BaseModel):
+    """Where the user is in the admin app (used by /app-chat only)."""
+
+    route: str | None = Field(
+        default=None,
+        max_length=300,
+        description="Angular route pattern, e.g. tms/event-settings/create-event/:event_id",
+    )
+    url: str | None = Field(default=None, max_length=500)
+
+
 class QueryRequest(BaseModel):
     question: str = Field(
         min_length=1,
         description="User message. Alias: ``message``.",
     )
     session_id: str | None = Field(default=None)
+    screen: ScreenContext | None = Field(default=None)
     ticket_draft: TicketDraftPayload | None = Field(
         default=None,
         description=(

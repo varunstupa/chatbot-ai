@@ -49,5 +49,9 @@ if [ "$SEED_ON_START" = "1" ]; then
   fi
 fi
 
+# Admin-app chat guides: load guides/ into the knowledge store on every start.
+# Unchanged guides are skipped by content hash, so this is quick after the first run.
+python -m app.knowledge.guide_loader || echo "[guides] some guides failed to load; see above"
+
 # Hand off to the API server (PID 1).
 exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips=*

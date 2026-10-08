@@ -87,6 +87,39 @@ rag:
 
     Answer (≤150 words Markdown OR exactly "I don't know"):
 
+# Admin-app chat (/app-chat): screen guides, one Chroma collection per tenant.
+# Keys live in .env: APP_CHAT_JWT_SECRET (or APP_CHAT_JWT_PUBLIC_KEY) and
+# KNOWLEDGE_SERVICE_KEY. See README "Admin-app chat".
+auth:
+  # Reached only through the API gateway (/chatbot/v1/*), which verifies the login
+  # token and signs tenant, user and role with CHATBOT_INTERNAL_SECRET.
+  mode: "gateway"
+  # The user-role service signs login tokens with RS256; verify with its public key.
+  jwt_algorithms: ["RS256"]
+  tenant_claims: ["tenant", "tenant_code", "tenant_name"]
+  user_claims: ["user_role_id", "user_id", "sub"]
+  role_claims: ["role_name", "role_id"]
+
+cors:
+  allow_origins:
+    - "http://localhost:4200"
+    - "http://127.0.0.1:4200"
+    - "http://localhost:3000"
+    - "http://127.0.0.1:3000"
+
+app_chat:
+  persist_directory: "data/chroma_kb"
+  collection_name: "knowledge_chunks"        # single collection for all tenants
+  registry_file: "document_registry.json"    # per-document access, in persist_directory
+  guides_directory: "guides"                 # guide Markdown, loaded at every start
+  top_k: 5
+  # Chroma distance (lower is closer); hits above the limit count as no match.
+  screen_max_distance: 1.4   # guide of the screen the user is on
+  max_distance: 1.35         # guides of other screens
+  other_screen_margin: 0.15  # how much closer another screen must be to win
+  chunk_size: 1500
+  chunk_overlap: 150
+
 llm:
   # provider "local" → ChatOllama(base_url=local_base_url, model=local_model_name).
   provider: "local"
@@ -110,7 +143,7 @@ llm:
   presence_penalty: 0.0
   # Docker: reach the Ollama container by its compose service name, not localhost.
   local_base_url: "http://ollama:11434"
-  local_model_name: "llama3.2:3b-instruct-q4_K_M"
+  local_model_name: "llama3.1:8b-instruct-q4_K_M"
 
 logging:
   level: "INFO"

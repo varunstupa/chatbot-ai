@@ -11,6 +11,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app.api.app_chat import router as app_chat_router
 from app.api.crawl import router as crawl_router
 from app.api.routes import router
 from app.config.settings import get_settings
@@ -77,12 +78,7 @@ def create_app() -> FastAPI:
         )
     application.add_middleware(
         CORSMiddleware,
-        allow_origins=[
-            "http://localhost:4200",
-            "http://127.0.0.1:4200",
-            "http://localhost:3000",
-            "http://127.0.0.1:3000",
-        ],
+        allow_origins=s.cors.allow_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -93,6 +89,8 @@ def create_app() -> FastAPI:
     # Same routes under /api for SPAs and proxies (e.g. /api/query/stream).
     application.include_router(router, prefix="/api")
     application.include_router(crawl_router, prefix="/api")
+    application.include_router(app_chat_router)
+    application.include_router(app_chat_router, prefix="/api")
     return application
 
 
@@ -109,6 +107,9 @@ def _uvicorn_reload_enabled() -> bool:
 
 
 def main() -> None:
+    from app.knowledge.guide_loader import main as load_guides
+
+    load_guides()
     s = get_settings()
     uvicorn.run(
         "app.main:app",

@@ -14,5 +14,6 @@ pydantic-settings
 python-multipart
 markitdown[all]
 pyyaml
+pyjwt[crypto]
 httpx
 
