@@ -36,7 +36,7 @@ jobs:
       # so no model download or Ollama is needed. The ticket/Jira tests are left out:
       # test_ticket_workflow deletes tracked files in data/ticket_sessions/.
       - name: Run tests
-        run: python -m pytest tests/test_app_chat_isolation.py -q
+        run: python -m pytest tests/test_app_chat_isolation.py tests/test_multilingual.py tests/test_sports.py tests/test_retrieval.py tests/test_chat_store.py tests/test_chat_store_mongo.py -q
 
   docker-build:
     needs: test

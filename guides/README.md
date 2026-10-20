@@ -34,6 +34,7 @@ aliases:                                   # names users call this screen
 tenants: all                               # REQUIRED: all, or a list of tenant names
 exclude_tenants: []                        # only with tenants: all
 roles: []                                  # optional: only these roles (role_name in the login token)
+sports: []                                 # optional: only these sports (table_tennis, padel, tennis, badminton)
 overrides: null                            # base doc_id, for a tenant overlay
 suggested_questions:
   - How do I open registration?
@@ -45,6 +46,14 @@ source_files:                              # frontend files this guide describes
 
 `tenants` has no default. A guide without it is rejected. Each `doc_id` must be unique across the folder.
 
+## Sport differences
+
+The admin app sends its sport (`sport_id` from the frontend environment: 1 Table Tennis, 2 Padel, 3 Tennis, 4 Badminton) with every question.
+
+- Same screen for every sport: no `sports` field.
+- A screen whose fields or rules differ per sport (for example Game Play): keep the shared part in a base guide without `sports`, and put each sport's part in its own guide with the same `routes` and `sports: [padel, tennis]` (several sports may share one guide). Example: `tms/event-settings/game-play*.md`.
+- A guide with `sports` is never shown to another sport, and not at all when the request carries no sport. The base guide gives the screen its title and suggestions.
+
 ## Tenant differences
 
 - Same screen for everyone: one guide with `tenants: all`.
@@ -54,6 +63,8 @@ source_files:                              # frontend files this guide describes
 - Only some roles may read it: `roles: [admin, event_manager]`. Empty or absent means every role.
 
 ## Content rules
+
+- Aliases are matched as whole words anywhere in a question, and a matched alias sends the question to that guide even when the user is on another screen. Use only names that clearly mean this screen (for example "umpire settings", "day planner"). Never use common words that other screens also use, such as "bookings", "intervals", "umpires" or "arrival".
 
 - Write for the person using the screen, in on-screen words. No component, variable or API names.
 - Quote labels, buttons and error messages exactly as shown.

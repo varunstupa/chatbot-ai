@@ -46,6 +46,10 @@ source_files:
 
 This guide describes the **Payment & Invoice** step of an event in the Stupa Event Management System (admin panel). On this page the organiser decides how registration fees are paid (cash or online), who invoices are raised to, and which invoice templates are used. The page also lists the event's orders and invoices and produces the event's financial report.
 
+## Where to find it
+
+Open **Event** from the sidebar, then click **Payment & Invoice** in the row of setup steps at the top of the page.
+
 ## Payment & Invoice page: where it is and what it is for
 
 Open the event, then choose **Payment & Invoice** in the event setup steps. The page has three buttons at the top:
@@ -87,7 +91,7 @@ If the organiser registers participants themselves, registration is refused with
 - **Cash** – "Traditional cash payment method. The payment shall be received through cash offline by the organizer." Players register without paying online; the organiser collects the money and marks orders as paid in **Invoice History**.
 - **Online** – "Hassle-free cashless payment method. The payment shall be received digitally through online methods such as net-banking, credit card, debit card, etc." Players pay through the organisation's payment gateway.
 
-Clicking the inactive card switches to it. Clicking the active card turns it off, and then no payment type is selected, which disables **Save**.
+Clicking the inactive card togglees to it. Clicking the active card turns it off, and then no payment type is selected, which disables **Save**.
 
 Choosing **Online** shows two more sections: **VERIFICATION SETTINGS** and the account picker ("Select Account you want to receive payments in"). Choosing **Cash** hides them and the saved account is removed from the event when you save.
 
@@ -138,7 +142,7 @@ Once the first registration invoice of the event has been generated, the Registr
 ## Creating, copying, editing and previewing invoice templates
 
 - **Create Template** (in the **Create your own Template** banner): opens the template editor in Invoice Management for the current tab (Registration or Merged), linked to this event. "Event organizers can also create their own unique invoice associated with the Event. The template would not be visible in other Events." If you have unsaved changes, "Are You Sure?" – "These changes will not be reflected unless saved" asks first; **Continue** leaves without saving.
-- **Copy** icon (only on **Global Template**): "Copy Template" – "Do you want to copy "<name>"?" → **Yes, copy it** makes a copy for this event and switches to **Event Template**. Success: the server's message or "Template copied successfully". Failure: the server's message or "Failed to copy template".
+- **Copy** icon (only on **Global Template**): "Copy Template" – "Do you want to copy "<name>"?" → **Yes, copy it** makes a copy for this event and togglees to **Event Template**. Success: the server's message or "Template copied successfully". Failure: the server's message or "Failed to copy template".
 - **Edit** icon (only on **Event Template**): opens the template in the editor.
 - **Eye** icon: preview the template without editing.
 
@@ -211,7 +215,7 @@ Lists the generated registration invoices: **S.No**, **Invoice No.**, **Raised T
 **Merge Invoice** (on the **Invoices** tab) opens **Merging by User**: "You are consolidating multiple invoices from these users into a single file." Each row is a payer (**Raised To**) with **T. Invoices** (number of invoices), **Qty**, **Amount**, **Refund** and **Status** (**To Generate** or **Generated**).
 
 1. Tick the payers to merge – at most 10 at a time. Payers with status **Generated** cannot be ticked.
-2. Click **Yes, Merge**. One merged invoice per payer is created with the **Merged Invoice** template selected on the settings tab. "Invoice summary created successfully." (toast "Merging Successful") and the page switches to **Merged Invoices**.
+2. Click **Yes, Merge**. One merged invoice per payer is created with the **Merged Invoice** template selected on the settings tab. "Invoice summary created successfully." (toast "Merging Successful") and the page togglees to **Merged Invoices**.
 
 A **+N** badge means N invoices were created after the merged invoice. The **Regenerate** icon then rebuilds that payer's merged invoice to include them ("Invoice summary regenerated successfully.").
 
@@ -242,7 +246,7 @@ Messages after **Refresh** or **Generate financial report** come from the server
 
 ## Payment & Invoice page: loading problems
 
-- Templates fail to load: the list stays empty with "No data found"; switch tabs or reload.
+- Templates fail to load: the list stays empty with "No data found"; toggle tabs or reload.
 - "Failed to Load Orders. Please try again." / "Failed to load invoices. Please try again." / "Failed to load merged invoices. Please try again." – reload the tab.
 - Account list errors: see Receiving account for online payments.
 - If settings look different from what you saved, reload the page; saved settings are always read again from the server when the page opens and after saving.

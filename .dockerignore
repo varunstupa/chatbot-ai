@@ -22,7 +22,7 @@ data/chroma_website/
 data/ticket_attachments/
 data/ticket_sessions/
 data/demo_sessions/
-data/chroma_kb/
+data/chroma_kb*/
 data/logs/
 crawler/node_modules/
 crawler/storage/

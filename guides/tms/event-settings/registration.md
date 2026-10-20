@@ -7,6 +7,12 @@ aliases:
   - registration settings
   - registration step
   - registration page
+  - registration form
+  - create registration
+  - how to create registration
+  - registration setup
+  - enable registration
+  - category registration
   - player registration settings
 tenants: all
 exclude_tenants: []
@@ -40,13 +46,17 @@ source_files:
 
 This guide describes the **Registration** step of an event in the Stupa Event Management System (admin panel). On this page the organiser decides, for each category (class) of the event, who can register, when, at what fee and under which restrictions. It also explains how each setting is applied when someone registers.
 
+## Where to find it
+
+Open **Event** from the sidebar, then click **Registration** in the row of setup steps at the top of the page.
+
 ## Registration page: where it is and what it is for
 
 - Page address: `/tms/event-settings/registration/<event id>`, for example `/tms/event-settings/registration/1358`.
 - It is the **Registration** step in the row of event setup steps, after **Details**.
 - Settings are saved **per category**. Each category of the event has its own registration settings.
 - The event must already have categories. If it has none, the page shows "No records found" and the message "No participant types found for this event." Add categories in the **Add Class/Category** panel of the Details step first.
-- Layout from top to bottom: the **Enable Delegation** button, the participant type dropdown and category tabs, the **Registration** switch, the **Multiple Entry** switch, and the setting cards.
+- Layout from top to bottom: the **Enable Delegation** button, the participant type dropdown and category tabs, the **Registration** toggle, the **Multiple Entry** toggle, and the setting cards.
 - Each setting is a card showing the current values with an **Edit** button. Edit opens a side panel on the right; **Update** (or **Save**) in the panel stores it.
 - The **Edit** buttons need Edit permission for "Player Registration Settings". Without it the buttons do not appear.
 
@@ -57,7 +67,7 @@ This guide describes the **Registration** step of an event in the Stupa Event Ma
 - With **All** selected, every category is listed and each tab shows a letter for its participant type (S, T, D, M).
 - The cards always show the settings of the **selected category only**. Changing the tab changes all values on the page.
 - Which cards appear depends on the participant type of the selected category (see "Registration page: which cards appear").
-- The **Multiple Entry** switch is only shown when a specific participant type is chosen in the dropdown, not with **All**.
+- The **Multiple Entry** toggle is only shown when a specific participant type is chosen in the dropdown, not with **All**.
 
 ## Registration page: which cards appear
 
@@ -77,16 +87,16 @@ Cards marked with a red `*` are the main settings to complete.
 - **Entry Restriction** – every participant type.
 - **Entry Format** – Teams only.
 
-A card shows "On" or "Off" for switches and "--" or an empty value when nothing is set.
+A card shows "On" or "Off" for togglees and "--" or an empty value when nothing is set.
 
-## Registration switch: opening and closing a category manually
+## Registration toggle: opening and closing a category manually
 
-- The **Registration** switch under the category tabs turns registration on or off for the selected category.
+- The **Registration** toggle under the category tabs turns registration on or off for the selected category.
 - Text on the page: "The organizer can control registration settings and choose to manually close registrations in any category, regardless of registration deadlines."
 - It is on by default. Turning it off saves immediately.
 - While it is off, every **Edit** button on the cards is disabled. Turn it back on to change settings.
 - While it is off, nobody can register for that category, even inside the registration dates. People see the category as not eligible with the reason "Registration is not active for this category".
-- The switch affects only the selected category. Other categories keep their own state.
+- The toggle affects only the selected category. Other categories keep their own state.
 
 ## Applying a setting to other categories ("Apply to all classes")
 
@@ -142,7 +152,7 @@ Panel text: "Mention the day and time the registration should be open. This will
 - Clearing a date in the panel and saving removes that limit.
 - The page does not check that the closing time is after the opening time. If you swap them, the category is never open. Check both values.
 - These dates also drive the event's status in **Auto** mode: REGISTRATION OPEN while any category is inside its dates, REGISTRATION CLOSED after the last closing time.
-- The manual **Registration** switch overrides the dates: off means closed.
+- The manual **Registration** toggle overrides the dates: off means closed.
 
 ## Fee & Refund Information card: setting the fee
 
@@ -249,12 +259,12 @@ Bifurcation splits a team's players into groups with a fixed number of each.
 - With No, a withdrawal attempt is refused with "De-registration Not available".
 - Refunds for withdrawals follow the refund rules in the **Fee & Refund Information** card.
 
-## Multiple Entry switch
+## Multiple Entry toggle
 
-The **Multiple Entry** switch (top right, shown when a specific participant type is chosen) decides whether one player can be entered in more than one category of that participant type. It applies to the whole event, not to one category.
+The **Multiple Entry** toggle (top right, shown when a specific participant type is chosen) decides whether one player can be entered in more than one category of that participant type. It applies to the whole event, not to one category.
 
-- **Singles**: turning it on opens a dialog: "You have enabled multiple registrations in different categories for the tournament. Please choose the number of categories for which you want to accept multiple registrations." Choose **2**, **3** or **all**, then **Save**. **Cancel** turns the switch back off.
-- **Teams, Doubles, Mixed Doubles**: the switch saves immediately.
+- **Singles**: turning it on opens a dialog: "You have enabled multiple registrations in different categories for the tournament. Please choose the number of categories for which you want to accept multiple registrations." Choose **2**, **3** or **all**, then **Save**. **Cancel** turns the toggle back off.
+- **Teams, Doubles, Mixed Doubles**: the toggle saves immediately.
 - With it off, a player who is already registered in one category of that type cannot be registered in another: "Participant cannot be registered in multiple categories when multi-entry is disabled".
 - With it on for Singles and a limit of 2 or 3, registering a player in more categories than the limit is refused with a message naming the player and the allowed number.
 - Success message: "Participant Restriction Setting Updated Successfully".
@@ -274,7 +284,7 @@ Rules and messages:
 - "Invalid input. Please enter a number between 0 and 99."
 - For Mixed Doubles the number must be even: "Invalid input. Please enter an even number."
 - "Cannot update the event! Please check the input values." – a value is out of range.
-- Turning the switch off and clicking **Update** removes all limits.
+- Turning the toggle off and clicking **Update** removes all limits.
 - When a user registers beyond their limit: "Max entries allowed for category <name> is <number>. Cannot proceed."
 - The card shows Enabled On/Off and the roles that have a limit.
 
@@ -284,7 +294,7 @@ Rules and messages:
   - **All Players** – no loan players.
   - **Hierarchy** – shows the loan player options.
 - With Hierarchy:
-  - **Enable Loan Players** – switch.
+  - **Enable Loan Players** – toggle.
   - **Loan Fee** – shown as **Shared Membership Fee** on the card. A number; empty is saved as 0.
   - **Select Verifiers** – appears when loan verification is two-way: choose **Select Verifier 1** and **Select Verifier 2**. Errors: "Verifier 1 is required", "Verifier 2 is required".
 - **Select Categories** (bottom left) – choose other Teams categories that should get the same entry format. The current category is always included.
@@ -295,13 +305,13 @@ Rules and messages:
 
 The **Enable Delegation** button at the top opens the **Delegation Setting** panel. Delegation applies to the whole event.
 
-- **Enable Delegation** switch – "Users can manage delegation lists, providing chosen individuals with full data access for registration purposes".
+- **Enable Delegation** toggle – "Users can manage delegation lists, providing chosen individuals with full data access for registration purposes".
 - Choose one option:
   - **Delegation Players / Other Role Users** – "Restricts the entry flow completely. Senders can only select users explicitly included in the delegation list. No other directory lookup is allowed."
   - **All Players / Other Role Users** – "Expands accessibility. Senders can select from the delegation list AND search/add any user from the entire system directory directly on the Registration, Accommodation, and Travel screens."
 - Click **Update** (it shows "Updating..." while saving). On success the panel closes without a message.
 - Saving delegation needs Edit permission on "Event Access", which is a different permission from the one for the registration cards. Without it the save fails with "Access Denied".
-- If the save fails, the switch turns back off and the error is shown:
+- If the save fails, the toggle turns back off and the error is shown:
   - "Delegation Show Users Required" – delegation was enabled without one of the two options chosen.
   - "No Event Found" – the event was deleted.
   - "Something went wrong" – the server gave no reason; try again.
@@ -315,8 +325,8 @@ Each action on the page saves separately. What you see when it works:
 - **Update on a card panel** (Verification, Pair Request, Date and Time, Gender and Age Restriction, Point Restriction, Players in Team, Player Bifurcation, Queue Settings, Allow Registrations, Deregistration, Entry Restriction) – "Registration Setting Create". The panel closes and the cards reload.
 - **Save in Fee & Refund Information** – "Registration Setting Create".
 - **Update in Entry Format** – "Settings updated successfully".
-- **Registration switch** – no message. The cards reload with the new state.
-- **Multiple Entry switch** – "Participant Restriction Setting Updated Successfully".
+- **Registration toggle** – no message. The cards reload with the new state.
+- **Multiple Entry toggle** – "Participant Restriction Setting Updated Successfully".
 - **Update in Delegation Setting** – no message. The panel closes.
 
 Each panel saves only its own fields. Saving one card never changes the values of another card. "Registration Setting Create" is shown both the first time a setting is saved and when it is changed later.
@@ -326,12 +336,12 @@ Each panel saves only its own fields. Saving one card never changes the values o
 When a save is refused, the server's message appears at the bottom of the screen.
 
 - **"Unauthorized Access"** – you are not signed in any more, your session expired, or your sign-in belongs to a different organisation than this site. Sign in again.
-- **"Access Denied"** – your role may not change these settings for this event. Saving a card needs Edit permission on both "Player Screen" and "Edit Registration Settings". The Multiple Entry switch needs "Edit Registration Settings". Delegation needs "Event Access".
+- **"Access Denied"** – your role may not change these settings for this event. Saving a card needs Edit permission on both "Player Screen" and "Edit Registration Settings". The Multiple Entry toggle needs "Edit Registration Settings". Delegation needs "Event Access".
 - **"Invalid …" followed by a field name** – a value has the wrong type or range, for example a negative Minimum Points or Maximum Points. Up to three field names are listed. Correct those fields and save again.
 - **"Invalid Request Format"** – the save could not be read by the server. Reload the page and try again.
 - **"Some Error Occurred"** – an unexpected server failure. Try again; if it repeats, report it.
 - **"Error updating settings"** – shown by the Fee and Entry Format panels when the server gave no message.
-- **"Provided Event Id is Invalid"** – the event no longer exists (Multiple Entry switch).
+- **"Provided Event Id is Invalid"** – the event no longer exists (Multiple Entry toggle).
 - A message without text usually means the connection to the server was lost. Check your network and reload.
 
 ## Registration page: what loads when you open it and messages when loading fails
@@ -366,7 +376,7 @@ A loading animation covers the page while settings load. If your session has exp
 
 When a player or entity opens the event to register, each category is marked eligible or not eligible. A category is **not eligible** when any of these is true, and the reason is shown:
 
-1. The **Registration** switch is off – "Registration is not active for this category".
+1. The **Registration** toggle is off – "Registration is not active for this category".
 2. It is before the opening time – "Registration has not started yet for this category".
 3. It is after the closing time – "Registration is closed for this category".
 4. Their role is not ticked in **Allow Registrations** – "Role does not have access to register for this category".
@@ -378,11 +388,11 @@ At the moment of registering the server also applies: the registration dates aga
 
 ## Frequently asked questions about the Registration page
 
-**How do I open registration for a category?** Select the category, make sure the Registration switch is on, set Open and Close dates in the Date and Time card, and tick at least one role in Allow Registrations.
+**How do I open registration for a category?** Select the category, make sure the Registration toggle is on, set Open and Close dates in the Date and Time card, and tick at least one role in Allow Registrations.
 
-**Why can't players register for this category?** Check, in order: the Registration switch is on, the current time is between the Open and Close dates, the player's role is ticked in Allow Registrations, and the gender, age and point restrictions fit the player.
+**Why can't players register for this category?** Check, in order: the Registration toggle is on, the current time is between the Open and Close dates, the player's role is ticked in Allow Registrations, and the gender, age and point restrictions fit the player.
 
-**Why are all the Edit buttons disabled?** The Registration switch is off for this category. Turn it on to edit.
+**Why are all the Edit buttons disabled?** The Registration toggle is off for this category. Turn it on to edit.
 
 **Why don't I see any Edit buttons?** Your role has no Edit permission for Player Registration Settings.
 
@@ -406,7 +416,7 @@ At the moment of registering the server also applies: the registration dates aga
 
 **Why is the Pair Request card missing?** It only appears for Doubles and Mixed Doubles categories.
 
-**Why is the Multiple Entry switch missing?** It is hidden while All is selected in the participant type dropdown. Choose a specific type.
+**Why is the Multiple Entry toggle missing?** It is hidden while All is selected in the participant type dropdown. Choose a specific type.
 
 **Why does the event not show as Registration Open?** In Auto status mode at least one category must be inside its Open and Close dates.
 
@@ -422,7 +432,7 @@ At the moment of registering the server also applies: the registration dates aga
 
 **What does "Unauthorized Access" mean on the Registration page?** Your session expired or is not valid for this organisation. Sign in again.
 
-**Why does the Multiple Entry switch show "Some Error Occured"?** The change was not saved. The usual causes are a missing "Edit Registration Settings" permission or an expired session.
+**Why does the Multiple Entry toggle show "Some Error Occured"?** The change was not saved. The usual causes are a missing "Edit Registration Settings" permission or an expired session.
 
 **Why do I get an "Invalid" error when saving points?** Minimum Points and Maximum Points cannot be negative. Enter 0 or a positive whole number.
 

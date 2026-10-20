@@ -1,7 +1,7 @@
 # Stupa RAG chatbot — full stack.
 #
 # Containers:
-#   1. ollama        — the LLM server (serves llama3.1:8b-instruct-q4_K_M on :11434)
+#   1. ollama        — the LLM server (serves qwen3.5:4b-q4_K_M on :11434)
 #   2. ollama-pull   — one-shot helper that pulls the model into ollama, then exits
 #   3. backend       — FastAPI API + bundled Node/Playwright crawler (:8000)
 #
@@ -48,7 +48,7 @@ services:
         condition: service_healthy
     environment:
       - OLLAMA_HOST=http://ollama:11434
-    entrypoint: ["/bin/sh", "-c", "ollama pull ${OLLAMA_MODEL:-llama3.1:8b-instruct-q4_K_M}"]
+    entrypoint: ["/bin/sh", "-c", "ollama pull ${OLLAMA_MODEL:-qwen3.5:4b-q4_K_M}"]
     restart: "no"
 
   backend:

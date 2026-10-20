@@ -144,7 +144,7 @@ def kb(tmp_path, monkeypatch):
     monkeypatch.setattr(s, "app_chat_allow_unverified_dev_tokens", False)
     monkeypatch.setattr(s, "knowledge_service_key", SecretStr(SERVICE_KEY))
     embeddings = FakeEmbeddings()
-    monkeypatch.setattr(knowledge_store, "get_embeddings", lambda: embeddings)
+    monkeypatch.setattr(knowledge_store, "get_knowledge_embeddings", lambda: embeddings)
     knowledge_store.reset_for_tests()
     for guide in (DETAILS, REGISTRATION, ETTU_PRIVATE, ETTU_OVERLAY):
         knowledge_store.ingest_guide(guide)

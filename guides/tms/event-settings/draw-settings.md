@@ -39,6 +39,10 @@ source_files:
 
 This guide describes the **Draw Settings** step of an event in the Stupa Event Management System (admin panel). On this page the organiser sets how draws for this event keep participants from the same club or member association apart, and how the first knockout draw is seeded. It also explains when these settings are used and where they come from.
 
+## Where to find it
+
+Open **Event** from the sidebar, then click **Draw Settings** in the row of setup steps at the top of the page.
+
 ## Draw Settings page: where it is and what it is for
 
 - Page address: `/tms/event-settings/draw-settings/<event id>`, for example `/tms/event-settings/draw-settings/2958`.
@@ -55,7 +59,7 @@ From top to bottom:
 1. **Group Stage settings** – "Select a default criterion and assign priorities". Two choices: **Member Association** and **Clubs**.
 2. **Knockout Stage settings** – "Select a default criterion and assign priorities", with four parts:
    - **PARENT SELECTION ORDER** – **Member Association** and **Clubs**.
-   - **GROUP SEPARATION** – a switch.
+   - **GROUP SEPARATION** – a toggle.
    - **First Time Draw Settings** – **Seeding** or **Random Seeding**.
    - **Separation Type** – **As far as possible** or **1st Round Only**.
 3. **Save** button in the bar at the bottom of the page, always visible.
@@ -77,10 +81,10 @@ The criteria decide which participants the draw keeps apart: those from the same
 ## Knockout Stage settings: GROUP SEPARATION
 
 - Panel text: "Control whether separation based on Group Stage finishing position is applied."
-- Switch on: when a knockout stage follows an earlier stage (for example groups, then knockout), participants who came from the same group are kept apart in the knockout draw.
+- Toggle on: when a knockout stage follows an earlier stage (for example groups, then knockout), participants who came from the same group are kept apart in the knockout draw.
 - Group separation then becomes priority **1**. The criteria chosen in PARENT SELECTION ORDER move down one place (Clubs priority 1 becomes priority 2).
 - It has no effect on the first stage of a category, because there are no earlier groups.
-- Switch off: the group a participant came from is not used to separate them.
+- Toggle off: the group a participant came from is not used to separate them.
 - It applies to knockout stages only.
 
 ## Knockout Stage settings: First Time Draw Settings (Seeding or Random Seeding)

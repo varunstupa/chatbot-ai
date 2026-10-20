@@ -9,7 +9,7 @@ the Node/Playwright website crawler, and a local Ollama LLM.
 
 | # | Container | Image | Role | Lifetime |
 |---|-----------|-------|------|----------|
-| 1 | `stupa-ollama` | `ollama/ollama` | Serves the LLM (`llama3.1:8b-instruct-q4_K_M`) on port 11434 | long-running |
+| 1 | `stupa-ollama` | `ollama/ollama` | Serves the LLM (`qwen3.5:4b-q4_K_M`) on port 11434 | long-running |
 | 2 | `stupa-ollama-pull` | `ollama/ollama` | Pulls the model into Ollama, then **exits 0** | one-shot |
 | 3 | `stupa-backend` | built from `Dockerfile` | FastAPI API on port 8000 **+ bundled crawler** | long-running |
 
@@ -29,10 +29,9 @@ the Node/Playwright website crawler, and a local Ollama LLM.
 ## 2. Prerequisites
 
 - Docker Engine 24+ and Docker Compose v2 (`docker compose`, not `docker-compose`).
-- **Disk:** ~10 GB (backend image ~2.5 GB incl. baked embedding model, Ollama image ~1.5 GB,
-  model weights ~5 GB).
-- **RAM:** ~12 GB recommended (Ollama 8B q4 model ~6 GB + backend/embeddings ~1.5 GB).
-  On CPU only, expect noticeably slower answers than with a GPU.
+- **Disk:** ~7 GB (backend image ~2.5 GB incl. baked embedding model, Ollama image ~1.5 GB,
+  model weights ~3.3 GB).
+- **RAM:** ~8 GB recommended (Ollama qwen3.5:4b ~3.7 GB + backend/embeddings ~1.5 GB).
 - (Optional) NVIDIA GPU + [nvidia-container-toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)
   for fast inference. **CPU-only works without any of this.**
 
@@ -91,7 +90,7 @@ To force a fresh rebuild of the DBs: `docker compose down -v` (wipes the volume)
 ### `.env` is optional
 
 The stack boots **with no `.env` file**. You only need one to turn on **Jira ticketing**
-(or to use the NVIDIA cloud LLM instead of Ollama). Without it, the chatbot, RAG, demo
+Without it, the chatbot, RAG, demo
 booking, and crawler all work; the ticket wizard just replies "not configured". To enable
 Jira: `cp .env.example .env`, fill in the values, then `docker compose up -d`.
 
@@ -112,7 +111,7 @@ Interactive API docs: <http://localhost:8000/docs>
    Pulled models persist in the **`ollama-models`** volume (`/root/.ollama`) — pulled once,
    reused across restarts.
 2. The `ollama-pull` one-shot container waits until Ollama is healthy, then runs
-   `ollama pull llama3.1:8b-instruct-q4_K_M` against it and exits.
+   `ollama pull qwen3.5:4b-q4_K_M` against it and exits.
 3. The `backend` connects to it at **`http://ollama:11434`** (the compose service name),
    configured in `app/config/config.production.yaml` → `llm.local_base_url`.
 
@@ -122,12 +121,12 @@ Two places must agree:
 
 ```bash
 # .env  (drives the ollama-pull container)
-OLLAMA_MODEL=llama3.2:3b-instruct-q4_K_M   # e.g. a smaller model
+OLLAMA_MODEL=llama3.1:8b-instruct-q4_K_M   # e.g. a larger model
 ```
 ```yaml
 # app/config/config.production.yaml  (drives the backend)
 llm:
-  local_model_name: "llama3.2:3b-instruct-q4_K_M"
+  local_model_name: "llama3.1:8b-instruct-q4_K_M"
 ```
 Then `docker compose up -d --build backend ollama-pull`.
 
@@ -136,11 +135,6 @@ Then `docker compose up -d --build backend ollama-pull`.
 Uncomment the `gpus: all` (or the `deploy.resources` block) under the `ollama` service in
 `docker-compose.yml`, then `docker compose up -d ollama`.
 
-### Using NVIDIA cloud LLM instead of Ollama
-
-Set `llm.provider: "nvidia"` in `config.production.yaml`, put `NVIDIA_API_KEY=...` in `.env`,
-and you can drop the `ollama` / `ollama-pull` services.
-
 ---
 
 ## 5. Data & persistence (volumes)
@@ -148,7 +142,7 @@ and you can drop the `ollama` / `ollama-pull` services.
 | Volume | Mount | Contents |
 |--------|-------|----------|
 | `app-data` | `/app/data` | Chroma stores (`chroma`, `chroma_website`), uploads, ticket/demo session JSON, attachments |
-| `hf-cache` | `/app/.cache/huggingface` | Embedding model `all-mpnet-base-v2` (~420 MB), cached so it isn't re-downloaded |
+| `hf-cache` | `/app/.cache/huggingface` | Embedding model `intfloat/multilingual-e5-base`, cached so it isn't re-downloaded |
 | `ollama-models` | `/root/.ollama` | Pulled LLM weights |
 
 `docker compose down` keeps volumes. `docker compose down -v` **deletes all data** (vector

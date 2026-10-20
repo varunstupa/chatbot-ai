@@ -1,7 +1,7 @@
 .env
 data/chroma/
 data/chroma_website/
-data/chroma_kb/
+data/chroma_kb*/
 data/logs/
 
 

@@ -1,0 +1,542 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin Chatbot Code Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: reference manual — sticky contents rail on the left, one reading column, wide tables scroll in place. */
+:root {
+  --bg: #f6f7f8;
+  --surface: #ffffff;
+  --fg: #1b2228;
+  --muted: #5a6670;
+  --line: #dde2e6;
+  --accent: #0f6e78;
+  --accent-soft: #e2f1f2;
+  --code-bg: #eef1f3;
+  --warn: #9a5b00;
+  --warn-soft: #fbf0dc;
+  --ok: #2f6b3a;
+  --ok-soft: #e4f1e6;
+  --font-display: "Newsreader", Georgia, "Times New Roman", serif;
+  --font-body: "Public Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", Consolas, "Courier New", monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12171b; --surface: #182026; --fg: #e3e8ec; --muted: #9aa7b1; --line: #2a343c;
+    --accent: #5cc3cc; --accent-soft: #163338; --code-bg: #1f282f;
+    --warn: #e7b260; --warn-soft: #33281a; --ok: #8fd09a; --ok-soft: #1b2e20;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12171b; --surface: #182026; --fg: #e3e8ec; --muted: #9aa7b1; --line: #2a343c;
+  --accent: #5cc3cc; --accent-soft: #163338; --code-bg: #1f282f;
+  --warn: #e7b260; --warn-soft: #33281a; --ok: #8fd09a; --ok-soft: #1b2e20;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; }
+img { max-width: 100%; }
+body { background: var(--bg); color: var(--fg); font: 15px/1.6 var(--font-body); }
+.shell { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 48px; max-width: 1240px; margin: 0 auto; padding-inline: 24px; padding-block: 40px 80px; }
+nav.toc { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 24px); align-self: start; max-height: calc(100vh - 48px); overflow-y: auto; font-size: 13.5px; }
+nav.toc p { margin: 0 0 10px; font-size: 11px; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+nav.toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; counter-reset: toc; }
+nav.toc li { counter-increment: toc; }
+nav.toc a { display: block; padding: 4px 10px; border-radius: 6px; color: var(--fg); text-decoration: none; }
+nav.toc a::before { content: counter(toc) ". "; color: var(--muted); font-variant-numeric: tabular-nums; }
+nav.toc a:hover, nav.toc a:focus-visible { background: var(--accent-soft); color: var(--accent); outline: none; }
+main { min-width: 0; max-width: 900px; }
+header.top { padding-bottom: 28px; border-bottom: 1px solid var(--line); margin-bottom: 8px; }
+.eyebrow { font-size: 11.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); font-weight: 600; margin: 0 0 8px; }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 600; text-wrap: balance; line-height: 1.2; }
+h1 { font-size: clamp(30px, 4.4vw, 42px); margin: 0 0 12px; }
+h2 { font-size: 27px; margin: 56px 0 14px; padding-top: 8px; scroll-margin-top: 24px; }
+h3 { font-size: 20px; margin: 30px 0 10px; }
+.lede { font-size: 17px; color: var(--muted); max-width: 66ch; margin: 0; }
+p, li { max-width: 72ch; }
+a { color: var(--accent); }
+code { font-family: var(--font-mono); font-size: .86em; background: var(--code-bg); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+pre.block { font-family: var(--font-mono); font-size: 12.8px; line-height: 1.55; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px 18px; overflow-x: auto; margin: 14px 0; }
+pre.block code { background: none; padding: 0; font-size: inherit; }
+.tree .c { color: var(--muted); }
+.tree .k { color: var(--accent); font-weight: 500; }
+.tablewrap { overflow-x: auto; margin: 14px 0; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; vertical-align: top; padding: 9px 12px; border-bottom: 1px solid var(--line); }
+th { font-size: 11.5px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); font-weight: 600; background: var(--bg); }
+tr:last-child td { border-bottom: none; }
+td:first-child { white-space: nowrap; }
+td.wrap { white-space: normal; }
+.tag { display: inline-block; font-size: 11px; font-weight: 600; letter-spacing: .04em; padding: 1px 7px; border-radius: 999px; white-space: nowrap; }
+.tag.admin { background: var(--accent-soft); color: var(--accent); }
+.tag.stupa { background: var(--code-bg); color: var(--muted); }
+.tag.shared { background: var(--ok-soft); color: var(--ok); }
+.note { border-left: 3px solid var(--accent); background: var(--surface); padding: 12px 16px; border-radius: 0 8px 8px 0; margin: 16px 0; }
+.note.warn { border-left-color: var(--warn); background: var(--warn-soft); }
+.note p { margin: 0; }
+.note p + p { margin-top: 6px; }
+ol.steps { padding-left: 22px; display: grid; gap: 6px; }
+.layers { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin: 16px 0; }
+.layer { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; min-width: 0; }
+.layer h4 { margin: 0 0 4px; font-size: 14px; }
+.layer p { margin: 0; font-size: 13.5px; color: var(--muted); }
+.layer code { font-size: 12px; }
+dl.qa { margin: 12px 0; display: grid; gap: 14px; }
+dl.qa dt { font-weight: 600; }
+dl.qa dd { margin: 4px 0 0; color: var(--fg); max-width: 72ch; }
+pre.mermaid { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; overflow-x: auto; }
+@media (max-width: 860px) {
+  .shell { grid-template-columns: minmax(0, 1fr); gap: 20px; padding-inline: 16px; padding-block: 24px 64px; }
+  nav.toc { position: static; max-height: none; border: 1px solid var(--line); border-radius: 8px; padding: 14px; background: var(--surface); }
+  nav.toc ol { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+}
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+html { scroll-behavior: smooth; }
+</style>
+</head>
+<body>
+
+<div class="shell">
+<nav class="toc" aria-label="Contents">
+  <p>Contents</p>
+  <ol>
+    <li><a href="#overview">The big picture</a></li>
+    <li><a href="#flow">One question, end to end</a></li>
+    <li><a href="#tree">Folder structure</a></li>
+    <li><a href="#lookup">Where is…? lookup</a></li>
+    <li><a href="#apis">APIs</a></li>
+    <li><a href="#config">Configuration</a></li>
+    <li><a href="#model">Models &amp; vector DB</a></li>
+    <li><a href="#guardrails">Guardrails</a></li>
+    <li><a href="#knowledge">Knowledge pipeline</a></li>
+    <li><a href="#files">Backend file by file</a></li>
+    <li><a href="#gateway">Gateway files</a></li>
+    <li><a href="#frontend">Frontend files</a></li>
+    <li><a href="#deploy">Deploy &amp; CI</a></li>
+    <li><a href="#limits">Known limits</a></li>
+    <li><a href="#questions">Questions you may get</a></li>
+  </ol>
+</nav>
+
+<main>
+<header class="top">
+  <p class="eyebrow">Architecture reference · chatbot-ai</p>
+  <h1>Admin Chatbot Code Map</h1>
+  <p class="lede">Which file does what in the admin-app assistant: where the APIs live, where configuration and the model are set, where guardrails are enforced, and how a question travels from the Angular widget to the LLM and back.</p>
+</header>
+
+<!-- 1 -->
+<h2 id="overview">1. The big picture</h2>
+<p>The admin-app assistant answers "how do I…" questions about the screen the user is on. It is a <strong>RAG system</strong>: answers are generated by a local LLM, but only from passages of hand-written Markdown <em>screen guides</em> retrieved from a vector database. Three code bases take part:</p>
+<div class="layers">
+  <div class="layer"><h4>Frontend · SaaS_Admin (Angular)</h4><p>Chat widget on event screens. Sends the question, the login token and the current route.</p></div>
+  <div class="layer"><h4>API gateway (FastAPI)</h4><p>Verifies the login JWT, signs tenant/user/role with HMAC, forwards to the chatbot under <code>/chatbot/v1/*</code>.</p></div>
+  <div class="layer"><h4>chatbot-ai (FastAPI)</h4><p>Checks the signature, finds guides the tenant may read, retrieves passages, calls the LLM, streams the answer.</p></div>
+  <div class="layer"><h4>Ollama + Chroma</h4><p>Ollama runs the LLM (<code>llama3.2:3b</code>). Chroma (embedded, on disk) stores guide chunks as vectors.</p></div>
+</div>
+<div class="note">
+  <p><strong>Two chat products share the chatbot-ai repo.</strong> This guide is about the <strong>admin-app chat</strong> (<code>/app-chat</code>). The older public <strong>Stupa website chat</strong> (<code>/stupa-chat</code>, <code>/query</code>, website crawler, demo booking) is still in <code>app/api/routes.py</code> and related services, but is a separate product. Tables below mark files as <span class="tag admin">admin chat</span>, <span class="tag stupa">Stupa chat</span> or <span class="tag shared">shared</span>.</p>
+</div>
+
+<!-- 2 -->
+<h2 id="flow">2. One question, end to end</h2>
+<pre class="mermaid">
+sequenceDiagram
+  participant W as Angular widget
+  participant G as Gateway /chatbot/v1
+  participant A as chatbot-ai /api/app-chat
+  participant K as Registry + Chroma
+  participant L as Ollama LLM
+  W->>G: POST question, screen route, login JWT
+  G->>G: auth_decorator verifies JWT
+  G->>A: forward + X-Chat-Tenant/User/Role + HMAC signature
+  A->>A: auth.require_scope checks signature, builds CallerScope
+  A->>A: ticket_workflow.try_process - is this a report-an-issue turn
+  A->>K: app_chat.retrieve: guides this tenant may read, current screen first
+  K-->>A: passages + distances (filtered by thresholds)
+  alt no passage close enough
+    A-->>W: no_answer_message (LLM is not called)
+  else passages found
+    A->>L: system message + history + prompt(context, question, screen)
+    L-->>A: tokens
+    A-->>G: SSE stream - session, sources, tokens, done
+    G-->>W: streamed back unbuffered
+  end
+</pre>
+<ol class="steps">
+  <li><strong>Widget</strong> (<code>tournament-chatbot-widget.component.ts</code>) collects the question; <code>ChatScreenContextService</code> adds the route pattern (e.g. <code>tms/event-settings/create-event/:event_id</code>) and URL; <code>TournamentRagQueryService</code> POSTs it with the <code>auth</code> header.</li>
+  <li><strong>Gateway</strong> (<code>routers/chatbot_router.py</code>) runs the existing <code>@auth_decorator</code>, then <code>services/chatbot_service.py</code> signs the verified identity and streams the request to chatbot-ai.</li>
+  <li><strong>chatbot-ai</strong> route <code>app/api/app_chat.py → app_chat_query</code> gets a <code>CallerScope</code> from <code>app/services/auth.py → require_scope</code>. The tenant never comes from the request body.</li>
+  <li>If the message starts or continues the Jira ticket wizard, <code>ticket_workflow.try_process</code> answers instead of the LLM.</li>
+  <li><code>app/services/app_chat.py → retrieve</code> picks passages: a screen named in the question, else the current screen, else any visible guide, using distance thresholds from config.</li>
+  <li><code>app/services/rag_pipeline.py → stream_answer</code> skips the LLM when nothing was found, otherwise builds the prompt and streams from Ollama via LangChain, keeping per-session history.</li>
+  <li>Every answer is audit-logged (<code>app_chat.audit</code>: tenant, user, route, mode, doc_ids).</li>
+</ol>
+
+<!-- 3 -->
+<h2 id="tree">3. Folder structure</h2>
+<p>Repository <code>Backend/chatbot-ai</code> (GitHub <code>varunstupa/chatbot-ai</code>).</p>
+<pre class="block tree"><code>chatbot-ai/
+├── <span class="k">app/</span>
+│   ├── main.py                <span class="c"># FastAPI app: CORS, routers, error handler; `python -m app.main` loads guides then runs uvicorn</span>
+│   ├── bootstrap.py           <span class="c"># reload config + reset model/vector singletons without a restart</span>
+│   ├── <span class="k">api/</span>                   <span class="c"># HTTP layer (routes only, no business logic)</span>
+│   │   ├── app_chat.py        <span class="c"># ★ admin chat: /app-chat, /app-chat/stream, /app-chat/attachment, /knowledge/*</span>
+│   │   ├── routes.py          <span class="c"># /health, /upload, /query, /stupa-chat (+ shared ticket helpers)</span>
+│   │   ├── crawl.py           <span class="c"># /crawl, /ingest-website (Stupa website crawler)</span>
+│   │   └── dependencies.py    <span class="c"># FastAPI Depends(): get_rag_pipeline</span>
+│   ├── <span class="k">config/</span>
+│   │   ├── config.yaml        <span class="c"># ★ local/dev settings (model, thresholds, auth mode, CORS…)</span>
+│   │   ├── config.production.yaml <span class="c"># ★ used when APP_ENV=production (Docker)</span>
+│   │   └── settings.py        <span class="c"># ★ Pydantic schema for both YAMLs + .env secrets; default app-chat prompt</span>
+│   ├── <span class="k">services/</span>              <span class="c"># business logic</span>
+│   │   ├── auth.py            <span class="c"># ★ guardrail: who is calling (gateway HMAC or JWT), tenant allow-list, service key</span>
+│   │   ├── app_chat.py        <span class="c"># ★ screen-aware retrieval, prompt filling, audit log</span>
+│   │   ├── rag_pipeline.py    <span class="c"># ★ LLM creation, prompt chain, history, answer/stream, output cleanup</span>
+│   │   ├── embedding.py       <span class="c"># ★ embedding model singleton (multilingual-e5-base)</span>
+│   │   ├── chat_memory.py     <span class="c"># per-session chat history (in memory, trimmed)</span>
+│   │   ├── ticket_workflow.py <span class="c"># "report an issue" wizard → Jira</span>
+│   │   ├── ticket_upload.py   <span class="c"># attachment validation + storage</span>
+│   │   ├── jira_service.py    <span class="c"># Jira facade</span>
+│   │   ├── ticket_providers/  <span class="c"># base.py (interface), jira_provider.py (REST client)</span>
+│   │   ├── vector_store.py    <span class="c"># Chroma stores for Stupa chat (uploads + website)</span>
+│   │   ├── ingestion.py, chunking.py <span class="c"># file/website ingestion for Stupa chat</span>
+│   │   └── demo_booking.py    <span class="c"># "book a demo" wizard (Stupa chat)</span>
+│   ├── <span class="k">knowledge/</span>             <span class="c"># ★ admin-chat knowledge store</span>
+│   │   ├── guide_loader.py    <span class="c"># loads guides/*.md at every start; prunes deleted guides</span>
+│   │   ├── parser.py          <span class="c"># front matter validation + chunking</span>
+│   │   ├── registry.py        <span class="c"># who may read which guide (tenants, roles) – JSON file</span>
+│   │   ├── index.py           <span class="c"># the single Chroma collection of guide chunks</span>
+│   │   ├── service.py         <span class="c"># ingest / delete / scoped search API over registry + index</span>
+│   │   └── migrate_legacy.py  <span class="c"># one-off cleanup of the old per-tenant collections</span>
+│   ├── <span class="k">models/</span>                <span class="c"># Pydantic request/response schemas (not ML models)</span>
+│   │   ├── schemas.py         <span class="c"># QueryRequest, ScreenContext, QueryResponse…</span>
+│   │   └── ticket_schemas.py  <span class="c"># ticket draft / workflow payloads</span>
+│   ├── <span class="k">core/</span>constants.py     <span class="c"># error codes</span>
+│   └── <span class="k">utils/</span>                 <span class="c"># logger, rate_limit, file_loader, jira_adf, debug_console</span>
+├── <span class="k">guides/</span>                    <span class="c"># ★ the knowledge: one Markdown guide per screen</span>
+│   ├── README.md              <span class="c"># how to write a guide</span>
+│   └── tms/event-settings/    <span class="c"># create-event, registration, draw-settings, playing-order, payment-invoice</span>
+├── <span class="k">data/</span>                      <span class="c"># runtime state (git-ignored except seeds)</span>
+│   ├── chroma_kb/             <span class="c"># admin-chat vectors + document_registry.json</span>
+│   ├── chroma/, chroma_website/ <span class="c"># Stupa chat vectors</span>
+│   ├── ticket_sessions/, ticket_attachments/, logs/
+│   └── uploads/               <span class="c"># seed documents for Stupa chat</span>
+├── crawler/                   <span class="c"># Node + Playwright website crawler (Stupa chat)</span>
+├── docker/entrypoint.sh       <span class="c"># container start: seed (optional) → load guides → uvicorn</span>
+├── docker/seed_docs.py
+├── Dockerfile, docker-compose.yml, .dockerignore
+├── .github/workflows/ci.yml   <span class="c"># tests + Docker build on every push/PR</span>
+├── tests/                     <span class="c"># test_app_chat_isolation.py (68 tests), ticket/Jira tests</span>
+├── docs/knowledge-architecture.md
+├── requirements.txt, requirements-dev.txt, .env.example
+└── README.md, DOCKER.md, CRAWLER.md</code></pre>
+
+<!-- 4 -->
+<h2 id="lookup">4. Where is…? quick lookup</h2>
+<p>The answers to the questions people usually ask at code level.</p>
+<div class="tablewrap"><table>
+<thead><tr><th>Question</th><th>File · symbol</th></tr></thead>
+<tbody>
+<tr><td>Where are the admin-chat APIs?</td><td class="wrap"><code>app/api/app_chat.py</code> (router mounted twice in <code>app/main.py</code>: at <code>/</code> and <code>/api</code>)</td></tr>
+<tr><td>Where is the LLM defined?</td><td class="wrap"><code>app/services/rag_pipeline.py → _build_llm()</code> (line ~68) creates <code>ChatOllama</code>; model name comes from <code>llm.local_model_name</code> in the YAML</td></tr>
+<tr><td>Which LLM is used?</td><td class="wrap"><code>llama3.2:3b-instruct-q4_K_M</code> via Ollama, temperature 0, <code>keep_alive 30m</code> (<code>config.yaml</code> and <code>config.production.yaml</code> → <code>llm:</code>)</td></tr>
+<tr><td>Where is the embedding model?</td><td class="wrap"><code>app/services/embedding.py → get_embeddings()</code>; name in YAML <code>embedding.model_name</code> = <code>intfloat/multilingual-e5-base</code></td></tr>
+<tr><td>Where is the vector DB?</td><td class="wrap"><code>app/knowledge/index.py → ChunkIndex</code> (Chroma, collection <code>knowledge_chunks</code>, folder <code>data/chroma_kb</code>)</td></tr>
+<tr><td>Where is configuration loaded?</td><td class="wrap"><code>app/config/settings.py → get_settings()</code>; picks the YAML by <code>APP_ENV</code> (<code>_default_config_path</code>), secrets from <code>.env</code></td></tr>
+<tr><td>Where is the prompt?</td><td class="wrap">Admin chat: <code>AppChatConfig.prompt_template</code> in <code>settings.py</code> (~line 232), screen name filled by <code>app_chat.prompt_for()</code>. System message: YAML <code>llm.system_message</code>. Assembled in <code>rag_pipeline._build_chat_prompt()</code> / <code>_rag_invoke_payload()</code></td></tr>
+<tr><td>Where is authentication?</td><td class="wrap"><code>app/services/auth.py → require_scope</code> (gateway HMAC or JWT), <code>require_service_key</code></td></tr>
+<tr><td>Where is tenant isolation?</td><td class="wrap"><code>app/knowledge/registry.py → entry_allows</code> + <code>app/knowledge/service.py → search / _checked_hit</code></td></tr>
+<tr><td>Where are the relevance thresholds?</td><td class="wrap">YAML <code>app_chat.screen_max_distance</code>, <code>max_distance</code>, <code>other_screen_margin</code>; applied in <code>app/services/app_chat.py → retrieve</code></td></tr>
+<tr><td>Where is chat memory?</td><td class="wrap"><code>app/services/chat_memory.py</code> (in-memory, last <code>app_chat.history_messages</code> = 6 messages)</td></tr>
+<tr><td>Where are guides loaded?</td><td class="wrap"><code>app/knowledge/guide_loader.py</code>, called from <code>docker/entrypoint.sh</code> and <code>app/main.py → main()</code></td></tr>
+<tr><td>Where is chunking for guides?</td><td class="wrap"><code>app/knowledge/parser.py → build_chunks</code> (split on <code>##</code> headings, FAQ Q/A pairs kept alone)</td></tr>
+<tr><td>Where are request/response shapes?</td><td class="wrap"><code>app/models/schemas.py</code> (<code>QueryRequest</code>, <code>ScreenContext</code>, <code>QueryResponse</code>)</td></tr>
+<tr><td>Where is the Jira ticket flow?</td><td class="wrap"><code>app/services/ticket_workflow.py → try_process</code> → <code>jira_service.py</code> → <code>ticket_providers/jira_provider.py</code></td></tr>
+<tr><td>Where is logging?</td><td class="wrap"><code>app/utils/logger.py</code>; level/format from YAML <code>logging:</code></td></tr>
+<tr><td>Where is CORS?</td><td class="wrap"><code>app/main.py</code> (CORSMiddleware) with origins from YAML <code>cors.allow_origins</code></td></tr>
+<tr><td>Where does the frontend call the chatbot?</td><td class="wrap"><code>src/app/core/services/tournament-rag-query/tournament-rag-query.service.ts</code>, URL from <code>environment.tournamentRagQueryUrl</code></td></tr>
+</tbody></table></div>
+
+<!-- 5 -->
+<h2 id="apis">5. APIs</h2>
+<h3>Admin-app chat (chatbot-ai)</h3>
+<p>All in <code>app/api/app_chat.py</code>. Each path also exists with an <code>/api</code> prefix; the gateway calls the <code>/api/…</code> form.</p>
+<div class="tablewrap"><table>
+<thead><tr><th>Method · path</th><th>Function</th><th>Guard</th><th>Purpose</th></tr></thead>
+<tbody>
+<tr><td><code>POST /app-chat</code></td><td><code>app_chat_query</code></td><td><code>require_scope</code></td><td class="wrap">Ask a question. JSON by default; SSE when <code>?stream=true</code> or <code>Accept: text/event-stream</code>. Body: <code>question</code>, <code>session_id</code>, <code>screen {route, url}</code>, optional <code>ticket_draft</code>.</td></tr>
+<tr><td><code>POST /app-chat/stream</code></td><td><code>app_chat_stream</code></td><td><code>require_scope</code></td><td class="wrap">Always SSE. Events: <code>session</code>, <code>sources</code>, <code>token</code>, <code>done</code>, <code>error</code>, ticket events.</td></tr>
+<tr><td><code>POST /app-chat/attachment</code></td><td><code>app_chat_attachment</code></td><td><code>require_scope</code> + rate limit</td><td class="wrap">Upload a file for a support ticket (PNG, JPG, PDF, DOCX, MP4; max 10 MB).</td></tr>
+<tr><td><code>GET /knowledge/screen</code></td><td><code>knowledge_screen</code></td><td><code>require_scope</code></td><td class="wrap">Screen title + suggested questions for the widget's empty state.</td></tr>
+<tr><td><code>GET /knowledge/documents</code></td><td><code>knowledge_list</code></td><td><code>require_service_key</code></td><td class="wrap">Admin listing of the registry (access, routes, hashes).</td></tr>
+</tbody></table></div>
+
+<h3>Gateway (what the browser actually calls)</h3>
+<div class="tablewrap"><table>
+<thead><tr><th>Gateway path</th><th>Forwards to</th><th>File</th></tr></thead>
+<tbody>
+<tr><td><code>POST /chatbot/v1/app-chat</code></td><td><code>api/app-chat</code></td><td rowspan="3" class="wrap"><code>gateway/src/routers/chatbot_router.py</code> (each behind <code>@auth_decorator()</code>)</td></tr>
+<tr><td><code>POST /chatbot/v1/app-chat/attachment</code></td><td><code>api/app-chat/attachment</code></td></tr>
+<tr><td><code>GET /chatbot/v1/knowledge/screen</code></td><td><code>api/knowledge/screen</code></td></tr>
+</tbody></table></div>
+
+<h3>Other routes in chatbot-ai</h3>
+<div class="tablewrap"><table>
+<thead><tr><th>Path</th><th>File</th><th>Product</th></tr></thead>
+<tbody>
+<tr><td><code>GET /health</code></td><td><code>app/api/routes.py</code></td><td><span class="tag shared">shared</span> (Docker healthcheck)</td></tr>
+<tr><td><code>POST /upload</code></td><td><code>app/api/routes.py</code> (service key)</td><td><span class="tag stupa">Stupa chat</span></td></tr>
+<tr><td><code>POST /query</code>, <code>/query/stream</code></td><td><code>app/api/routes.py</code></td><td><span class="tag stupa">Stupa chat</span></td></tr>
+<tr><td><code>POST /stupa-chat</code>, <code>/stupa-chat/stream</code>, <code>/stupa-chat/attachment</code></td><td><code>app/api/routes.py</code></td><td><span class="tag stupa">Stupa chat</span></td></tr>
+<tr><td><code>POST /crawl</code>, <code>/ingest-website</code></td><td><code>app/api/crawl.py</code></td><td><span class="tag stupa">Stupa chat</span></td></tr>
+</tbody></table></div>
+
+<!-- 6 -->
+<h2 id="config">6. Configuration</h2>
+<h3>How settings are loaded</h3>
+<ol class="steps">
+  <li><code>app/config/settings.py → _default_config_path()</code> chooses the YAML: <code>CONFIG_FILE</code> env var if set; <code>config.production.yaml</code> when <code>APP_ENV=production</code> (set in the Dockerfile and compose); otherwise <code>config.yaml</code>.</li>
+  <li><code>YamlSettingsSource</code> reads it; <code>Settings</code> (Pydantic) validates every section, e.g. <code>AppChatConfig</code> rejects a prompt without <code>{context}</code>, <code>{question}</code>, <code>{screen}</code>.</li>
+  <li>Secrets come from environment / <code>.env</code> through <code>validation_alias</code> fields on <code>Settings</code>. They are never in YAML.</li>
+  <li><code>get_settings()</code> caches one instance; <code>app/bootstrap.py</code> can reload it.</li>
+</ol>
+
+<h3>YAML sections that matter for the admin chat</h3>
+<div class="tablewrap"><table>
+<thead><tr><th>Section</th><th>Key settings</th><th>Used by</th></tr></thead>
+<tbody>
+<tr><td><code>llm</code></td><td class="wrap"><code>provider: local</code>, <code>local_model_name</code>, <code>local_base_url</code> (localhost:11434 dev, <code>http://ollama:11434</code> in Docker), <code>temperature: 0</code>, <code>local_keep_alive</code>, <code>system_message</code></td><td><code>rag_pipeline.py</code></td></tr>
+<tr><td><code>embedding</code></td><td class="wrap"><code>model_name: intfloat/multilingual-e5-base</code></td><td><code>embedding.py</code></td></tr>
+<tr><td><code>auth</code></td><td class="wrap"><code>mode: gateway</code> (or <code>jwt</code>), <code>jwt_algorithms: [RS256]</code>, <code>allowed_tenants</code> (dev: <code>[staging]</code>), claim names for tenant/user/role</td><td><code>auth.py</code></td></tr>
+<tr><td><code>cors</code></td><td class="wrap"><code>allow_origins</code> (Angular dev ports)</td><td><code>main.py</code></td></tr>
+<tr><td><code>app_chat</code></td><td class="wrap"><code>persist_directory: data/chroma_kb</code>, <code>collection_name</code>, <code>registry_file</code>, <code>guides_directory</code>, <code>top_k</code> (dev 3, prod 5), <code>screen_max_distance 1.4</code>, <code>max_distance 1.35</code>, <code>other_screen_margin 0.15</code>, <code>chunk_size 1500</code>, <code>chunk_overlap 150</code>, <code>history_messages</code></td><td><code>knowledge/*</code>, <code>app_chat.py</code></td></tr>
+<tr><td><code>messages</code></td><td class="wrap">User-facing error texts (<code>query_empty</code>, <code>query_processing_failed</code>…)</td><td>routes</td></tr>
+<tr><td><code>logging</code></td><td class="wrap">level, JSON format on/off</td><td><code>utils/logger.py</code></td></tr>
+<tr><td><code>server</code></td><td class="wrap">port: 8001 locally (gateway uses 8000); Docker always listens on 8000 inside the container</td><td><code>main.py</code></td></tr>
+</tbody></table></div>
+<p>The admin-chat <strong>prompt</strong> and <strong>no-answer message</strong> are not in the YAML; their defaults live in <code>AppChatConfig</code> in <code>settings.py</code>. Adding <code>app_chat.prompt_template</code> to a YAML would override them.</p>
+
+<h3>Environment variables (secrets) — <code>.env</code>, see <code>.env.example</code></h3>
+<div class="tablewrap"><table>
+<thead><tr><th>Variable</th><th>Needed when</th><th>Read in</th></tr></thead>
+<tbody>
+<tr><td><code>CHATBOT_INTERNAL_SECRET</code></td><td class="wrap">Always in production (<code>auth.mode: gateway</code>); same value as the gateway's</td><td><code>auth._scope_from_gateway</code></td></tr>
+<tr><td><code>KNOWLEDGE_SERVICE_KEY</code></td><td class="wrap"><code>/knowledge/documents</code>, <code>/upload</code> (header <code>X-Service-Key</code>)</td><td><code>auth.require_service_key</code></td></tr>
+<tr><td><code>APP_CHAT_JWT_PUBLIC_KEY</code> / <code>APP_CHAT_JWT_SECRET</code></td><td class="wrap">Only in <code>auth.mode: jwt</code></td><td><code>auth._decode</code></td></tr>
+<tr><td><code>APP_CHAT_ALLOW_UNVERIFIED_DEV_TOKENS</code></td><td class="wrap">Local testing only; never in production</td><td><code>auth._decode</code></td></tr>
+<tr><td><code>JIRA_*</code></td><td class="wrap">Ticket creation</td><td><code>jira_service.py</code></td></tr>
+<tr><td><code>APP_ENV</code>, <code>CONFIG_FILE</code></td><td class="wrap">Choose the YAML</td><td><code>settings._default_config_path</code></td></tr>
+</tbody></table></div>
+
+<!-- 7 -->
+<h2 id="model">7. Models &amp; vector database</h2>
+<div class="tablewrap"><table>
+<thead><tr><th>Piece</th><th>What</th><th>Defined in</th><th>Configured in</th></tr></thead>
+<tbody>
+<tr><td>Chat LLM</td><td class="wrap">Llama 3.2 3B Instruct, 4-bit (<code>q4_K_M</code>), served by Ollama</td><td><code>rag_pipeline._build_llm()</code> → <code>ChatOllama(...)</code>; cached by <code>get_llm()</code></td><td class="wrap"><code>llm.local_model_name</code>; Docker pulls it via <code>OLLAMA_MODEL</code> in <code>docker-compose.yml</code></td></tr>
+<tr><td>Embeddings</td><td class="wrap"><code>multilingual-e5-base</code> (768-dim, CPU); baked into the Docker image</td><td><code>embedding.get_embeddings()</code></td><td><code>embedding.model_name</code></td></tr>
+<tr><td>Vector DB</td><td class="wrap">Chroma, embedded (no server), persisted to disk; one collection for all tenants</td><td><code>knowledge/index.py → ChunkIndex</code></td><td><code>app_chat.persist_directory</code>, <code>collection_name</code></td></tr>
+<tr><td>Access registry</td><td class="wrap">JSON file next to Chroma, decides who may read each guide</td><td><code>knowledge/registry.py → DocumentRegistry</code></td><td><code>app_chat.registry_file</code></td></tr>
+<tr><td>Chain</td><td class="wrap">LangChain <code>ChatPromptTemplate | llm</code> wrapped in <code>RunnableWithMessageHistory</code></td><td><code>rag_pipeline.get_chain_with_history()</code></td><td>—</td></tr>
+</tbody></table></div>
+<p>Changing model: edit <code>llm.local_model_name</code> in the YAML and, for Docker, <code>OLLAMA_MODEL</code> in <code>docker-compose.yml</code>; run <code>ollama pull &lt;model&gt;</code> locally. Changing the embedding model requires re-embedding all guides (delete <code>data/chroma_kb</code> and restart).</p>
+
+<!-- 8 -->
+<h2 id="guardrails">8. Guardrails</h2>
+<p>Guardrails are spread over layers. Each row says what it stops and exactly where it lives.</p>
+
+<h3>A. Who is asking (identity &amp; access)</h3>
+<div class="tablewrap"><table>
+<thead><tr><th>Guardrail</th><th>Where</th><th>Effect</th></tr></thead>
+<tbody>
+<tr><td>Login JWT verified</td><td class="wrap">Gateway <code>@auth_decorator</code> (existing gateway code)</td><td class="wrap">Unauthenticated users never reach the chatbot.</td></tr>
+<tr><td>Gateway HMAC signature</td><td class="wrap"><code>auth._scope_from_gateway</code>; signed in gateway <code>chatbot_service.identity_headers</code></td><td class="wrap">Chatbot accepts tenant/user/role only if signed with <code>CHATBOT_INTERNAL_SECRET</code>; signature older than 60 s is rejected (replay). Constant-time compare.</td></tr>
+<tr><td>Tenant never from body</td><td class="wrap"><code>CallerScope</code> built only in <code>auth.py</code></td><td class="wrap">A user cannot ask "as" another tenant.</td></tr>
+<tr><td>Tenant header must match token</td><td class="wrap"><code>auth._scope_from_token</code> (jwt mode)</td><td class="wrap">403 "Tenant mismatch".</td></tr>
+<tr><td>Tenant allow-list</td><td class="wrap"><code>auth._build_scope</code>, YAML <code>auth.allowed_tenants</code></td><td class="wrap">Deployment serves only listed tenants.</td></tr>
+<tr><td>Fail closed when unconfigured</td><td class="wrap"><code>auth.py</code> (503 when no secret / key)</td><td class="wrap">Missing secret never means "open".</td></tr>
+<tr><td>Service key for admin routes</td><td class="wrap"><code>auth.require_service_key</code></td><td class="wrap">Guide listing and uploads need <code>X-Service-Key</code>.</td></tr>
+</tbody></table></div>
+
+<h3>B. What they may read (tenant isolation)</h3>
+<div class="tablewrap"><table>
+<thead><tr><th>Guardrail</th><th>Where</th><th>Effect</th></tr></thead>
+<tbody>
+<tr><td>Per-guide access rules</td><td class="wrap">Guide front matter <code>tenants</code>, <code>exclude_tenants</code>, <code>roles</code> → <code>registry.entry_allows</code></td><td class="wrap">Each guide is visible only to its tenants/roles. Malformed entry = not visible.</td></tr>
+<tr><td>Search limited to allowed docs</td><td class="wrap"><code>service.search</code> passes <code>doc_id $in allowed</code> to Chroma</td><td class="wrap">Other tenants' chunks are not even queried.</td></tr>
+<tr><td>Defence in depth</td><td class="wrap"><code>service._checked_hit</code></td><td class="wrap">Every hit is re-checked; anything outside scope is dropped and logged as <code>security</code>.</td></tr>
+<tr><td>Session bound to tenant+user</td><td class="wrap"><code>app_chat._scoped_session_id</code></td><td class="wrap">History key <code>tenant--user--session</code>; a stolen session id is useless for another user.</td></tr>
+<tr><td>Safe ingest ordering</td><td class="wrap"><code>service.ingest_guide</code>, <code>delete_guide</code></td><td class="wrap">Access narrowed before content changes; revoked before chunks deleted.</td></tr>
+<tr><td>Guide validation</td><td class="wrap"><code>parser.parse_guide</code></td><td class="wrap">Guide without <code>tenants</code> is rejected (no accidental "visible to all").</td></tr>
+</tbody></table></div>
+
+<h3>C. What the model may say (grounding)</h3>
+<div class="tablewrap"><table>
+<thead><tr><th>Guardrail</th><th>Where</th><th>Effect</th></tr></thead>
+<tbody>
+<tr><td>Relevance thresholds</td><td class="wrap"><code>app_chat.retrieve</code> with <code>screen_max_distance</code>, <code>max_distance</code>, <code>other_screen_margin</code></td><td class="wrap">Weak matches count as "nothing found".</td></tr>
+<tr><td>No context → no LLM call</td><td class="wrap"><code>rag_pipeline.answer_question</code> / <code>stream_answer</code> (<code>if not sources</code>)</td><td class="wrap">Returns <code>app_chat.no_answer_message</code>; the model cannot invent an answer for off-topic questions.</td></tr>
+<tr><td>Grounding prompt</td><td class="wrap"><code>AppChatConfig.prompt_template</code> (settings.py)</td><td class="wrap">"Answer ONLY from the Context", use exact button/field names, never mention other tenants, otherwise reply "I don't know".</td></tr>
+<tr><td>System message</td><td class="wrap">YAML <code>llm.system_message</code></td><td class="wrap">Clean Markdown, stop after answering.</td></tr>
+<tr><td>Deterministic output</td><td class="wrap"><code>llm.temperature: 0</code></td><td class="wrap">Same question → same answer; less creative drift.</td></tr>
+<tr><td>Prompt-placeholder validation</td><td class="wrap"><code>AppChatConfig.prompt_has_placeholders</code></td><td class="wrap">App refuses to start with a broken prompt.</td></tr>
+<tr><td>Screen-name injection safe</td><td class="wrap"><code>app_chat.prompt_for</code></td><td class="wrap">Braces in titles replaced so they cannot break the template.</td></tr>
+</tbody></table></div>
+
+<h3>D. Input, output and errors</h3>
+<div class="tablewrap"><table>
+<thead><tr><th>Guardrail</th><th>Where</th><th>Effect</th></tr></thead>
+<tbody>
+<tr><td>Request validation</td><td class="wrap"><code>models/schemas.py</code> (<code>QueryRequest</code>, <code>ScreenContext</code> max lengths 300/500)</td><td class="wrap">Empty question → 400/422; oversized route/url rejected.</td></tr>
+<tr><td>Session id format</td><td class="wrap"><code>app_chat._SESSION_RE</code></td><td class="wrap">Anything not <code>[A-Za-z0-9_-]{8,64}</code> gets a fresh id.</td></tr>
+<tr><td>History limit</td><td class="wrap"><code>app_chat.history_messages</code> → <code>chat_memory.TrimmingChatMessageHistory</code></td><td class="wrap">Bounded prompt size; at most 10,000 sessions kept.</td></tr>
+<tr><td>Spurious "I don't know" stripped</td><td class="wrap"><code>rag_pipeline._strip_spurious_trailing_idk</code></td><td class="wrap">Removes a trailing disclaimer after a real answer.</td></tr>
+<tr><td>Errors hidden from the browser</td><td class="wrap"><code>app_chat._answer_stream</code>, <code>_answer_json</code></td><td class="wrap">Model/server details go to logs; user sees a generic message.</td></tr>
+<tr><td>Sources sanitised</td><td class="wrap"><code>app_chat.Retrieval.sources</code></td><td class="wrap">Only guide title and section are returned, no paths or tenant names.</td></tr>
+<tr><td>Attachment checks</td><td class="wrap"><code>ticket_upload.validate_upload</code>; rate limit in <code>routes._save_ticket_attachment</code></td><td class="wrap">Allowed types only, 10 MB cap, 20 uploads/min per IP.</td></tr>
+<tr><td>Audit trail</td><td class="wrap"><code>app_chat.audit</code></td><td class="wrap">Every answer logs tenant, user, route, retrieval mode and doc_ids.</td></tr>
+</tbody></table></div>
+
+<!-- 9 -->
+<h2 id="knowledge">9. Knowledge pipeline (guides → vectors)</h2>
+<ol class="steps">
+  <li><strong>Write</strong> a guide in <code>guides/&lt;module&gt;/&lt;area&gt;/&lt;screen&gt;.md</code> with YAML front matter: <code>doc_id</code>, <code>title</code>, <code>routes</code> (Angular route pattern), <code>aliases</code>, <code>tenants</code>, <code>exclude_tenants</code>, <code>roles</code>, <code>suggested_questions</code>. Rules in <code>guides/README.md</code>.</li>
+  <li><strong>Load</strong>: on every start <code>guide_loader.load_guides()</code> reads all <code>*.md</code> (except README). Duplicate <code>doc_id</code> is an error.</li>
+  <li><strong>Parse</strong>: <code>parser.parse_guide</code> validates front matter; <code>content_hash</code> fingerprints title + body + chunker version.</li>
+  <li><strong>Skip or re-embed</strong>: <code>service.ingest_guide</code> skips unchanged content; access-only edits update only the registry.</li>
+  <li><strong>Chunk</strong>: <code>parser.build_chunks</code> splits on <code>##</code> headings, keeps each FAQ <code>**Question?**</code> pair alone, prefixes "Title – Section" so the embedding knows the screen.</li>
+  <li><strong>Store</strong>: <code>index.ChunkIndex.replace_document</code> embeds and writes chunks to Chroma; <code>registry.upsert</code> makes the guide readable.</li>
+  <li><strong>Prune</strong>: guides whose file was deleted are removed, unless any guide failed to load (a typo cannot take others offline).</li>
+</ol>
+<h3>Retrieval order at question time (<code>app_chat.retrieve</code>)</h3>
+<ol class="steps">
+  <li><strong>named</strong>: the question mentions another screen's title/alias → search that guide.</li>
+  <li><strong>screen</strong>: search the guide(s) of the current route (tenant overlays first).</li>
+  <li><strong>fallback</strong>: search all visible guides; another screen wins only if closer by <code>other_screen_margin</code>.</li>
+  <li><strong>overview</strong>: vague "how does this page work?" → opening chunks of the current guide.</li>
+  <li><strong>none</strong>: nothing relevant → no-answer message, LLM not called.</li>
+</ol>
+
+<!-- 10 -->
+<h2 id="files">10. Backend file by file</h2>
+<div class="tablewrap"><table>
+<thead><tr><th>File</th><th>Product</th><th>Responsibility</th></tr></thead>
+<tbody>
+<tr><td><code>app/main.py</code></td><td><span class="tag shared">shared</span></td><td class="wrap">Creates the FastAPI app, CORS, 422 handler, mounts routers; startup logs Jira status; <code>main()</code> loads guides then runs uvicorn.</td></tr>
+<tr><td><code>app/bootstrap.py</code></td><td><span class="tag shared">shared</span></td><td class="wrap">Hot reload of config and model/vector singletons.</td></tr>
+<tr><td><code>app/api/app_chat.py</code></td><td><span class="tag admin">admin chat</span></td><td class="wrap">Admin-chat endpoints; session scoping; JSON vs SSE; hides errors; ticket hand-off.</td></tr>
+<tr><td><code>app/api/routes.py</code></td><td><span class="tag stupa">Stupa chat</span></td><td class="wrap">Stupa endpoints plus helpers reused by admin chat: <code>_save_ticket_attachment</code>, <code>_ticket_sse_lines</code>, <code>_attach_session</code>, <code>_query_response_from_ticket</code>.</td></tr>
+<tr><td><code>app/api/crawl.py</code></td><td><span class="tag stupa">Stupa chat</span></td><td class="wrap">Starts the Node crawler; receives crawled pages.</td></tr>
+<tr><td><code>app/api/dependencies.py</code></td><td><span class="tag shared">shared</span></td><td class="wrap"><code>get_rag_pipeline</code> for <code>Depends()</code>.</td></tr>
+<tr><td><code>app/config/settings.py</code></td><td><span class="tag shared">shared</span></td><td class="wrap">Typed config schema, YAML selection, secrets, default admin prompt.</td></tr>
+<tr><td><code>app/config/config*.yaml</code></td><td><span class="tag shared">shared</span></td><td class="wrap">Values: model, thresholds, auth mode, CORS, messages.</td></tr>
+<tr><td><code>app/services/auth.py</code></td><td><span class="tag admin">admin chat</span></td><td class="wrap">CallerScope, gateway HMAC check, JWT decode, tenant allow-list, service key.</td></tr>
+<tr><td><code>app/services/app_chat.py</code></td><td><span class="tag admin">admin chat</span></td><td class="wrap">Screen-aware retrieval, prompt per screen, audit log.</td></tr>
+<tr><td><code>app/services/rag_pipeline.py</code></td><td><span class="tag shared">shared</span></td><td class="wrap">LLM factory, prompt chain with history, <code>answer_question</code>, <code>stream_answer</code>, LLM error messages, answer cleanup. Admin chat passes its own retriever and prompt.</td></tr>
+<tr><td><code>app/services/embedding.py</code></td><td><span class="tag shared">shared</span></td><td class="wrap">One HuggingFace embedding model per process.</td></tr>
+<tr><td><code>app/services/chat_memory.py</code></td><td><span class="tag shared">shared</span></td><td class="wrap">In-memory, LRU-capped, trimmed history per session.</td></tr>
+<tr><td><code>app/services/ticket_workflow.py</code></td><td><span class="tag shared">shared</span></td><td class="wrap">Detects "report an issue", runs the step-by-step wizard, submits to Jira; state in <code>data/ticket_sessions</code>.</td></tr>
+<tr><td><code>app/services/ticket_upload.py</code></td><td><span class="tag shared">shared</span></td><td class="wrap">Validates and stores ticket attachments.</td></tr>
+<tr><td><code>app/services/jira_service.py</code>, <code>ticket_providers/</code></td><td><span class="tag shared">shared</span></td><td class="wrap">Jira REST integration behind a <code>TicketProvider</code> interface.</td></tr>
+<tr><td><code>app/services/vector_store.py</code>, <code>ingestion.py</code>, <code>chunking.py</code></td><td><span class="tag stupa">Stupa chat</span></td><td class="wrap">Upload/website Chroma stores and ingestion.</td></tr>
+<tr><td><code>app/services/demo_booking.py</code></td><td><span class="tag stupa">Stupa chat</span></td><td class="wrap">"Book a demo" wizard.</td></tr>
+<tr><td><code>app/knowledge/*.py</code></td><td><span class="tag admin">admin chat</span></td><td class="wrap">Guide loader, parser, registry, Chroma index, scoped service (see section 9).</td></tr>
+<tr><td><code>app/models/schemas.py</code></td><td><span class="tag shared">shared</span></td><td class="wrap">API request/response models; <code>ScreenContext</code> is admin-only.</td></tr>
+<tr><td><code>app/utils/logger.py</code></td><td><span class="tag shared">shared</span></td><td class="wrap">Logging setup from config.</td></tr>
+<tr><td><code>app/utils/rate_limit.py</code></td><td><span class="tag shared">shared</span></td><td class="wrap">In-memory sliding window limiter.</td></tr>
+<tr><td><code>docker/entrypoint.sh</code></td><td><span class="tag shared">shared</span></td><td class="wrap">Optional seeding → <code>guide_loader</code> → uvicorn on 8000.</td></tr>
+<tr><td><code>tests/test_app_chat_isolation.py</code></td><td><span class="tag admin">admin chat</span></td><td class="wrap">68 tests: tenant isolation, screen routing, auth, and validation of every real guide. Uses fake embeddings (no Ollama needed).</td></tr>
+</tbody></table></div>
+
+<!-- 11 -->
+<h2 id="gateway">11. Gateway files (backend/gateway)</h2>
+<div class="tablewrap"><table>
+<thead><tr><th>File</th><th>Responsibility</th></tr></thead>
+<tbody>
+<tr><td><code>src/routers/chatbot_router.py</code></td><td class="wrap">The three <code>/chatbot/v1/*</code> routes, each behind the existing <code>@auth_decorator()</code>. Reads <code>CHATBOT_SERVICE_URL</code> and <code>CHATBOT_INTERNAL_SECRET</code>.</td></tr>
+<tr><td><code>src/services/chatbot_service.py</code></td><td class="wrap"><code>sign_identity</code> / <code>identity_headers</code>: HMAC of tenant, user, role, timestamp. <code>ChatbotRoute.forward</code>: streams request and response (300 s timeout, <code>X-Accel-Buffering: no</code>); 503 when unconfigured, 502 when unreachable.</td></tr>
+<tr><td><code>src/middlewares/skip_gzip_middleware.py</code></td><td class="wrap">Skips gzip for <code>/chatbot/</code> so streamed tokens are not buffered.</td></tr>
+<tr><td><code>src/main.py</code></td><td class="wrap">Two additions: include <code>chatbot_router</code>, add the skip-gzip middleware.</td></tr>
+</tbody></table></div>
+<p>The HMAC message format (<code>v1\ntimestamp\ntenant\nuser\nrole</code>) must match <code>chatbot-ai/app/services/auth.py → gateway_signature</code>.</p>
+
+<!-- 12 -->
+<h2 id="frontend">12. Frontend files (Frontend/SaaS_Admin)</h2>
+<div class="tablewrap"><table>
+<thead><tr><th>File</th><th>Responsibility</th></tr></thead>
+<tbody>
+<tr><td><code>src/app/shared/tournament-chatbot-widget/tournament-chatbot-widget.component.*</code></td><td class="wrap">Floating chat UI: messages, suggested questions (<code>loadScreenInfo</code>), send, streaming display, ticket actions.</td></tr>
+<tr><td><code>…/tournament-chatbot-assistant-msg.component.*</code>, <code>streaming-*.ts</code></td><td class="wrap">Render assistant Markdown safely while it streams.</td></tr>
+<tr><td><code>…/ticket/</code></td><td class="wrap">Ticket wizard, summary and attachment upload components.</td></tr>
+<tr><td><code>src/app/core/services/tournament-rag-query/tournament-rag-query.service.ts</code></td><td class="wrap">HTTP client: <code>fetch</code> streaming, headers (<code>auth: Bearer</code>, <code>tenant</code>, <code>X-Session-Id</code>), session persistence, <code>screenInfo()</code>, attachment URL.</td></tr>
+<tr><td><code>src/app/core/services/chat-screen-context/chat-screen-context.service.ts</code></td><td class="wrap">Builds the route pattern (<code>:event_id</code> style) and URL of the current screen.</td></tr>
+<tr><td><code>src/app/modules/tms/event-organize-layout/event-organize-layout.component.html</code></td><td class="wrap">Where the widget is placed (<code>&lt;stupa-tournament-chatbot-widget&gt;</code>).</td></tr>
+<tr><td><code>src/environments/environment*.ts</code></td><td class="wrap"><code>tournamentRagQueryUrl</code> (gateway <code>/chatbot/v1/app-chat</code>). Set in <code>environment.ts</code> and <code>environment.dev.ts</code> only so far.</td></tr>
+<tr><td><code>src/assets/i18n/en.json</code></td><td class="wrap">Widget labels.</td></tr>
+</tbody></table></div>
+
+<!-- 13 -->
+<h2 id="deploy">13. Deploy &amp; CI</h2>
+<div class="tablewrap"><table>
+<thead><tr><th>File</th><th>Responsibility</th></tr></thead>
+<tbody>
+<tr><td><code>Dockerfile</code></td><td class="wrap">Python 3.13 slim + Node 20; CPU-only PyTorch; pip install; crawler + Playwright; non-root user; embedding model baked in; healthcheck on <code>/health</code>.</td></tr>
+<tr><td><code>docker-compose.yml</code></td><td class="wrap"><code>ollama</code> (LLM server), <code>ollama-pull</code> (one-shot model download), <code>backend</code>. Volumes <code>ollama-models</code> and <code>app-data</code>. Host port via <code>CHATBOT_HOST_PORT</code>.</td></tr>
+<tr><td><code>.dockerignore</code></td><td class="wrap">Keeps secrets and runtime data out of the image; explicitly keeps <code>guides/**/*.md</code>.</td></tr>
+<tr><td><code>docker/entrypoint.sh</code></td><td class="wrap">Seeds Stupa corpora on first run, loads guides on every start, starts one uvicorn worker.</td></tr>
+<tr><td><code>.github/workflows/ci.yml</code></td><td class="wrap">On push/PR: run <code>tests/test_app_chat_isolation.py</code> on Python 3.13, then build the Docker image and check guides are inside.</td></tr>
+<tr><td><code>requirements.txt</code> / <code>requirements-dev.txt</code></td><td class="wrap">Runtime deps (FastAPI, LangChain, Chroma, sentence-transformers, PyJWT…) / plus pytest.</td></tr>
+<tr><td><code>scripts/dev.ps1</code>, <code>dev.bat</code></td><td class="wrap">Local start helpers.</td></tr>
+</tbody></table></div>
+
+<!-- 14 -->
+<h2 id="limits">14. Known limits (be ready to say these)</h2>
+<div class="note warn">
+  <p><strong>Single worker.</strong> Chat history (<code>chat_memory.py</code>) and the Chroma store are per process; scaling out needs sticky sessions or Redis-backed history.</p>
+  <p><strong>No dedicated prompt-injection or PII filter.</strong> Protection comes from grounding (no context → no LLM call, "answer only from Context"), strict tenant scoping of what the model can see, and temperature 0.</p>
+  <p><strong>No rate limit on questions.</strong> Only attachment uploads are rate-limited; question volume is bounded by gateway auth.</p>
+  <p><strong>Guides are written by hand</strong> from the Angular code; when a screen changes, its guide must be updated (workflow in <code>guides/README.md</code>).</p>
+  <p><strong>Stale comment:</strong> the YAML comment "one Chroma collection per tenant" is outdated; there is one shared collection and the registry decides access.</p>
+</div>
+
+<!-- 15 -->
+<h2 id="questions">15. Questions you may get, with short answers</h2>
+<dl class="qa">
+  <dt>How do you stop tenant A from seeing tenant B's content?</dt>
+  <dd>The tenant comes only from the gateway-signed identity (or verified JWT). The registry lists which tenants may read each guide; Chroma is queried only for those doc_ids, and every hit is checked again in <code>_checked_hit</code>. 68 tests cover this.</dd>
+  <dt>Why a gateway signature instead of passing the JWT?</dt>
+  <dd>The gateway already verifies the login token. Signing tenant/user/role with a shared secret means the chatbot needs no public key and cannot be called directly with a forged identity; the 60-second timestamp blocks replays.</dd>
+  <dt>How does it know which screen the user is on?</dt>
+  <dd>The widget sends the Angular route pattern; guides declare <code>routes</code> in front matter; <code>guides_for_screen</code> matches the pattern, or the URL as a fallback.</dd>
+  <dt>What happens for an unrelated question?</dt>
+  <dd>No passage passes the distance thresholds, so the LLM is not called and the user gets the configured no-answer message, which points to "report an issue".</dd>
+  <dt>Why a 3B model?</dt>
+  <dd>It runs on CPU within about 4 GB RAM, answers are grounded in short retrieved passages, and temperature 0 keeps them consistent. Swapping models is one YAML value plus <code>OLLAMA_MODEL</code>.</dd>
+  <dt>How are guides updated?</dt>
+  <dd>Edit the Markdown and restart (or redeploy). The loader re-embeds only changed guides by content hash and removes deleted ones.</dd>
+  <dt>Where would I add a new endpoint?</dt>
+  <dd>Admin chat: <code>app/api/app_chat.py</code> with <code>Depends(require_scope)</code>; logic in <code>app/services/</code>; expose it through a new route in the gateway's <code>chatbot_router.py</code>.</dd>
+  <dt>How is a support ticket created?</dt>
+  <dd>Messages like "report an issue" are caught by <code>ticket_workflow.try_process</code> before RAG; the wizard collects fields and attachments, then <code>jira_provider.create_ticket</code> calls the Jira REST API.</dd>
+</dl>
+</main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'default'
+  });
+</script>
+</body>
+</html>

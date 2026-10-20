@@ -39,6 +39,10 @@ source_files:
 
 This guide describes the **Playing Order** step of an event in the Stupa Event Management System (admin panel). On this page the organiser chooses, for each Teams category of the event, which playing order format (team match format) is used. It also explains what the choice affects and what to do when something is missing.
 
+## Where to find it
+
+Open **Event** from the sidebar, then click **Playing Order** in the row of setup steps at the top of the page.
+
 ## Playing Order page: where it is and what it is for
 
 - Page address: `/tms/event-settings/playing-order/<event id>`, for example `/tms/event-settings/playing-order/1358`.
@@ -70,7 +74,7 @@ Notes:
 - Each category stores its own format. Changing the tab shows the format of that category.
 - Selecting a radio button alone does not save anything. Click **Update**.
 - If you click **Update** without choosing a format, the message is "Please Select Playing Format".
-- When you switch to a category that has no format yet, click a format's radio button before clicking **Update**. Do not click Update while no radio button is filled.
+- When you toggle to a category that has no format yet, click a format's radio button before clicking **Update**. Do not click Update while no radio button is filled.
 
 ## Playing Order page: previewing a format
 
@@ -114,7 +118,7 @@ How to read the preview:
 ## Where playing order formats come from
 
 - Formats are created and published by your organisation in **Playing Order Configuration** ("Customize Playing Order as per your requirement"), found in the admin manage menu at `/admin/manage/playing-orders`. There a format is added with **Add Playing Order**, given a **Format Name**, its matches and an optional **Golden Match Order** ("Add a golden match order that is only a part of the created playing order. (Performed on tie between the teams)"), and saved with **Save** or **Publish**.
-- Only formats whose **Publish** switch is on are listed on this page. A saved but unpublished format does not appear.
+- Only formats whose **Publish** toggle is on are listed on this page. A saved but unpublished format does not appear.
 - A deleted format does not appear.
 - The page loads the 100 newest formats of the organisation and then shows the published ones among them. A published format that is older than the 100 newest formats does not appear.
 - Formats belong to the organisation, not to the event. The same format can be used in many events.
@@ -125,7 +129,7 @@ How to read the preview:
 - **"No record found" – "Add Categories in this event to begin with Playing Order."** with a **Go to Event** button: the event has no categories at all. Click **Go to Event** and add categories in the **Add Class/Category** panel of the Details step.
 - **"Create Event to begin with Playing Order."**: the event has not been saved yet. Create it on the Details step first.
 - **"No category has been added to this event. Please add categories in the Event Details tab first."**: the event has categories, but none of them is a **Teams** category. This page only works with Teams categories. If the event should have team matches, add a Teams category on the Details step.
-- **"No formats were found. You can create new formats by clicking the button below."**: the organisation has no published playing order format. Click the button below the message to open Playing Order Configuration, create a format and switch on **Publish**, then return to this page.
+- **"No formats were found. You can create new formats by clicking the button below."**: the organisation has no published playing order format. Click the button below the message to open Playing Order Configuration, create a format and toggle on **Publish**, then return to this page.
 
 ## Playing Order page: messages when saving and what they mean
 
@@ -156,7 +160,7 @@ When you click **Update** or **Reset**, the server's message appears at the bott
 
 **Why are my Singles or Doubles categories missing?** Only Teams categories use a playing order and are listed here.
 
-**Why is my format not in the list?** Only published formats are listed. Switch on **Publish** for it in Playing Order Configuration. Deleted formats, and formats older than the organisation's 100 newest, are not shown.
+**Why is my format not in the list?** Only published formats are listed. Toggle on **Publish** for it in Playing Order Configuration. Deleted formats, and formats older than the organisation's 100 newest, are not shown.
 
 **Why does the page say no category has been added when my event has categories?** None of the categories is a Teams category.
 

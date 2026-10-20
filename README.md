@@ -1,6 +1,6 @@
 # RAG Backend
 
-Production-style FastAPI service for document ingestion and retrieval-augmented Q&A. Configuration lives in `app/config/config.yaml`; secrets (e.g. `NVIDIA_API_KEY`) load from `.env` / the environment via Pydantic Settings.
+Production-style FastAPI service for document ingestion and retrieval-augmented Q&A. Configuration lives in `app/config/config.yaml`; secrets load from `.env` / the environment via Pydantic Settings.
 
 ## Stack (technologies & models)
 
@@ -13,15 +13,13 @@ Production-style FastAPI service for document ingestion and retrieval-augmented 
 | **FastAPI** / **Uvicorn** | HTTP API (`/upload`, `/query`, `/stupa-chat`, crawl hooks, etc.). |
 | **MarkItDown** | Converts uploads (PDF, Office, …) to text before chunking. |
 | **Ollama** (optional) | Local LLM host when `llm.provider` is `local` — model name from `llm.local_model_name`. |
-| **NVIDIA NIM** (optional) | Remote chat when `llm.provider` is `nvidia` — model from `llm.model`. |
 
 **ML models in `config.yaml` (typical):**
 
 | Model id | Purpose |
 |----------|---------|
-| `sentence-transformers/all-mpnet-base-v2` | Embeddings for all Chroma ingestion and similarity search. |
-| `llm.local_model_name` (e.g. `llama3.1:8b-instruct-q4_K_M`) | Chat model when using **local** / Ollama. |
-| `llm.model` (e.g. NVIDIA Nemotron id) | Chat model when using **nvidia** provider. |
+| `intfloat/multilingual-e5-base` | Embeddings for all Chroma ingestion and similarity search (multilingual, 512-token limit). |
+| `llm.local_model_name` (e.g. `qwen3.5:4b-q4_K_M`) | Chat model when using **local** / Ollama. `llm.local_reasoning: false` turns off "thinking" for models that have it. |
 
 ## Layout
 
@@ -35,14 +33,6 @@ Production-style FastAPI service for document ingestion and retrieval-augmented 
 python -m venv .venv
 .venv\Scripts\activate   # Windows
 pip install -r requirements.txt
-```
-
-### NVIDIA API (default)
-
-In `config.yaml`, `llm.provider` is `nvidia` with `model` and `base_url` for [NVIDIA NIM / integrate API](https://integrate.api.nvidia.com). Set the key in `.env`:
-
-```bash
-NVIDIA_API_KEY=nvapi-...
 ```
 
 ### Local LLM (Ollama)
@@ -157,15 +147,48 @@ curl -X POST "http://127.0.0.1:8000/api/stupa-chat/attachment?session_id=<id>" \
 
 JSON responses include `ticket_flow` and `ticket_workflow`; SSE streams emit `ticket_flow` / `ticket_workflow` events (like `demo_flow`).
 
+## Chat store (MongoDB)
+
+Every admin-chat conversation is stored in MongoDB, one document per tenant and session (`app/services/chat_store.py`).
+
+- Database `stupa_chatbot` (`chat_store.database`), collection `chat_sessions`, one document per (tenant, session_id):
+  - tenant, session_id, user_id, role, started_at, last_message_at, message_count, not_found_count, error_count, last route and screen;
+  - `messages` – every question in order: question, language, answer the user saw, outcome (`answered` / `not_found` / `error`), route, screen title, sport, retrieval mode, guide ids and sections, model, timings, created_at. The newest `chat_store.max_messages_per_session` (default 500) are kept; MongoDB documents are limited to 16 MB.
+- A session is removed by MongoDB itself `chat_store.retention_days` (default 180) after its last message (TTL index).
+- A session's messages are kept in memory and written in one update when:
+  - it has been idle `idle_minutes` (default 30);
+  - the widget reports it closed (`POST /api/app-chat/session/close`, gateway `/chatbot/v1/app-chat/session/close`; sent when the chat panel is closed or the page is left);
+  - it holds `flush_at_messages` messages (default 50);
+  - the chatbot shuts down;
+  - and, while still open, every `safety_flush_minutes` (default 10), so a crash loses at most that much.
+  A user who comes back to a written session is appended to the same document. If MongoDB is down the messages stay in memory and are retried.
+- Writing happens in the background; if MongoDB is down the chat still answers and the log shows a warning.
+- On in `config.yaml` (development), off in `config.production.yaml` until the server has MongoDB. `CHAT_STORE_MONGODB_URI` overrides the URI.
+
+Local MongoDB without installing a service (Windows, no admin rights): download the MongoDB Community zip, then
+
+```powershell
+mongod.exe --dbpath C:\Users\<you>\mongodb\data --bind_ip 127.0.0.1 --port 27017 --logpath C:\Users\<you>\mongodb\logs\mongod.log
+```
+
+Look at the data, for example with MongoDB Compass or `mongosh`:
+
+```js
+use stupa_chatbot
+db.chat_sessions.find({ tenant: "staging" }).sort({ last_message_at: -1 })           // a tenant's sessions, newest first
+db.chat_sessions.find({ tenant: "staging", "messages.outcome": "not_found" })         // sessions with unanswered questions
+```
+
 ## Edge cases
 
 - Invalid or incomplete YAML: process fails at startup with a clear validation error.
 - Empty upload or unreadable binary: `400` with a structured `detail` payload.
-- Missing `NVIDIA_API_KEY` when `provider` is `nvidia`: `503` on `/query`.
 
 ## Admin-app chat (`/app-chat`)
 
 Screen-aware assistant for the admin app. It is separate from `/stupa-chat` and `/query` and uses its own storage (`app_chat.persist_directory`).
+
+Code map (which file does what: APIs, config, models, guardrails, gateway and frontend files): open `docs/architecture-guide.html` in a browser.
 
 - **Through the API gateway (production, `auth.mode: gateway`):** the frontend calls the gateway at `/chatbot/v1/app-chat` (streams when `Accept: text/event-stream`), `/chatbot/v1/app-chat/attachment` and `/chatbot/v1/knowledge/screen`. The gateway verifies the login token (`@auth_decorator`) and forwards to `/api/...` here with `X-Chat-Tenant`, `X-Chat-User`, `X-Chat-Role`, `X-Chat-Timestamp` and an HMAC-SHA256 `X-Chat-Signature` keyed with `CHATBOT_INTERNAL_SECRET` (same value on both sides; gateway also needs `CHATBOT_SERVICE_URL`). In this mode a login token sent directly is refused, so the chatbot must not be reachable except from the gateway.
 - **Direct (local development, `auth.mode: jwt`):** every request needs the login JWT in the `auth` (or `Authorization`) header. The tenant is read from the verified token (`auth.tenant_claims`); a `tenant` header that disagrees is rejected. Nothing in the request body can set the tenant.

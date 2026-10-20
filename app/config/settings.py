@@ -116,6 +116,8 @@ class EmbeddingConfig(BaseModel):
     model_name: str
     model_kwargs: dict[str, Any] = Field(default_factory=dict)
     encode_kwargs: dict[str, Any] = Field(default_factory=dict)
+    query_prefix: str = ""
+    passage_prefix: str = ""
 
 
 class VectorStoreConfig(BaseModel):
@@ -203,46 +205,163 @@ class CorsConfig(BaseModel):
 class AppChatConfig(BaseModel):
     """Admin-app chat: screen guides stored per tenant, screen-aware retrieval."""
 
-    persist_directory: str = "data/chroma_kb"
+    # One folder per embedding model: vectors of two models must never share a store.
+    persist_directory: str = "data/chroma_kb_me5"
     # One collection for every tenant; access is decided by the document registry.
     collection_name: str = "knowledge_chunks"
     registry_file: str = "document_registry.json"
     # Guide Markdown files, loaded at every backend start (app.knowledge.guide_loader).
     guides_directory: str = "guides"
+    # Multilingual, so questions in any language find the English guides.
+    # Changing it needs a new persist_directory (the guides are re-embedded there).
+    embedding_model: str = "intfloat/multilingual-e5-base"
+    embedding_query_prefix: str = "query: "
+    embedding_passage_prefix: str = "passage: "
     top_k: int = Field(default=5, ge=1, le=20)
-    # Chroma distance (lower is closer). Hits above the limit count as no match.
-    # Measured with all-mpnet-base-v2 on the Event Details guide: right answers
-    # scored 0.35-1.33, unrelated questions 1.37 and above.
-    # Limit for the screen the user is on (lenient: the model still has to find
-    # the answer in the passage).
-    screen_max_distance: float = Field(default=1.4, gt=0)
+    # Chroma distance (squared L2 on normalized vectors, lower is closer). Hits above
+    # the limit count as no match. Measured with multilingual-e5-base on questions in
+    # 7 languages: right answers 0.32-0.51, off-topic questions 0.38-0.42. The ranges
+    # overlap, so the limits only drop clearly unrelated text; the prompt makes the
+    # model say when the passages do not answer the question.
+    # Limit for the screen the user is on.
+    screen_max_distance: float = Field(default=0.55, gt=0)
     # Limit for guides of other screens, and for guides named in the question.
-    max_distance: float = Field(default=1.35, gt=0)
-    # Another screen's guide wins over the current one only if this much closer.
-    other_screen_margin: float = Field(default=0.15, ge=0)
-    # all-mpnet-base-v2 reads ~384 tokens, so guide chunks stay small.
+    max_distance: float = Field(default=0.52, gt=0)
+    # Passages are ranked together; these boosts lower the distance of the current
+    # screen's guides and of guides named in the question. Lower is closer.
+    screen_boost: float = Field(default=0.03, ge=0)
+    topic_boost: float = Field(default=0.05, ge=0)
+    # How many passages from all guides are ranked before the boosts are applied.
+    candidate_pool: int = Field(default=20, ge=5, le=100)
+    # Hybrid search: keyword (BM25) results join the semantic candidates, so exact
+    # labels and message texts are found. keyword_boost lowers the distance of the best
+    # keyword match by that much, the second by half, the third by a third, and so on.
+    keyword_search: bool = True
+    keyword_pool: int = Field(default=10, ge=0, le=50)
+    keyword_boost: float = Field(default=0.03, ge=0)
+    # Cross-encoder rerank of the candidates left after the limits. Its score divided by
+    # rerank_scale is used as the distance, so the boosts above still decide near ties.
+    rerank: bool = False
+    rerank_model: str = "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1"
+    rerank_pool: int = Field(default=12, ge=1, le=50)
+    rerank_scale: float = Field(default=10.0, gt=0)
+    # When retrieval is weak (nothing within the limits, or the best passage farther than
+    # rewrite_above), the model rewrites the question as an English search query and the
+    # search runs again. Costs one extra model call, only for those questions.
+    rewrite_weak_questions: bool = False
+    rewrite_above: float = Field(default=0.47, gt=0)
+    # When a question about the modules gets no answer, the closest suggested questions of
+    # the guides are offered ("Did you mean"). Only those within this distance; a question
+    # with none that close is not about the modules and gets the plain no-answer message.
+    suggest_max_distance: float = Field(default=0.27, gt=0)
+    suggest_count: int = Field(default=3, ge=0, le=6)
+    # Where each guide's screen is in the app, by doc_id prefix (the longest prefix wins).
+    # Added to every passage, so an answer from another screen says where to go.
+    screen_locations: dict[str, str] = Field(
+        default_factory=lambda: {
+            "tms.event-settings": "the Event page (open Event from the sidebar)",
+            "tms.event-settings.create-event": "the Event page, Details step (open Event from the sidebar)",
+            **{
+                f"tms.event-settings.{key}": f"the {step} step of the Event page (open Event from the sidebar, then click {step} in the setup steps at the top)"
+                for key, step in {
+                    "registration": "Registration", "playing-order": "Playing Order",
+                    "draw-settings": "Draw Settings", "payment-invoice": "Payment & Invoice",
+                    "umpire-settings": "Umpire Settings", "referee-settings": "Referee Settings",
+                    "day-planner": "Day Planner", "game-play": "Game Play",
+                    "event-accommodation": "Accommodation", "event-travel": "Travel",
+                    "print-settings": "Print Settings", "access-control": "Access-Control",
+                    "documents-sponsors": "Documents & Sponsors",
+                }.items()
+            },
+            "tms.players": "the Players page (open Players from the sidebar)",
+            "tms.fixture": "the Fixtures/Results page (open Fixtures/Results from the sidebar)",
+            "tms.schedular": "the Schedule page (open Schedule from the sidebar)",
+            "tms.score-stream": "the Scoring and Streaming page (open Scoring and Streaming from the sidebar)",
+            "tms.awards": "the Awards and Standing page (open Awards and Standing from the sidebar)",
+            "tms.printing": "the Printing page (open Printing from the sidebar)",
+            "tms.ranking": "the Rankings page (open Rankings from the sidebar)",
+            "tms.display-setting": "the Display Settings page (open Display Settings from the sidebar)",
+            "tms.leaderboard": "the Leaderboard page (open Leaderboard from the sidebar)",
+            "tms.export-share-results": "the Export/Share Results page (open Export/Share Results from the sidebar)",
+            "tms.navigation": "the sidebar (it lists every module)",
+        },
+    )
+    did_you_mean_message: str ="I couldn't find an exact answer to that. Did you mean:"
+    # The same intro per question language (ISO 639-1); others get did_you_mean_message.
+    did_you_mean_messages: dict[str, str] = Field(
+        default_factory=lambda: {
+            "de": "Dazu habe ich keine genaue Antwort gefunden. Meintest du:",
+            "fr": "Je n'ai pas trouvé de réponse exacte. Vouliez-vous dire :",
+            "es": "No encontré una respuesta exacta. ¿Quisiste decir:",
+            "it": "Non ho trovato una risposta esatta. Intendevi:",
+            "pt": "Não encontrei uma resposta exata. Você quis dizer:",
+            "nl": "Ik heb geen exact antwoord gevonden. Bedoelde je:",
+            "sv": "Jag hittade inget exakt svar. Menade du:",
+            "da": "Jeg fandt ikke et præcist svar. Mente du:",
+            "no": "Jeg fant ikke et nøyaktig svar. Mente du:",
+            "cs": "Nenašel jsem přesnou odpověď. Měli jste na mysli:",
+            "pl": "Nie znalazłem dokładnej odpowiedzi. Czy chodziło Ci o:",
+            "hi": "मुझे इसका सटीक उत्तर नहीं मिला। क्या आपका मतलब था:",
+        },
+    )
+    # multilingual-e5-base reads 512 tokens; 1500-character chunks stay under it.
     chunk_size: int = Field(default=1500, ge=200)
     chunk_overlap: int = Field(default=150, ge=0)
     # Earlier messages resent with each question; fewer keeps follow-ups fast.
     history_messages: int = Field(default=6, ge=0, le=30)
-    no_answer_message: str = (
-        "I couldn't find that in the guides available to you. "
-        "Say **report an issue** if you want to raise a support ticket."
+    no_answer_message: str = "I couldn't find that in the guides available to you."
+    # The same message per question language (ISO 639-1); others get no_answer_message.
+    no_answer_messages: dict[str, str] = Field(
+        default_factory=lambda: {
+            "de": "Dazu habe ich in den für dich verfügbaren Anleitungen nichts gefunden.",
+            "fr": "Je n'ai rien trouvé à ce sujet dans les guides qui vous sont accessibles.",
+            "es": "No encontré esa información en las guías disponibles para ti.",
+            "it": "Non ho trovato queste informazioni nelle guide a tua disposizione.",
+            "pt": "Não encontrei isso nos guias disponíveis para você.",
+            "nl": "Ik heb dat niet gevonden in de handleidingen die voor jou beschikbaar zijn.",
+            "sv": "Jag hittade inte det i de guider som är tillgängliga för dig.",
+            "da": "Jeg kunne ikke finde det i de vejledninger, du har adgang til.",
+            "no": "Jeg fant ikke det i veiledningene du har tilgang til.",
+            "cs": "V návodech, které máte k dispozici, jsem to nenašel.",
+            "pl": "Nie znalazłem tego w przewodnikach dostępnych dla Ciebie.",
+            "hi": "आपके लिए उपलब्ध गाइड में मुझे यह जानकारी नहीं मिली।",
+        },
     )
     prompt_template: str = Field(
         default=(
             "You are the in-app assistant of an event management system.\n"
             "The user is currently on the screen: {screen}.\n"
-            "Answer ONLY from the Context below. Each passage names the screen "
-            "it describes. If the passage is about a different screen than the "
-            "one the user is on, say which screen it is done on.\n"
+            "The organisation's sport is: {sport}. Passages that name sports apply "
+            "only to those sports; ignore passages written for another sport.\n"
+            "Answer ONLY from the Context below. Each passage says where its screen is in the "
+            "app and whether it is the screen the user is on. Never tell the user to go to "
+            "the screen they are on, and never say a feature is on the user's screen when its "
+            "passage says it is not.\n"
+            "Prefer passages from the guide of the user's current screen. Use a passage from another "
+            "screen only when no current-screen passage answers the Question, and then begin the answer "
+            "with where it is, from that passage's 'Where it is in the app', for example: This is on the "
+            "Fixtures/Results page: open Fixtures/Results from the sidebar. Then give its steps. Never copy steps from "
+            "a different page as if they were on the current screen.\n"
             "Use the exact button and field names from the Context and keep steps in "
             "the order the Context gives them. Never mention other organisations or "
             "tenants.\n"
-            "Write only the answer, in plain sentences or a short list. Do not "
+            "For a how-to question, give every step and every setting the Context describes for that task, in the order the page shows them. Do not reduce it to one sentence.\n"
+            "Number the steps when there are several. Describe where to go as: open the section from the sidebar, then click the tab, for example: Open Score and Streaming from the sidebar, then click the Streaming tab.\n"
+            "Call on and off controls toggles. Never write the word switch.\n"
+            "When the user reports a problem (something does not work, is missing or is refused), first give the likely cause the Context states, then the numbered steps to fix it. Never give a cause the Context does not state, and never guess general causes such as the internet connection.\n"
+            "Never mention the Context, passages or guides in the answer.\n"
+            "If the Question could mean two different features of the Context, answer the more likely one and end with one short question asking which the user meant. Otherwise do not ask questions.\n"
+            "Write the answer in plain sentences, numbered steps or a short list. Do not "
             "repeat passage titles and do not add headings.\n"
-            "If the Context does not answer the Question, reply with exactly: "
-            "I don't know\n\n"
+            "Write the entire answer in {language}, even though the Context is in "
+            "English. Keep URLs, numbers and exact values unchanged.\n"
+            "Do not repeat the Question and do not put the answer in a code block.\n"
+            "If the Context does not answer the Question, reply with exactly "
+            "NO_ANSWER and nothing else: no explanation, no other words.\n"
+            "Never name an API, endpoint, HTTP method, URL path, gateway route, backend service or database table, and never show a route such as tms/... or /v1/... "
+            "Describe what the user clicks and fills in on the screen instead. If the Context only describes an API call, answer with the screen steps or reply NO_ANSWER.\n"
+            "Never write code, scripts, commands, queries or programming solutions, even when asked for them. Answer only about the event management system; reply NO_ANSWER to general knowledge, programming exercises and any other off-topic request.\n"
+            "Never translate NO_ANSWER.\n\n"
             "Context:\n{context}\n\nQuestion:\n{question}\n\n"
             "Answer (concise Markdown):"
         ),
@@ -251,7 +370,7 @@ class AppChatConfig(BaseModel):
     @field_validator("prompt_template")
     @classmethod
     def prompt_has_placeholders(cls, v: str) -> str:
-        for name in ("{context}", "{question}", "{screen}"):
+        for name in ("{context}", "{question}", "{screen}", "{language}"):
             if name not in v:
                 raise ValueError(f"app_chat.prompt_template must include {name}")
         return v
@@ -260,26 +379,46 @@ class AppChatConfig(BaseModel):
 class LLMConfig(BaseModel):
     provider: str
     temperature: float = Field(ge=0.0, le=2.0)
-    model: str
-    base_url: str
     system_message: Optional[str] = None
-    missing_api_key_message: str = "Set NVIDIA_API_KEY in .env or your environment."
-    top_p: Optional[float] = Field(default=None, ge=0.0, le=1.0)
-    max_tokens: Optional[int] = Field(default=None, ge=1)
-    frequency_penalty: float = Field(default=0.0, ge=-2.0, le=2.0)
-    presence_penalty: float = Field(default=0.0, ge=-2.0, le=2.0)
     local_base_url: str = "http://localhost:11434"
     local_model_name: str = "llama3.2:1b"
     # How long Ollama keeps the model in memory after a request.
     local_keep_alive: str = "30m"
+    # Thinking models (qwen3.5) reason before answering unless told not to; on CPU
+    # that takes minutes per answer. None leaves it to the model's default.
+    local_reasoning: Optional[bool] = False
 
     @field_validator("provider")
     @classmethod
     def provider_allowed(cls, v: str) -> str:
-        allowed = {"nvidia", "local", "ollama"}
+        allowed = {"local", "ollama"}
         if v not in allowed:
             raise ValueError(f"llm.provider must be one of {sorted(allowed)}")
         return v
+
+
+class ChatStoreConfig(BaseModel):
+    """MongoDB record of admin-chat conversations, one document per tenant and session (app/services/chat_store.py)."""
+
+    enabled: bool = False
+    # CHAT_STORE_MONGODB_URI overrides this (it may hold a password).
+    mongodb_uri: str = "mongodb://127.0.0.1:27017"
+    database: str = "stupa_chatbot"
+    # A session is removed by MongoDB this long after its last message (TTL index); 0 keeps everything.
+    retention_days: int = Field(default=180, ge=0)
+    # Newest messages kept in one session document (MongoDB documents are limited to 16 MB).
+    max_messages_per_session: int = Field(default=500, ge=1)
+    # A session's messages are kept in memory and written to MongoDB in one go when:
+    # it has been idle this long, the widget sends "session closed", it holds
+    # flush_at_messages messages, or the chatbot shuts down.
+    idle_minutes: float = Field(default=30, gt=0)
+    flush_at_messages: int = Field(default=50, ge=1)
+    # Safety write for sessions still open, so a crash loses at most this much.
+    safety_flush_minutes: float = Field(default=10, gt=0)
+    # How often the writer checks for idle and overdue sessions.
+    check_seconds: float = Field(default=30, gt=0)
+    # Memory guard: above this many unwritten messages everything is written early.
+    max_buffered_messages: int = Field(default=10000, ge=1)
 
 
 class LoggingConfig(BaseModel):
@@ -327,6 +466,7 @@ class Settings(BaseSettings):
     auth: AuthConfig = Field(default_factory=AuthConfig)
     cors: CorsConfig = Field(default_factory=CorsConfig)
     app_chat: AppChatConfig = Field(default_factory=AppChatConfig)
+    chat_store: ChatStoreConfig = Field(default_factory=ChatStoreConfig)
     llm: LLMConfig
     logging: LoggingConfig
     messages: MessagesConfig
@@ -356,10 +496,12 @@ class Settings(BaseSettings):
         validation_alias="KNOWLEDGE_SERVICE_KEY",
     )
 
-    nvidia_api_key: Optional[SecretStr] = Field(
+    # Overrides chat_store.mongodb_uri.
+    chat_store_mongodb_uri: Optional[SecretStr] = Field(
         default=None,
-        validation_alias="NVIDIA_API_KEY",
+        validation_alias="CHAT_STORE_MONGODB_URI",
     )
+
     jira_api_token: Optional[SecretStr] = Field(
         default=None,
         validation_alias="JIRA_API_TOKEN",

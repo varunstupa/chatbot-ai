@@ -56,6 +56,29 @@ class ChunkIndex:
         )
         return [(doc.page_content or "", doc.metadata or {}, float(score)) for doc, score in results]
 
+    def total(self) -> int:
+        return self._collection.count()
+
+    def all_chunks(self) -> list[tuple[str, str, dict]]:
+        """Every chunk: (chunk_id, text, metadata). For the keyword index."""
+        got = self._collection.get(include=["documents", "metadatas"])
+        return [
+            (cid, text or "", meta or {})
+            for cid, text, meta in zip(got.get("ids") or [], got.get("documents") or [], got.get("metadatas") or [])
+        ]
+
+    def chunks_with_distance(self, text: str, chunk_ids: list[str]) -> list[tuple[str, dict, float]]:
+        """The given chunks with their distance to the query, in the unit query() uses (squared L2)."""
+        if not chunk_ids:
+            return []
+        got = self._collection.get(ids=chunk_ids, include=["documents", "metadatas", "embeddings"])
+        q = self._store._embedding_function.embed_query(text)
+        out = []
+        for doc, meta, emb in zip(got.get("documents") or [], got.get("metadatas") or [], got.get("embeddings")):
+            distance = sum((float(a) - float(b)) ** 2 for a, b in zip(q, emb))
+            out.append((doc or "", meta or {}, distance))
+        return out
+
     def document_chunks(self, doc_id: str) -> list[tuple[str, dict]]:
         """All chunks of one document in reading order."""
         got = self._collection.get(where={"doc_id": doc_id}, include=["documents", "metadatas"])

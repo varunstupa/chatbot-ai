@@ -3,7 +3,7 @@ uvicorn[standard]
 langchain
 langchain-core
 langchain-community
-langchain-ollama
+langchain-ollama>=1.1.0  # `reasoning` (thinking off) for qwen3.5
 langchain-chroma
 langchain-openai
 langchain-text-splitters
@@ -15,5 +15,7 @@ python-multipart
 markitdown[all]
 pyyaml
 pyjwt[crypto]
+lingua-language-detector
+pymongo>=4.9  # AsyncMongoClient: chat store
 httpx
 

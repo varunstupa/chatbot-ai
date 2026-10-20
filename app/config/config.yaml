@@ -11,23 +11,29 @@ paths:
 
 # Re-upload / re-ingest docs after changing chunk_* so Chroma matches.
 chunking:
-  chunk_size: 3000
-  chunk_overlap: 500
+  # multilingual-e5-base reads at most 512 tokens; 1500 characters with 150 overlap
+  # stays inside the limit, so no part of a chunk is cut off during embedding.
+  chunk_size: 1500
+  chunk_overlap: 150
 
 embedding:
-  model_name: "sentence-transformers/all-mpnet-base-v2"
+  model_name: "intfloat/multilingual-e5-base"
   model_kwargs: {}
-  encode_kwargs: {}
+  encode_kwargs:
+    normalize_embeddings: true
+  # E5 models are trained with these prefixes; they are added to every text.
+  query_prefix: "query: "
+  passage_prefix: "passage: "
 
 vector_store:
   collection_name: "rag_collection"
-  persist_directory: "data/chroma"
+  persist_directory: "data/chroma_e5"
   top_k: 4
 
 # Crawled pages (e.g. stupasports.ai) only — separate Chroma persist path.
 website_vector_store:
   collection_name: "stupasports_website"
-  persist_directory: "data/chroma_website"
+  persist_directory: "data/chroma_website_e5"
   top_k: 4
 
 # Stupa web client: RAG corpus — website = crawled Chroma only.
@@ -111,25 +117,51 @@ cors:
     - "http://127.0.0.1:3000"
 
 app_chat:
-  persist_directory: "data/chroma_kb"
+  # One folder per embedding model (vectors of two models must never share a store).
+  persist_directory: "data/chroma_kb_me5"
   collection_name: "knowledge_chunks"        # single collection for all tenants
   registry_file: "document_registry.json"    # per-document access, in persist_directory
   guides_directory: "guides"                 # guide Markdown, loaded at every start
+  # Multilingual: questions in any language find the English guides.
+  embedding_model: "intfloat/multilingual-e5-base"
   top_k: 3
   history_messages: 6
   # Chroma distance (lower is closer); hits above the limit count as no match.
-  screen_max_distance: 1.4   # guide of the screen the user is on
-  max_distance: 1.35         # guides of other screens
-  other_screen_margin: 0.15  # how much closer another screen must be to win
+  # Calibrated for multilingual-e5-base (right answers 0.32-0.51 in 7 languages).
+  screen_max_distance: 0.55  # guide of the screen the user is on
+  max_distance: 0.52         # guides of other screens
+  screen_boost: 0.03         # lower distance for the current screen's guides
+  topic_boost: 0.05          # lower distance for guides named in the question
+  candidate_pool: 20         # passages from all guides ranked before the boosts
+  # Hybrid search: keyword (BM25) matches join the semantic candidates, so exact screen
+  # labels and message texts are found. Measured: top-1 41/47 -> 44/47 on the baseline.
+  keyword_search: true
+  keyword_pool: 10           # keyword matches added to the candidates
+  keyword_boost: 0.03        # lower distance of the best keyword match (2nd: half, ...)
+  # Cross-encoder rerank: off. mmarco-mMiniLMv2 lowered the baseline (47/47 -> 42/47) and
+  # added ~0.7 s; bge-reranker-v2-m3 takes ~9 s on CPU. Re-test before turning it on.
+  rerank: false
+  rerank_model: "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1"
+  # A question that finds nothing close is rewritten by the model as an English search
+  # query and searched again (~1 s extra, only for those questions).
+  rewrite_weak_questions: true
+  rewrite_above: 0.47
+  # "Did you mean": a question about the modules that gets no answer is offered the closest
+  # suggested questions of the guides. A question outside the modules (checked by the
+  # model, ~1 s, only for unanswered questions) keeps the plain no-answer message.
+  suggest_count: 3           # 0 turns it off
+  suggest_max_distance: 0.27
   chunk_size: 1500
   chunk_overlap: 150
 
 llm:
   # Use "local" or "ollama" for Ollama → local_model_name must match `ollama list`.
   provider: "local"
+  # Tested 2026-10-20 (16 questions x 2 runs per value): accuracy 0 -> 95.8%, 0.2 -> 92.7%,
+  # 0.5 -> 95.8%, 0.8 -> 92.7% (1 answer = 3%, so no real gain), while answers to the same
+  # question varied 0% / 30% / 54% / 60% and above 0 the model broke the NO_ANSWER rule more
+  # often. Keep 0 for guide answers. The rewrite and topic check always run at 0 (get_utility_llm).
   temperature: 0
-  model: "nvidia/llama-3.1-nemotron-nano-8b-v1"  # Only used when provider: nvidia
-  base_url: "https://integrate.api.nvidia.com/v1"
   system_message: |
     You must respond in strict Markdown format.
 
@@ -140,16 +172,20 @@ llm:
     - Do not output partial or broken Markdown
     - Do not switch formats mid-response
     - After you finish answering, stop. Do not append "I don't know" or similar if you already answered.
-  missing_api_key_message: "Set NVIDIA_API_KEY in .env or your environment."
-  top_p: 0.95
-  # Ignored for provider nvidia (LangChain maps max_tokens → that).
-  max_tokens: null
-  frequency_penalty: 0.0
-  presence_penalty: 0.0
   local_base_url: "http://localhost:11434"
-  local_model_name: "llama3.1:8b-instruct-q4_K_M"
+  local_model_name: "qwen3.5:4b-q4_K_M"
+  # Thinking off: on CPU a thinking answer takes minutes. See LLMConfig.local_reasoning.
+  local_reasoning: false
   local_keep_alive: "30m"
 
+# Admin-chat questions and answers, per tenant and session (app/services/chat_store.py).
+# Local MongoDB: mongod --dbpath <folder> --bind_ip 127.0.0.1 (see README).
+# CHAT_STORE_MONGODB_URI in .env overrides mongodb_uri.
+chat_store:
+  enabled: true
+  mongodb_uri: "mongodb://127.0.0.1:27017"
+  database: "stupa_chatbot"
+  retention_days: 180
 logging:
   level: "INFO"
   json_format: false

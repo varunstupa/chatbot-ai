@@ -38,10 +38,21 @@ def entry_from_meta(meta: GuideMeta, doc_hash: str, chunk_count: int) -> dict[st
         },
         "overrides": meta.overrides or None,
         "suggested_questions": list(meta.suggested_questions),
+        "sports": list(meta.sports),
         "content_hash": doc_hash,
         "chunk_count": chunk_count,
         "updated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
     }
+
+
+def is_sport_specific(entry: dict[str, Any]) -> bool:
+    return bool(entry.get("sports"))
+
+
+def entry_matches_sport(entry: dict[str, Any], sport: str | None) -> bool:
+    """A guide limited to sports applies only to those; unknown sport sees only shared guides."""
+    sports = entry.get("sports") or []
+    return not sports or sport in sports
 
 
 def is_tenant_specific(entry: dict[str, Any]) -> bool:

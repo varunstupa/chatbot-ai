@@ -29,7 +29,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # --- CPU-only PyTorch first ---
-# Embeddings (all-mpnet-base-v2) run on CPU here, so avoid the multi-GB CUDA wheel.
+# Embeddings (multilingual-e5-base) run on CPU here, so avoid the multi-GB CUDA wheel.
 # sentence-transformers (below) then sees torch already satisfied.
 RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
 
@@ -56,11 +56,12 @@ RUN useradd --create-home --uid 10001 appuser \
     && chown -R appuser:appuser /app /home/appuser
 USER appuser
 
-# --- Pre-bake the embedding model into the image (as appuser) ---
+# --- Pre-bake the embedding models into the image (as appuser) ---
 # Makes the first /query fast and the container self-contained (no runtime model download).
-# Must match embedding.model_name in app/config/config.production.yaml.
+# Must match embedding.model_name (Stupa chat) and app_chat.embedding_model (admin chat)
+# in app/config/config.production.yaml.
 RUN python -c "from langchain_community.embeddings import HuggingFaceEmbeddings; \
-HuggingFaceEmbeddings(model_name='sentence-transformers/all-mpnet-base-v2')"
+HuggingFaceEmbeddings(model_name='intfloat/multilingual-e5-base')"
 
 EXPOSE 8000
 

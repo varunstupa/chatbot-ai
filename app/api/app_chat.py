@@ -5,35 +5,29 @@ from __future__ import annotations
 import asyncio
 import json
 import re
+import time
 import uuid
 
 from fastapi import (
     APIRouter,
     Depends,
-    File,
     HTTPException,
     Query,
     Request,
     Response,
-    UploadFile,
 )
 from fastapi.responses import StreamingResponse
 
 from app.api.dependencies import get_rag_pipeline
-from app.api.routes import (
-    _attach_session,
-    _query_response_from_ticket,
-    _save_ticket_attachment,
-    _ticket_sse_lines,
-)
+from app.api.routes import _attach_session
 from app.config.settings import get_settings
 from app.core import constants
 from app.models.schemas import QueryRequest, QueryResponse, RetrievedChunk
-from app.models.ticket_schemas import TicketAttachmentUploadResponse
 from app.knowledge import service as knowledge
-from app.services import app_chat, ticket_workflow
+from app.services import app_chat, chat_store
 from app.services.auth import CallerScope, require_scope, require_service_key
 from app.services.chat_memory import get_message_history
+from app.services.language import detect_language
 from app.services.rag_pipeline import RAGPipeline
 from app.utils.logger import get_logger
 
@@ -41,6 +35,9 @@ router = APIRouter()
 logger = get_logger(__name__)
 
 _SESSION_RE = re.compile(r"^[A-Za-z0-9_-]{8,64}$")
+# Characters of a streamed answer held back, so the guardrail can see an API path
+# or code before any part of it is sent.
+_HOLD_BACK = 60
 
 
 def _client_session_id(body_session_id: str | None, request: Request) -> str:
@@ -54,7 +51,7 @@ def _client_session_id(body_session_id: str | None, request: Request) -> str:
 
 
 def _scoped_session_id(scope: CallerScope, session_id: str) -> str:
-    """History/ticket key. Bound to tenant and user so an id cannot be replayed."""
+    """History key. Bound to tenant and user so an id cannot be replayed."""
     key = f"{scope.tenant}--{scope.user_id}--{session_id}"
     history = get_message_history(key)
     if hasattr(history, "max_messages"):
@@ -76,9 +73,10 @@ def _question(body: QueryRequest) -> str:
 def _retriever(scope: CallerScope, body: QueryRequest, holder: dict):
     route = body.screen.route if body.screen else None
     url = body.screen.url if body.screen else None
+    sport = app_chat.sport_from_id(body.sport_id)
 
     def run(question: str) -> tuple[str, list[dict]]:
-        result = app_chat.retrieve(scope, question, route, url)
+        result = app_chat.retrieve(scope, question, route, url, sport)
         app_chat.audit(scope, route, result)
         holder["result"] = result
         return result.context, result.sources
@@ -89,8 +87,56 @@ def _retriever(scope: CallerScope, body: QueryRequest, holder: dict):
 def _screen_title(scope: CallerScope, body: QueryRequest) -> str:
     if not body.screen:
         return ""
-    info = knowledge.screen_info(scope, body.screen.route, body.screen.url)
+    info = knowledge.screen_info(
+        scope, body.screen.route, body.screen.url, app_chat.sport_from_id(body.sport_id)
+    )
     return (info or {}).get("title", "")
+
+
+def _ms(since: float | None, start: float) -> int | None:
+    return None if since is None else int((since - start) * 1000)
+
+
+def _store_chat(
+    scope: CallerScope,
+    body: QueryRequest,
+    *,
+    session_id: str,
+    question: str,
+    answer: str,
+    outcome: str,
+    screen_title: str,
+    language,
+    holder: dict,
+    started: float,
+    first_token: float | None,
+    streamed: bool,
+) -> None:
+    """Queue the question and the answer the user saw for the chat store (never raises)."""
+    result = holder.get("result")
+    llm = get_settings().llm
+    chat_store.record(
+        chat_store.ChatRecord(
+            tenant=scope.tenant,
+            session_id=session_id,
+            question=question,
+            answer=answer,
+            outcome=outcome,
+            user_id=scope.user_id,
+            role=scope.role,
+            route=body.screen.route if body.screen else None,
+            screen_title=screen_title or None,
+            sport=app_chat.sport_from_id(body.sport_id),
+            language=language.code if language else None,
+            retrieval_mode=result.mode if result else None,
+            doc_ids=sorted({h.doc_id for h in result.hits}) if result else [],
+            sources=[{"title": h.title, "section": h.section} for h in result.hits] if result else [],
+            model=llm.local_model_name,
+            first_token_ms=_ms(first_token, started),
+            total_ms=_ms(time.monotonic(), started),
+            streamed=streamed,
+        )
+    )
 
 
 async def _answer_json(
@@ -104,34 +150,62 @@ async def _answer_json(
     session_id = _client_session_id(body.session_id, request)
     scoped = _scoped_session_id(scope, session_id)
 
-    ticket = ticket_workflow.try_process(scoped, q, ticket_draft=body.ticket_draft)
-    if ticket is not None:
-        return _query_response_from_ticket(session_id, ticket, response)
-
     s = get_settings()
+    language = detect_language(q)
+    no_answer = app_chat.no_answer_text(language)
+    started, holder = time.monotonic(), {}
+    screen_title = _screen_title(scope, body)
+
+    def store(answer_text: str, outcome: str) -> None:
+        _store_chat(
+            scope, body, session_id=session_id, question=q, answer=answer_text, outcome=outcome,
+            screen_title=screen_title, language=language, holder=holder, started=started,
+            first_token=None, streamed=False,
+        )
+
     try:
         answer, sources = await pipeline.answer(
             q,
             scoped,
-            prompt_template=app_chat.prompt_for(_screen_title(scope, body)),
-            retriever=_retriever(scope, body, {}),
-            no_answer_text=s.app_chat.no_answer_message,
+            prompt_template=app_chat.prompt_for(
+                screen_title, language, app_chat.sport_from_id(body.sport_id)
+            ),
+            retriever=_retriever(scope, body, holder),
+            no_answer_text=no_answer,
         )
+        if app_chat.is_no_answer(answer):
+            answer = no_answer
+        elif app_chat.reveals_internal_detail(answer):
+            logger.warning("app_chat_guardrail | blocked answer with internal detail")
+            answer = no_answer
+        suggestions = None
+        # A question about the modules gets "Did you mean" (also when the answer was
+        # blocked for naming an API): only user questions are suggested, never API details.
+        if answer == no_answer:
+            found = await asyncio.to_thread(
+                app_chat.did_you_mean, scope, q, app_chat.sport_from_id(body.sport_id), language
+            )
+            if found:
+                answer, suggestions = found
     except RuntimeError as e:
         logger.error("llm_unavailable | %s", str(e))
+        store(str(e), chat_store.ERROR)
         raise HTTPException(
             status_code=503,
             detail={"message": str(e), "code": constants.ERROR_LLM_UNAVAILABLE},
         ) from e
     except Exception as e:
         logger.exception("app_chat_failed")
+        store(s.messages.query_processing_failed, chat_store.ERROR)
         raise HTTPException(status_code=500, detail=s.messages.query_processing_failed) from e
 
+    store(answer, chat_store.NOT_FOUND if answer == no_answer or suggestions else chat_store.ANSWERED)
     _attach_session(response, session_id)
     return QueryResponse(
         answer=answer,
         chunks=[RetrievedChunk(**src) for src in sources],
         session_id=session_id,
+        suggestions=suggestions,
     )
 
 
@@ -145,34 +219,106 @@ def _answer_stream(
     session_id = _client_session_id(body.session_id, request)
     scoped = _scoped_session_id(scope, session_id)
     s = get_settings()
+    language = detect_language(q)
+    no_answer = app_chat.no_answer_text(language)
+    started, holder = time.monotonic(), {}
+    screen_title = _screen_title(scope, body)
 
     def _line(obj: dict) -> str:
         return f"data: {json.dumps(obj, ensure_ascii=False)}\n\n"
 
     async def sse_events():
-        try:
-            ticket = ticket_workflow.try_process(scoped, q, ticket_draft=body.ticket_draft)
-            if ticket is not None:
-                for line in _ticket_sse_lines(session_id, ticket):
-                    yield line
+        # Tokens stream as they arrive. Text is held while it could still spell NO_ANSWER,
+        # and the last _HOLD_BACK characters are always held, so text naming an API or
+        # containing code is caught before it reaches the browser. When that happens the
+        # stream stops and the final "done" answer replaces the message.
+        sent_upto, decided, is_marker, blocked, full = 0, False, False, False, ""
+        first_token: float | None = None
+        stored = False
+
+        def store(answer_text: str, outcome: str) -> None:
+            nonlocal stored
+            if stored:
                 return
+            stored = True
+            _store_chat(
+                scope, body, session_id=session_id, question=q, answer=answer_text, outcome=outcome,
+                screen_title=screen_title, language=language, holder=holder, started=started,
+                first_token=first_token, streamed=True,
+            )
+
+        try:
             async for item in pipeline.stream(
                 q,
                 scoped,
-                prompt_template=app_chat.prompt_for(_screen_title(scope, body)),
-                retriever=_retriever(scope, body, {}),
-                no_answer_text=s.app_chat.no_answer_message,
+                prompt_template=app_chat.prompt_for(
+                    screen_title, language, app_chat.sport_from_id(body.sport_id)
+                ),
+                retriever=_retriever(scope, body, holder),
+                no_answer_text=no_answer,
             ):
-                if item.get("type") == "session":
+                kind = item.get("type")
+                if kind == "token":
+                    full += item.get("text", "")
+                    if first_token is None:
+                        first_token = time.monotonic()
+                    if not decided:
+                        if app_chat.is_no_answer(full):
+                            decided = is_marker = True
+                        elif app_chat.could_become_no_answer(full):
+                            continue
+                        else:
+                            decided = True
+                    if is_marker or blocked or no_answer.startswith(full):
+                        continue
+                    if app_chat.reveals_internal_detail(full):
+                        blocked = True
+                        logger.warning("app_chat_guardrail | stopped stream with internal detail")
+                        continue
+                    safe_end = len(full) - _HOLD_BACK
+                    if safe_end > sent_upto:
+                        yield _line({"type": "token", "text": full[sent_upto:safe_end]})
+                        sent_upto = safe_end
+                    continue
+                if kind == "done":
+                    final = item.get("answer") or full
+                    if is_marker or app_chat.is_no_answer(final):
+                        final = no_answer
+                    elif blocked or app_chat.reveals_internal_detail(final):
+                        logger.warning("app_chat_guardrail | blocked answer with internal detail")
+                        final = no_answer
+                    not_found = final == no_answer
+                    if not_found:
+                        suggestions = None
+                        # A question about the modules gets "Did you mean" instead; the
+                        # final "done" answer replaces any text already streamed.
+                        found = await asyncio.to_thread(
+                            app_chat.did_you_mean, scope, q,
+                            app_chat.sport_from_id(body.sport_id), language,
+                        )
+                        if found:
+                            final, suggestions = found
+                        if sent_upto == 0:
+                            yield _line({"type": "token", "text": final})
+                        item = {"type": "done", "answer": final}
+                        if suggestions:
+                            item["suggestions"] = suggestions
+                    elif sent_upto < len(full):
+                        yield _line({"type": "token", "text": full[sent_upto:]})
+                        sent_upto = len(full)
+                    store(final, chat_store.NOT_FOUND if not_found else chat_store.ANSWERED)
+                elif kind == "session":
                     # Never hand the tenant-scoped history key to the browser.
                     item = {"type": "session", "session_id": session_id}
-                elif item.get("type") == "error":
+                elif kind == "error":
                     # Model/server details stay in the log, not in the browser.
                     logger.error("app_chat_llm_error | %s", item.get("message"))
                     item = {"type": "error", "message": s.messages.query_processing_failed}
+                    store(s.messages.query_processing_failed, chat_store.ERROR)
                 yield _line(item)
         except Exception:
             logger.exception("app_chat_stream_failed")
+            store(s.messages.query_processing_failed, chat_store.ERROR)
             yield _line({"type": "error", "message": s.messages.query_processing_failed})
 
     stream = StreamingResponse(
@@ -214,37 +360,38 @@ async def app_chat_stream(
     return _answer_stream(body, request, pipeline, scope)
 
 
-@router.post(
-    "/app-chat/attachment",
-    tags=["app-chat"],
-    response_model=TicketAttachmentUploadResponse,
-)
-async def app_chat_attachment(
+@router.post("/app-chat/session/close", tags=["app-chat"], status_code=204)
+async def app_chat_session_close(
     request: Request,
-    response: Response,
-    file: UploadFile = File(...),
-    session_id: str | None = Query(default=None),
     scope: CallerScope = Depends(require_scope),
-) -> TicketAttachmentUploadResponse:
-    client_sid = _client_session_id(session_id, request)
-    result = await _save_ticket_attachment(
-        request,
-        file,
-        _scoped_session_id(scope, client_sid),
-    )
-    result.session_id = client_sid
-    _attach_session(response, client_sid)
-    return result
+) -> Response:
+    """The widget was closed or the page left: store this session's conversation now.
+
+    The session id comes from the JSON body (``session_id``) or the ``X-Session-Id``
+    header; the tenant always from the caller's identity. Unknown ids are ignored.
+    """
+    session_id = request.headers.get("x-session-id") or ""
+    try:
+        body = await request.json()
+        if isinstance(body, dict) and isinstance(body.get("session_id"), str):
+            session_id = body["session_id"]
+    except Exception:
+        pass
+    session_id = session_id.strip()
+    if _SESSION_RE.match(session_id):
+        chat_store.close_session(scope.tenant, session_id)
+    return Response(status_code=204)
 
 
 @router.get("/knowledge/screen", tags=["knowledge"])
 async def knowledge_screen(
     route: str | None = Query(default=None, max_length=300),
     url: str | None = Query(default=None, max_length=500),
+    sport_id: int | None = Query(default=None),
     scope: CallerScope = Depends(require_scope),
 ) -> dict:
     """Screen title and suggested questions for the widget."""
-    info = knowledge.screen_info(scope, route, url)
+    info = knowledge.screen_info(scope, route, url, app_chat.sport_from_id(sport_id))
     if info is None:
         return {"documented": False, "title": "", "suggested_questions": []}
     return {

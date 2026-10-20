@@ -41,7 +41,25 @@ async def lifespan(_app: FastAPI):
             "and set JIRA_* variables",
             err,
         )
+    from app.services import chat_store
+
+    await chat_store.start()
+    if s.app_chat.rerank:
+        import asyncio
+
+        from app.services import reranker
+
+        # Load the cross-encoder now, so the first question does not wait for it.
+        await asyncio.to_thread(reranker.warm_up)
+    if s.app_chat.suggest_count > 0:
+        import threading
+
+        from app.knowledge import service as knowledge
+
+        # Embeds the guides' suggested questions for "Did you mean" in the background.
+        threading.Thread(target=knowledge.warm_up_suggestions, daemon=True).start()
     yield
+    await chat_store.stop()
     logger.info("shutdown")
 
 

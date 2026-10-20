@@ -13,6 +13,9 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from app.services.auth import normalize_tenant
 
 ALL_TENANTS = "all"
+# Sports a guide can be limited to (front matter `sports`), keyed by the admin app's sport_id.
+SPORTS_BY_ID = {1: "table_tennis", 2: "padel", 3: "tennis", 4: "badminton"}
+SPORTS = frozenset(SPORTS_BY_ID.values())
 # Bump when chunking changes, so unchanged guides are re-embedded on the next sync.
 CHUNKER_VERSION = "2"
 
@@ -37,6 +40,7 @@ class GuideMeta:
     roles: tuple[str, ...]  # empty means every role
     overrides: str
     suggested_questions: tuple[str, ...]
+    sports: tuple[str, ...] = ()  # empty means every sport
 
 
 @dataclass(frozen=True)
@@ -112,6 +116,11 @@ def parse_guide(text: str) -> tuple[GuideMeta, str]:
     if any(r is None for r in roles):
         raise GuideError("`roles` contains an invalid role name")
 
+    sports = [str(x).strip().lower() for x in _str_list(fm.get("sports"), "sports")]
+    unknown = sorted(set(sports) - SPORTS)
+    if unknown:
+        raise GuideError(f"`sports` has unknown values {unknown}; use {sorted(SPORTS)}")
+
     meta = GuideMeta(
         doc_id=doc_id,
         title=title,
@@ -122,6 +131,7 @@ def parse_guide(text: str) -> tuple[GuideMeta, str]:
         roles=tuple(sorted(set(roles))),  # type: ignore[arg-type]
         overrides=str(fm.get("overrides") or "").strip().lower(),
         suggested_questions=_str_list(fm.get("suggested_questions"), "suggested_questions"),
+        sports=tuple(sorted(set(sports))),
     )
     return meta, body
 

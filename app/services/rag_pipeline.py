@@ -56,47 +56,26 @@ def _friendly_llm_error_message(exc: BaseException) -> str:
             "Try: `ollama pull <model>` then `ollama run <model>` and check "
             "`ollama ps` / server logs."
         )
-    return f"{raw} — Check NVIDIA_API_KEY and llm.model / base_url."
+    return raw
 
 
 _llm_lock = Lock()
 _llm = None
+_utility_llm = None
 _chain_lock = Lock()
 _chain_with_history: RunnableWithMessageHistory | None = None
 
 
-def _build_llm():
+def _build_llm(temperature: float | None = None):
     s = get_settings()
-    if s.llm.provider == "nvidia":
-        from langchain_openai import ChatOpenAI
-
-        api_key = None
-        if s.nvidia_api_key:
-            api_key = s.nvidia_api_key.get_secret_value().strip() or None
-        if not api_key:
-            api_key = os.environ.get("NVIDIA_API_KEY", "").strip() or None
-        if not api_key:
-            raise RuntimeError(s.llm.missing_api_key_message)
-        kwargs: dict = {
-            "model": s.llm.model,
-            "temperature": s.llm.temperature,
-            "api_key": api_key,
-            "base_url": s.llm.base_url.strip(),
-            "frequency_penalty": s.llm.frequency_penalty,
-            "presence_penalty": s.llm.presence_penalty,
-        }
-        if s.llm.top_p is not None:
-            kwargs["top_p"] = s.llm.top_p
-        # NVIDIA chat API rejects max_completion_tokens; LangChain maps max_tokens → that.
-        # Omit max_tokens here (NVIDIA uses a server default). See config max_tokens note.
-        return ChatOpenAI(**kwargs)
     from langchain_ollama import ChatOllama
 
     return ChatOllama(
         base_url=s.llm.local_base_url,
         model=s.llm.local_model_name,
-        temperature=s.llm.temperature,
+        temperature=s.llm.temperature if temperature is None else temperature,
         keep_alive=s.llm.local_keep_alive,
+        reasoning=s.llm.local_reasoning,
     )
 
 
@@ -106,6 +85,19 @@ def get_llm():
         if _llm is None:
             _llm = _build_llm()
         return _llm
+
+
+def get_utility_llm():
+    """The same model at temperature 0, for the short helper calls (question rewrite, topic check).
+
+    Their output is a decision, not prose: at a higher temperature the topic check sometimes
+    flipped a module question to off-topic, so they never use llm.temperature.
+    """
+    global _utility_llm
+    with _llm_lock:
+        if _utility_llm is None:
+            _utility_llm = _build_llm(temperature=0)
+        return _utility_llm
 
 
 def _build_chat_prompt() -> ChatPromptTemplate:
@@ -150,9 +142,10 @@ def reset_rag_chain_for_tests() -> None:
 
 
 def reset_llm_for_tests() -> None:
-    global _llm
+    global _llm, _utility_llm
     with _llm_lock:
         _llm = None
+        _utility_llm = None
     reset_rag_chain_for_tests()
 
 

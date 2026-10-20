@@ -72,6 +72,10 @@ class QueryRequest(BaseModel):
     )
     session_id: str | None = Field(default=None)
     screen: ScreenContext | None = Field(default=None)
+    sport_id: int | None = Field(
+        default=None,
+        description="Admin app sport: 1 Table Tennis, 2 Padel, 3 Tennis, 4 Badminton (/app-chat only).",
+    )
     ticket_draft: TicketDraftPayload | None = Field(
         default=None,
         description=(
@@ -140,6 +144,8 @@ class QueryResponse(BaseModel):
     demo_flow: DemoFlowState | None = None
     # Only set on /stupa-chat during Jira ticket wizard.
     ticket_flow: TicketFlowState | None = None
+    # Only set on the admin chat when nothing was found: questions the user may have meant.
+    suggestions: list[str] | None = None
     ticket_workflow: TicketWorkflowResponse | None = None
 
 
