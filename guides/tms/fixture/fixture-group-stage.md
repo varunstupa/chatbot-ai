@@ -110,3 +110,5 @@ Shown while you build the groups:
 **How do I delete the group stage?** Click **Delete** to delete the fixtures of this stage, or **Delete All Stages?** to delete every stage of the category.
 
 **How do I export the groups to Excel?** Click **Export Excel** on the draft groups card.
+
+**Why is the Redraw button greyed out?** **Redraw** is greyed out while the groups are not valid, for example when a group has zero participants. Redrawing also needs **Edit** on **Fixture Access**.

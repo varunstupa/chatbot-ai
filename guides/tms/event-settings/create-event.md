@@ -49,6 +49,65 @@ supported_languages:
 - Hinglish
 tenants: all
 title: Event Details page --- Organiser Guide and Troubleshooting
+answer_notes: |
+  How the assistant should answer questions about this page:
+  -   Understand the user's intent rather than requiring the exact wording
+      used in the interface.
+  -   Use the actual UI label when giving instructions, then explain it in
+      plain language.
+  -   Start with the most likely documented cause and give clear steps.
+  -   If different causes require different solutions, ask one short
+      follow-up question.
+  -   Do not claim to have checked the user's actual event, status,
+      permissions, or configuration unless live application data is
+      available.
+  -   Do not invent buttons, settings, permissions, or behaviour.
+  -   If the answer depends on organisation-specific configuration,
+      explain that the configuration may vary and recommend contacting the
+      organisation's administrator or support when appropriate.
+  -   Keep event creation, verification, and publishing distinct. They are
+      separate actions.
+
+  Intent: create an event: Explain where to open Details, list the mandatory fields, mention the required banner, thumbnail and logo, and tell the user to click Create. Then explain that categories and other required setup sections must be completed separately.
+
+  Intent: event not visible or not live: Do not assume the event has one specific problem. Explain that saving, verification and publishing are separate. Check whether the event is saved, whether the Event Level requires verification, whether verification is accepted, and whether the user is in Edit mode and looking at the bottom action bar. If the user means player registration is unavailable rather than event visibility, ask about registration separately.
+
+  Intent: event stuck on INCOMPLETE: In Auto mode, first check that at least one category has been saved. If verification is pending, check dates, a saved category, organiser details and a linked venue. If the event should show REGISTRATION OPEN, check registration start and end times on the Registration step. Status may recalculate approximately once an hour, but waiting will not fix missing setup requirements. In Manual mode, the status does not change automatically.
+
+  Intent: category missing or not saved: Explain that clicking `+` only adds a category to the current list. The user must click Create or Update at the bottom of the panel to save it. If the Class list is empty, choose Category Levels and Participant Type first. If the category is saved but players still cannot register, the issue may involve another step; ask what the user sees on the Registration page rather than assuming the Details page is the cause.
+
+  Intent: image or poster upload failure: First identify which image field the user means if it is unclear. Explain the correct format, size limit and dimensions for that field. For a thumbnail, use PNG/JPG/JPEG, exactly 379 × 200 px, less than 1 MB; WEBP is rejected by the server. For the banner, recommend 1200 × 360 px and allow up to 15 MB. For the logo, use PNG/JPG/JPEG up to 1 MB.
+
+  Intent: cannot edit or delete an event: Distinguish view mode, missing permissions, creator-only deletion and restrictions after ranking points are published to OTT. Tell the user to click Edit if the page is in view mode. If the button is missing, an administrator may need to check permissions. If points are published, explain which changes are locked.
+
+  Intent: date changes or schedule reset: Explain the reset confirmation before the user accepts it. A confirmed reset removes planning and schedule data on affected dates. Days with played matches cannot be removed. Explain that Tournament venue days follow the event dates, while League venues retain their agreed days except dates outside the new event range.
+
+  Intent: verification pending or rejected: Explain the meanings of Pending, Accepted and Rejected. For a rejected event, use View Feedback, fix the listed issues and resubmit. If Send Verification is disabled, check Edit mode, saved event state, section completion and whether the event has already been accepted. Do not invent a review timeline; none is specified in this guide.
+
+  Intent: duplicate name or invalid event name: Explain that the same Event Name and Event Type combination cannot already exist, and names cannot consist only of numbers. Suggest a descriptive alternative, such as `Open 2026`, without claiming that an unverified name is available.
+
+  When to ask a follow-up question:
+  Ask a brief, focused question when the user's wording does not
+  distinguish between problems with different solutions.
+
+  Examples:
+
+  -   "I can't change it." → "Which field are you trying to change: the
+      event name, dates, category or something else?"
+  -   "The image isn't uploading." → "Are you uploading the Event Banner,
+      Thumbnail or Logo?"
+  -   "My event isn't working." → "What is happening: is the event status
+      INCOMPLETE, is the Publish button missing, or can players not
+      register?"
+  -   "Category isn't showing." → "Is the category missing from the Add
+      Class/Category list, or is it saved there but missing from
+      registration?"
+  -   "I can't delete it." → "Do you see an error message, or is the
+      Delete button missing?"
+
+  Do not ask for information that is already provided in the user's
+  question. Do not ask the user to provide an event ID unless checking
+  live event data or a support workflow actually requires it.
 ---
 
 # Event Details page --- Create, Edit and Troubleshoot an Event
@@ -63,25 +122,6 @@ It is written for organisers who may describe a problem in everyday
 English, Hindi, or Hinglish. Users may not know the exact name of a
 button or setting. Match their meaning to the documented behaviour, then
 explain the solution in simple language.
-
-### How the assistant should answer questions about this page
-
--   Understand the user's intent rather than requiring the exact wording
-    used in the interface.
--   Use the actual UI label when giving instructions, then explain it in
-    plain language.
--   Start with the most likely documented cause and give clear steps.
--   If different causes require different solutions, ask one short
-    follow-up question.
--   Do not claim to have checked the user's actual event, status,
-    permissions, or configuration unless live application data is
-    available.
--   Do not invent buttons, settings, permissions, or behaviour.
--   If the answer depends on organisation-specific configuration,
-    explain that the configuration may vary and recommend contacting the
-    organisation's administrator or support when appropriate.
--   Keep event creation, verification, and publishing distinct. They are
-    separate actions.
 
 ## Quick navigation
 
@@ -928,25 +968,12 @@ Possible questions: - "How do I create a tournament?" - "I want to add a
 new event." - "Tournament kaise banau?" - "Naya event create karna hai,
 where do I start?" - "What details do I need before creating an event?"
 
-Answer direction: Explain where to open Details, list the mandatory
-fields, mention the required banner, thumbnail and logo, and tell the
-user to click Create. Then explain that categories and other required
-setup sections must be completed separately.
-
 ### Intent: event not visible or not live
 
 Possible questions: - "My tournament is not live." - "Players cannot see
 my event." - "Event publish nahi ho raha." - "How do I make the
 tournament public?" - "The Publish button is missing." - "Event create
 ho gaya but live nahi hai."
-
-Answer direction: Do not assume the event has one specific problem.
-Explain that saving, verification and publishing are separate. Check
-whether the event is saved, whether the Event Level requires
-verification, whether verification is accepted, and whether the user is
-in Edit mode and looking at the bottom action bar. If the user means
-player registration is unavailable rather than event visibility, ask
-about registration separately.
 
 ### Intent: event stuck on INCOMPLETE
 
@@ -955,14 +982,6 @@ bhar di, phir bhi incomplete aa raha hai." - "Tournament ready kyun nahi
 ho raha?" - "Why has my event status not changed?" - "I added the
 details but status is not updating."
 
-Answer direction: In Auto mode, first check that at least one category
-has been saved. If verification is pending, check dates, a saved
-category, organiser details and a linked venue. If the event should show
-REGISTRATION OPEN, check registration start and end times on the
-Registration step. Status may recalculate approximately once an hour,
-but waiting will not fix missing setup requirements. In Manual mode, the
-status does not change automatically.
-
 ### Intent: category missing or not saved
 
 Possible questions: - "I added a category but it disappeared." -
@@ -970,26 +989,11 @@ Possible questions: - "I added a category but it disappeared." -
 "Where do I add Singles or Doubles?" - "Class dropdown empty hai." -
 "Players cannot register for the category I added."
 
-Answer direction: Explain that clicking `+` only adds a category to the
-current list. The user must click Create or Update at the bottom of the
-panel to save it. If the Class list is empty, choose Category Levels and
-Participant Type first. If the category is saved but players still
-cannot register, the issue may involve another step; ask what the user
-sees on the Registration page rather than assuming the Details page is
-the cause.
-
 ### Intent: image or poster upload failure
 
 Possible questions: - "My tournament poster is not uploading." - "Banner
 upload nahi ho raha." - "Thumbnail error aa raha hai." - "Can I upload
 WebP?" - "What size should my event image be?" - "Logo upload failed."
-
-Answer direction: First identify which image field the user means if it
-is unclear. Explain the correct format, size limit and dimensions for
-that field. For a thumbnail, use PNG/JPG/JPEG, exactly 379 × 200 px,
-less than 1 MB; WEBP is rejected by the server. For the banner,
-recommend 1200 × 360 px and allow up to 15 MB. For the logo, use
-PNG/JPG/JPEG up to 1 MB.
 
 ### Intent: cannot edit or delete an event
 
@@ -998,12 +1002,6 @@ grey hain." - "I cannot change the tournament name." - "Why is my event
 locked?" - "Delete option nahi aa raha." - "Why can't I delete this
 tournament?"
 
-Answer direction: Distinguish view mode, missing permissions,
-creator-only deletion and restrictions after ranking points are
-published to OTT. Tell the user to click Edit if the page is in view
-mode. If the button is missing, an administrator may need to check
-permissions. If points are published, explain which changes are locked.
-
 ### Intent: date changes or schedule reset
 
 Possible questions: - "I changed the dates and my schedule
@@ -1011,59 +1009,17 @@ disappeared." - "Date change karne par matches delete honge?" - "Why is
 it asking to reset the schedule?" - "Can I move the tournament after
 matches have started?" - "My venue dates changed automatically."
 
-Answer direction: Explain the reset confirmation before the user accepts
-it. A confirmed reset removes planning and schedule data on affected
-dates. Days with played matches cannot be removed. Explain that
-Tournament venue days follow the event dates, while League venues retain
-their agreed days except dates outside the new event range.
-
 ### Intent: verification pending or rejected
 
 Possible questions: - "How long until my event is approved?" - "My event
 is pending." - "Event reject ho gaya, what now?" - "Where can I see
 reviewer comments?" - "I cannot send it for verification."
 
-Answer direction: Explain the meanings of Pending, Accepted and
-Rejected. For a rejected event, use View Feedback, fix the listed issues
-and resubmit. If Send Verification is disabled, check Edit mode, saved
-event state, section completion and whether the event has already been
-accepted. Do not invent a review timeline; none is specified in this
-guide.
-
 ### Intent: duplicate name or invalid event name
 
 Possible questions: - "Why can't I use this tournament name?" - "Event
 Already Exists aa raha hai." - "Can two tournaments have the same
 name?" - "Why is 2026 not accepted as the event name?"
-
-Answer direction: Explain that the same Event Name and Event Type
-combination cannot already exist, and names cannot consist only of
-numbers. Suggest a descriptive alternative, such as `Open 2026`, without
-claiming that an unverified name is available.
-
-## When to ask a follow-up question
-
-Ask a brief, focused question when the user's wording does not
-distinguish between problems with different solutions.
-
-Examples:
-
--   "I can't change it." → "Which field are you trying to change: the
-    event name, dates, category or something else?"
--   "The image isn't uploading." → "Are you uploading the Event Banner,
-    Thumbnail or Logo?"
--   "My event isn't working." → "What is happening: is the event status
-    INCOMPLETE, is the Publish button missing, or can players not
-    register?"
--   "Category isn't showing." → "Is the category missing from the Add
-    Class/Category list, or is it saved there but missing from
-    registration?"
--   "I can't delete it." → "Do you see an error message, or is the
-    Delete button missing?"
-
-Do not ask for information that is already provided in the user's
-question. Do not ask the user to provide an event ID unless checking
-live event data or a support workflow actually requires it.
 
 ## Frequently asked questions
 
@@ -1130,6 +1086,31 @@ blue tick, and the event has not already been accepted.
 The event must be saved and its verification status must be Accepted.
 Check the bottom action bar while in Edit mode.
 
+### Why can't I publish my event? (event not live)
+
+Publishing the event is done on this Details step with the **Publish**
+toggle in the bottom action bar. It does not depend on standings,
+results or awards. If you cannot publish, check:
+
+1.  The event has been created and saved.
+2.  If the Event Level requires verification, the event has been
+    sent for verification and is **Event Accepted**. A rejected event
+    must be fixed and sent again.
+3.  You are in Edit mode.
+4.  You are looking at the bottom action bar of the Details step.
+
+Turn the **Publish** toggle on to publish the event; the change is
+saved immediately.
+
+### Why is my event not visible to players?
+
+Players see an event only after it is published. Publish it on this
+Details step with the **Publish** toggle in the bottom action bar. The
+toggle shows only when the event is saved, its verification is
+**Event Accepted** (when the Event Level requires verification) and you
+are in Edit mode. If players can see the event but cannot register,
+check the Registration step instead.
+
 ### What happens if I change event dates?
 
 After confirmation, planning and match schedules on removed days are
@@ -1152,6 +1133,34 @@ Update. This cannot be undone from this screen.
 Fixtures may already have been generated, or ranking points may have
 been published. Delete the relevant stages first when fixtures are the
 blocker. Published points can prevent deletion.
+
+### How do I create a tournament?
+
+Open **Event** from the sidebar; a new event opens on the **Details** step. Fill in the mandatory fields, upload the banner, thumbnail and logo, then click **Create**. Add the categories and complete the other setup steps afterwards.
+
+### How do I add categories to this event?
+
+On the **Details** step, in Edit mode, open **Add Class/Category**: choose **Category Levels**, **Participant Type** and **Class**, optionally an abbreviation and a colour, and click **+**. Then click **Create** (or **Update**) at the bottom of the panel; **+** alone does not save the category.
+
+### Why do I get "Event Already Exists"?
+
+An event with the same name and the same Event Type (Tournament or League) already exists. Choose a different event name; the name can be reused after the original event is deleted.
+
+### Why is the status stuck on INCOMPLETE?
+
+In Auto mode the status is INCOMPLETE while the event has no active category, or while verification is pending and the event is missing dates, a category, an organiser or a venue. Add what is missing; the status is recalculated after changes and about once an hour.
+
+### Why can't I edit or delete my event?
+
+If **Edit** or **Delete** is missing, your role may not have Edit permission for Event Details; ask an administrator. Only the user who created an event can delete it, and an event whose ranking points were published to OTT cannot be deleted.
+
+### Why did changing the event dates remove schedules?
+
+Removing days from the event clears the planning and match schedules on those days. The warning "Changing these dates will reset the schedule" lists what will be cleared; click **Cancel** to keep the old dates. Days with played matches cannot be removed.
+
+### Why is my image upload failing?
+
+Check the file type and size for that field: the logo must be PNG, JPEG or JPG within 1 MB, and the thumbnail exactly 379 × 200 px. WEBP is not accepted, and renaming a file does not change its type. An expired sign-in can also make uploads fail.
 
 ## Source-of-truth and escalation rules
 

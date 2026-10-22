@@ -142,3 +142,5 @@ These popups open from the group draft and the group wizard. Each one has a clos
 **What is circular, Berger or custom logic?** The order in which the matches of each group are played. Circular and Berger are fixed orders; custom lets you choose a template.
 
 **How do I customize the fixtures?** Open **Customize Fixtures**, tick the seeds to include, and save.
+
+**How do I assign players to groups?** Open **Participant Selection** for the group, tick the players (**Search participants** filters the list), then click **Add** to place them in the group. Use **Swap** to move a player to another group.

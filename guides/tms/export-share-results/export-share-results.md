@@ -117,3 +117,5 @@ Open **Export/Share Results** from the sidebar.
 **How do I search the download list?** Type part of the file name in the search box.
 
 **What is the Sync tab?** It sends the event's results to the external rating platform. See the Sync guide.
+
+**Why does the screen say No data found for this event?** The event has no exported files yet. Files appear in the list once an export has been made.

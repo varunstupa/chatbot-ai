@@ -132,3 +132,9 @@ In **Scoring Management**, **Serving Rules**:
 **I clicked Update on Scoring Management and saw "updated_successfully", but my changes are gone.** For Padel and Tennis, Scoring Management is currently not saved on the event page. Change it in Game-Play Configuration (organisation-wide) or contact support.
 
 **Is the Padel or Tennis match format saved?** Yes. Result Management saves normally ("Rule Settings Updated").
+
+**How do I set best of 3 sets with a super tie-break?** Choose **ST** and set **Number Of Sets per Match** to 3. Then turn on **Additional Tie Break Configuration**, choose **Super Tie break** and set **Pts to Win** (for example 10).
+
+**What is the difference between Standard and Golden Point System?** At 40-40 (deuce), **Standard Point System** uses advantage scoring: a player must win two points in a row. With **Golden Point System** the next point wins the game.
+
+**How do serving rules work?** In **Scoring Management** → **Serving Rules**, choose **First Server Selection** and **Serve Order** (Manual or Auto) and set **Serve Change Frequency** (every n games). Options also let players change ends after every odd-numbered game and use the standard serve rotation in tie-breaks.

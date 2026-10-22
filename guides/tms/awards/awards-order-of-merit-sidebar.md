@@ -119,3 +119,13 @@ This guide explains the Order of Merit side panel in depth: which mode it opens 
 **Can I change the basic details of a published award?** No, in the event view and edit the basic details are read only; only the points, weightages and tie-breakers can be changed.
 
 **How are the tie-breakers used?** After total points, the server compares the players by the visible criteria in category order.
+
+**Why is the Save button greyed out for Order of Merit?** A weightage row of a category is above 100 percent. Lower it until the warning goes. If the name or a category is missing, **Save** does nothing, so fill in the basic details first.
+
+**What is the difference between view and edit for a published Order of Merit award?** **View** opens the award read only. **Edit** keeps the basic details read only and lets you change only the points, the weightages and the tie-breakers. A published award stays published after the edit is saved.
+
+**How are the tie breakers used to rank Order of Merit players?** Players are sorted by total points first. Players with equal points are then compared by the visible tie-breakers in category order (the first category is the first tie-breaker): **Won** (wins), **Win-Loss** (wins minus losses) or **Win/Loss Ratio** (wins divided by matches played). Hidden rows are not used.
+
+**What does Apply to all do in the Order of Merit sidebar?** It copies one points grid to every category of the same participant type (singles, doubles or teams). It is kept separately for each participant type and is not available in view mode.
+
+**Is a new Order of Merit award published straight away?** No. A new event award is saved unpublished. Publish it from its card with **Publish** after its standings have been generated.

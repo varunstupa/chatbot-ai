@@ -1,0 +1,762 @@
+[
+ {
+  "id": "S01",
+  "kind": "same",
+  "screen": "registration",
+  "route": "tms/event-settings/registration/:event_id",
+  "q": "How do I turn on registration for a category?",
+  "expect": [
+   "tms.event-settings.registration"
+  ]
+ },
+ {
+  "id": "S02",
+  "kind": "same",
+  "screen": "registration",
+  "route": "tms/event-settings/registration/:event_id",
+  "q": "How do I tick roles in Allow Registrations?",
+  "expect": [
+   "tms.event-settings.registration"
+  ]
+ },
+ {
+  "id": "S03",
+  "kind": "same",
+  "screen": "registration",
+  "route": "tms/event-settings/registration/:event_id",
+  "q": "How do I set the registration open and close dates?",
+  "expect": [
+   "tms.event-settings.registration"
+  ]
+ },
+ {
+  "id": "S04",
+  "kind": "same",
+  "screen": "players",
+  "route": "tms/players/:event_id",
+  "q": "How do I add a player to the event?",
+  "expect": [
+   "tms.players"
+  ]
+ },
+ {
+  "id": "S05",
+  "kind": "same",
+  "screen": "players",
+  "route": "tms/players/:event_id",
+  "q": "How do I give a player a back number?",
+  "expect": [
+   "tms.players"
+  ]
+ },
+ {
+  "id": "S06",
+  "kind": "same",
+  "screen": "players",
+  "route": "tms/players/:event_id",
+  "q": "How do I transfer a player to another subcategory?",
+  "expect": [
+   "tms.players"
+  ]
+ },
+ {
+  "id": "S07",
+  "kind": "same",
+  "screen": "payment-invoice",
+  "route": "tms/event-settings/payment-invoice/:event_id",
+  "q": "How do I set up payment for the event?",
+  "expect": [
+   "tms.event-settings.payment-invoice"
+  ]
+ },
+ {
+  "id": "S08",
+  "kind": "same",
+  "screen": "payment-invoice",
+  "route": "tms/event-settings/payment-invoice/:event_id",
+  "q": "How do I create an invoice?",
+  "expect": [
+   "tms.event-settings.payment-invoice"
+  ]
+ },
+ {
+  "id": "S09",
+  "kind": "same",
+  "screen": "fixture",
+  "route": "tms/fixture/0/169/1358/4869/0",
+  "q": "How do I generate a group stage fixture?",
+  "expect": [
+   "tms.fixture.group-stage",
+   "tms.fixture.group-wizard"
+  ]
+ },
+ {
+  "id": "S10",
+  "kind": "same",
+  "screen": "fixture",
+  "route": "tms/fixture/0/169/1358/4869/0",
+  "q": "How do I replace a participant in a stage?",
+  "expect": [
+   "tms.fixture.replace-participant"
+  ]
+ },
+ {
+  "id": "S11",
+  "kind": "same",
+  "screen": "score-stream",
+  "route": "tms/score-stream/0/169/1358/4869/0",
+  "q": "How do I enter the score of a match?",
+  "expect": [
+   "tms.score-stream",
+   "tms.fixture.scoring"
+  ]
+ },
+ {
+  "id": "S12",
+  "kind": "same",
+  "screen": "score-stream",
+  "route": "tms/score-stream/0/169/1358/4869/0",
+  "q": "How do I mark a match as a walkover?",
+  "expect": [
+   "tms.score-stream",
+   "tms.fixture.scoring"
+  ]
+ },
+ {
+  "id": "S13",
+  "kind": "same",
+  "screen": "schedular",
+  "route": "tms/schedular/1358/0/0",
+  "q": "How do I schedule a match to a table and a time?",
+  "expect": [
+   "tms.schedular"
+  ]
+ },
+ {
+  "id": "S14",
+  "kind": "same",
+  "screen": "schedular",
+  "route": "tms/schedular/1358/0/0",
+  "q": "How do I assign an umpire to a match?",
+  "expect": [
+   "tms.schedular.umpires"
+  ]
+ },
+ {
+  "id": "S15",
+  "kind": "same",
+  "screen": "awards",
+  "route": "tms/awards/0/169/1358/4869/0",
+  "q": "How do I publish the awards for a category?",
+  "expect": [
+   "tms.awards"
+  ]
+ },
+ {
+  "id": "S16",
+  "kind": "same",
+  "screen": "awards",
+  "route": "tms/awards/0/169/1358/4869/0",
+  "q": "What is an Order of Merit award?",
+  "expect": [
+   "tms.awards.order-of-merit-sidebar",
+   "tms.awards.award-types"
+  ]
+ },
+ {
+  "id": "S17",
+  "kind": "same",
+  "screen": "printing",
+  "route": "tms/printing/0/169/1358/4869/0",
+  "q": "How do I print the match sheets for a day?",
+  "expect": [
+   "tms.printing",
+   "tms.printing.sheets"
+  ]
+ },
+ {
+  "id": "S18",
+  "kind": "same",
+  "screen": "printing",
+  "route": "tms/printing/0/169/1358/4869/0",
+  "q": "What is shown on the print queue?",
+  "expect": [
+   "tms.printing",
+   "tms.printing.sheets"
+  ]
+ },
+ {
+  "id": "S19",
+  "kind": "same",
+  "screen": "ranking",
+  "route": "tms/ranking/0/-1/1358",
+  "q": "How do I set up ranking points for a category?",
+  "expect": [
+   "tms.ranking",
+   "tms.ranking.allocation"
+  ]
+ },
+ {
+  "id": "S20",
+  "kind": "same",
+  "screen": "ranking",
+  "route": "tms/ranking/0/-1/1358",
+  "q": "How do I publish a ranking list?",
+  "expect": [
+   "tms.ranking.publication",
+   "tms.ranking.allocation"
+  ]
+ },
+ {
+  "id": "S21",
+  "kind": "same",
+  "screen": "display-setting",
+  "route": "tms/display-setting/0/0/1358",
+  "q": "How do I hide a match from the table display?",
+  "expect": [
+   "tms.display-setting"
+  ]
+ },
+ {
+  "id": "S22",
+  "kind": "same",
+  "screen": "display-setting",
+  "route": "tms/display-setting/0/0/1358",
+  "q": "How do I choose an LED layout and save it?",
+  "expect": [
+   "tms.display-setting",
+   "tms.display-setting.led-live-card"
+  ]
+ },
+ {
+  "id": "S23",
+  "kind": "same",
+  "screen": "leaderboard",
+  "route": "tms/leaderboard/2/217/1358/4783/0",
+  "q": "What is the difference between the Team Leaderboard and the Player Leaderboard?",
+  "expect": [
+   "tms.leaderboard",
+   "tms.leaderboard.team",
+   "tms.leaderboard.player"
+  ]
+ },
+ {
+  "id": "S24",
+  "kind": "same",
+  "screen": "leaderboard",
+  "route": "tms/leaderboard/2/217/1358/4783/0",
+  "q": "How do I change how ties are broken on the leaderboard?",
+  "expect": [
+   "tms.leaderboard.winner-logic",
+   "tms.leaderboard"
+  ]
+ },
+ {
+  "id": "S25",
+  "kind": "same",
+  "screen": "export-share-results",
+  "route": "tms/format-download/1358",
+  "q": "Where do I download an exported file?",
+  "expect": [
+   "tms.export-share-results"
+  ]
+ },
+ {
+  "id": "S26",
+  "kind": "same",
+  "screen": "export-share-results",
+  "route": "tms/format-download/1358",
+  "q": "What does the Expired status mean?",
+  "expect": [
+   "tms.export-share-results"
+  ]
+ },
+ {
+  "id": "S27",
+  "kind": "same",
+  "screen": "create-event",
+  "route": "tms/event-settings/create-event/:event_id",
+  "q": "How do I create an event?",
+  "expect": [
+   "tms.event-settings.create-event"
+  ]
+ },
+ {
+  "id": "C01",
+  "kind": "cross",
+  "screen": "registration",
+  "route": "tms/event-settings/registration/:event_id",
+  "q": "How do I add a player to the event?",
+  "expect": [
+   "tms.players"
+  ]
+ },
+ {
+  "id": "C02",
+  "kind": "cross",
+  "screen": "registration",
+  "route": "tms/event-settings/registration/:event_id",
+  "q": "How do I give a player a back number?",
+  "expect": [
+   "tms.players"
+  ]
+ },
+ {
+  "id": "C03",
+  "kind": "cross",
+  "screen": "registration",
+  "route": "tms/event-settings/registration/:event_id",
+  "q": "How do I create an invoice for a registration?",
+  "expect": [
+   "tms.event-settings.payment-invoice"
+  ]
+ },
+ {
+  "id": "C04",
+  "kind": "cross",
+  "screen": "registration",
+  "route": "tms/event-settings/registration/:event_id",
+  "q": "How do I set up payment methods?",
+  "expect": [
+   "tms.event-settings.payment-invoice"
+  ]
+ },
+ {
+  "id": "C05",
+  "kind": "cross",
+  "screen": "players",
+  "route": "tms/players/:event_id",
+  "q": "How do I turn on registration for a category?",
+  "expect": [
+   "tms.event-settings.registration"
+  ]
+ },
+ {
+  "id": "C06",
+  "kind": "cross",
+  "screen": "players",
+  "route": "tms/players/:event_id",
+  "q": "How do I set up payment for the event?",
+  "expect": [
+   "tms.event-settings.payment-invoice"
+  ]
+ },
+ {
+  "id": "C07",
+  "kind": "cross",
+  "screen": "players",
+  "route": "tms/players/:event_id",
+  "q": "How do I generate a group stage fixture?",
+  "expect": [
+   "tms.fixture.group-stage",
+   "tms.fixture.group-wizard"
+  ]
+ },
+ {
+  "id": "C08",
+  "kind": "cross",
+  "screen": "fixture",
+  "route": "tms/fixture/0/169/1358/4869/0",
+  "q": "How do I add a player to the event?",
+  "expect": [
+   "tms.players"
+  ]
+ },
+ {
+  "id": "C09",
+  "kind": "cross",
+  "screen": "fixture",
+  "route": "tms/fixture/0/169/1358/4869/0",
+  "q": "How do I assign an umpire to a match?",
+  "expect": [
+   "tms.schedular.umpires"
+  ]
+ },
+ {
+  "id": "C10",
+  "kind": "cross",
+  "screen": "score-stream",
+  "route": "tms/score-stream/0/169/1358/4869/0",
+  "q": "How do I print the match sheets for a day?",
+  "expect": [
+   "tms.printing",
+   "tms.printing.sheets"
+  ]
+ },
+ {
+  "id": "C11",
+  "kind": "cross",
+  "screen": "payment-invoice",
+  "route": "tms/event-settings/payment-invoice/:event_id",
+  "q": "How do I turn on registration for a category?",
+  "expect": [
+   "tms.event-settings.registration"
+  ]
+ },
+ {
+  "id": "C12",
+  "kind": "cross",
+  "screen": "payment-invoice",
+  "route": "tms/event-settings/payment-invoice/:event_id",
+  "q": "How do I add a player to the event?",
+  "expect": [
+   "tms.players"
+  ]
+ },
+ {
+  "id": "C13",
+  "kind": "cross",
+  "screen": "display-setting",
+  "route": "tms/display-setting/0/0/1358",
+  "q": "How do I enter the score of a match?",
+  "expect": [
+   "tms.score-stream",
+   "tms.fixture.scoring"
+  ]
+ },
+ {
+  "id": "C14",
+  "kind": "cross",
+  "screen": "leaderboard",
+  "route": "tms/leaderboard/2/217/1358/4783/0",
+  "q": "How do I publish a ranking list?",
+  "expect": [
+   "tms.ranking.publication",
+   "tms.ranking.allocation"
+  ]
+ },
+ {
+  "id": "C15",
+  "kind": "cross",
+  "screen": "export-share-results",
+  "route": "tms/format-download/1358",
+  "q": "How do I publish the awards?",
+  "expect": [
+   "tms.awards"
+  ]
+ },
+ {
+  "id": "C16",
+  "kind": "cross",
+  "screen": "awards",
+  "route": "tms/awards/0/169/1358/4869/0",
+  "q": "How do I generate a group stage fixture?",
+  "expect": [
+   "tms.fixture.group-stage",
+   "tms.fixture.group-wizard"
+  ]
+ },
+ {
+  "id": "M01",
+  "kind": "ambiguous",
+  "screen": "registration",
+  "route": "tms/event-settings/registration/:event_id",
+  "q": "How do I add a participant?",
+  "expect": [
+   "tms.players",
+   "tms.event-settings.registration"
+  ]
+ },
+ {
+  "id": "M02",
+  "kind": "ambiguous",
+  "screen": "fixture",
+  "route": "tms/fixture/0/169/1358/4869/0",
+  "q": "How do I assign players to groups?",
+  "expect": [
+   "tms.fixture.group-popups",
+   "tms.fixture.group-stage"
+  ]
+ },
+ {
+  "id": "M03",
+  "kind": "ambiguous",
+  "screen": "registration",
+  "route": "tms/event-settings/registration/:event_id",
+  "q": "What is the fee?",
+  "expect": [
+   "tms.event-settings.payment-invoice",
+   "tms.event-settings.registration"
+  ]
+ },
+ {
+  "id": "M04",
+  "kind": "ambiguous",
+  "screen": "players",
+  "route": "tms/players/:event_id",
+  "q": "How do I change the category settings?",
+  "expect": [
+   "tms.players",
+   "tms.event-settings.registration",
+   "tms.event-settings.draw-settings"
+  ]
+ },
+ {
+  "id": "H01",
+  "kind": "casual",
+  "screen": "create-event",
+  "route": "tms/event-settings/create-event/:event_id",
+  "q": "Event live nahi ho raha, kya karun?",
+  "expect": [
+   "tms.event-settings.create-event"
+  ]
+ },
+ {
+  "id": "H02",
+  "kind": "casual",
+  "screen": "create-event",
+  "route": "tms/event-settings/create-event/:event_id",
+  "q": "how can we enable streaming",
+  "expect": [
+   "tms.score-stream",
+   "tms.fixture.scoring",
+   "tms.navigation"
+  ]
+ },
+ {
+  "id": "H03",
+  "kind": "casual",
+  "screen": "registration",
+  "route": "tms/event-settings/registration/:event_id",
+  "q": "how do I set up payment",
+  "expect": [
+   "tms.event-settings.payment-invoice",
+   "tms.navigation"
+  ]
+ },
+ {
+  "id": "H04",
+  "kind": "casual",
+  "screen": "fixture",
+  "route": "tms/fixture/:participant_id/:category_id/:event_id/:event_category_id/:stage_id",
+  "q": "where is the players page",
+  "expect": [
+   "tms.navigation",
+   "tms.players"
+  ]
+ },
+ {
+  "id": "H05",
+  "kind": "casual",
+  "screen": "create-event",
+  "route": "tms/event-settings/create-event/:event_id",
+  "q": "which modules are in the sidebar",
+  "expect": [
+   "tms.navigation"
+  ]
+ },
+ {
+  "id": "H06",
+  "kind": "casual",
+  "screen": "create-event",
+  "route": "tms/event-settings/create-event/:event_id",
+  "q": "players ko kaise add karte hai",
+  "expect": [
+   "tms.players"
+  ]
+ },
+ {
+  "id": "H07",
+  "kind": "casual",
+  "screen": "create-event",
+  "route": "tms/event-settings/create-event/:event_id",
+  "q": "score sheet print karna hai",
+  "expect": [
+   "tms.printing",
+   "tms.fixture.printing",
+   "tms.event-settings.print-settings"
+  ]
+ },
+ {
+  "id": "H08",
+  "kind": "casual",
+  "screen": "fixture",
+  "route": "tms/fixture/:participant_id/:category_id/:event_id/:event_category_id/:stage_id",
+  "q": "group bana ke knockout kaise banaye",
+  "expect": [
+   "tms.fixture"
+  ]
+ },
+ {
+  "id": "H09",
+  "kind": "casual",
+  "screen": "create-event",
+  "route": "tms/event-settings/create-event/:event_id",
+  "q": "badminton mein 21-20 kyu accept nahi ho raha",
+  "expect": [
+   "tms.score-stream.badminton",
+   "tms.event-settings.game-play"
+  ]
+ },
+ {
+  "id": "H10",
+  "kind": "label",
+  "screen": "registration",
+  "route": "tms/event-settings/registration/:event_id",
+  "q": "where is Payment & Invoice",
+  "expect": [
+   "tms.event-settings.payment-invoice",
+   "tms.navigation"
+  ]
+ },
+ {
+  "id": "H11",
+  "kind": "label",
+  "screen": "create-event",
+  "route": "tms/event-settings/create-event/:event_id",
+  "q": "what does Enable Streaming do",
+  "expect": [
+   "tms.score-stream",
+   "tms.fixture.scoring"
+  ]
+ },
+ {
+  "id": "H12",
+  "kind": "label",
+  "screen": "create-event",
+  "route": "tms/event-settings/create-event/:event_id",
+  "q": "Match Already Walkover Reset First",
+  "expect": [
+   "tms.score-stream",
+   "tms.fixture.scoring",
+   "tms.fixture.api-scoring"
+  ]
+ },
+ {
+  "id": "H13",
+  "kind": "label",
+  "screen": "fixture",
+  "route": "tms/fixture/:participant_id/:category_id/:event_id/:event_category_id/:stage_id",
+  "q": "what is the Berger logic",
+  "expect": [
+   "tms.fixture.group-popups",
+   "tms.fixture.group-wizard",
+   "tms.fixture.group-stage"
+  ]
+ },
+ {
+  "id": "H14",
+  "kind": "label",
+  "screen": "create-event",
+  "route": "tms/event-settings/create-event/:event_id",
+  "q": "how do I use the print queue",
+  "expect": [
+   "tms.printing",
+   "tms.fixture.printing",
+   "tms.score-stream"
+  ]
+ },
+ {
+  "id": "H15",
+  "kind": "label",
+  "screen": "create-event",
+  "route": "tms/event-settings/create-event/:event_id",
+  "q": "what is Order of Merit",
+  "expect": [
+   "tms.awards"
+  ]
+ },
+ {
+  "id": "H16",
+  "kind": "lang",
+  "screen": "create-event",
+  "route": "tms/event-settings/create-event/:event_id",
+  "q": "Wie aktiviere ich das Streaming für ein Spiel?",
+  "expect": [
+   "tms.score-stream",
+   "tms.fixture.scoring"
+  ]
+ },
+ {
+  "id": "H17",
+  "kind": "lang",
+  "screen": "registration",
+  "route": "tms/event-settings/registration/:event_id",
+  "q": "Comment configurer le paiement et les factures ?",
+  "expect": [
+   "tms.event-settings.payment-invoice"
+  ]
+ },
+ {
+  "id": "H18",
+  "kind": "lang",
+  "screen": "create-event",
+  "route": "tms/event-settings/create-event/:event_id",
+  "q": "खिलाड़ियों को कैसे जोड़ें?",
+  "expect": [
+   "tms.players"
+  ]
+ },
+ {
+  "id": "H19",
+  "kind": "casual",
+  "screen": "create-event",
+  "route": "tms/event-settings/create-event/:event_id",
+  "q": "leaderboard dikh nahi raha sidebar me",
+  "expect": [
+   "tms.navigation",
+   "tms.leaderboard"
+  ]
+ },
+ {
+  "id": "H20",
+  "kind": "casual",
+  "screen": "create-event",
+  "route": "tms/event-settings/create-event/:event_id",
+  "q": "how to show live score on the TV at the venue",
+  "expect": [
+   "tms.display-setting"
+  ]
+ },
+ {
+  "id": "R01",
+  "kind": "routed",
+  "screen": "create-event",
+  "route": "tms/event-settings/create-event/:event_id",
+  "q": "Why is my event not visible to players?",
+  "expect": [
+   "tms.event-settings.create-event"
+  ]
+ },
+ {
+  "id": "R02",
+  "kind": "routed",
+  "screen": "create-event",
+  "route": "tms/event-settings/create-event/:event_id",
+  "q": "Why can't I publish my event?",
+  "expect": [
+   "tms.event-settings.create-event"
+  ]
+ },
+ {
+  "id": "R03",
+  "kind": "routed",
+  "screen": "create-event",
+  "route": "tms/event-settings/create-event/:event_id",
+  "q": "What are the predefined fixture templates?",
+  "expect": [
+   "tms.fixture.templates"
+  ]
+ },
+ {
+  "id": "R04",
+  "kind": "routed",
+  "screen": "create-event",
+  "route": "tms/event-settings/create-event/:event_id",
+  "q": "How can we enable streaming?",
+  "expect": [
+   "tms.fixture.scoring",
+   "tms.score-stream"
+  ]
+ },
+ {
+  "id": "R05",
+  "kind": "routed",
+  "screen": "create-event",
+  "route": "tms/event-settings/create-event/:event_id",
+  "q": "Which modules are in the sidebar?",
+  "expect": [
+   "tms.navigation"
+  ]
+ }
+]

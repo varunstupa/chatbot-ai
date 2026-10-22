@@ -15,6 +15,8 @@ Database problems are logged and never reach the chat; unwritten messages are re
 from __future__ import annotations
 
 import asyncio
+from collections import OrderedDict
+import uuid
 import time
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
@@ -33,6 +35,14 @@ NOT_FOUND = "not_found"
 ERROR = "error"
 
 SESSIONS = "chat_sessions"
+# One document per vote: a user's thumbs up/down on one answer, with a copy of the question and
+# answer, so wrong answers can be reviewed and fixed later without searching the sessions.
+FEEDBACK = "chat_feedback"
+UP, DOWN = "up", "down"
+OPEN, FIXED, WONT_FIX = "open", "fixed", "wont_fix"
+# Answers kept in memory by message_id so a vote can copy the question and answer (also after the
+# session was written). Older answers can no longer be rated.
+_RECENT_ANSWERS = 5000
 _INDEX_OPTIONS_CONFLICT = 85
 # Who and where the session belongs to: stored once on the session, not per message.
 _SESSION_FIELDS = ("tenant", "session_id", "user_id", "role")
@@ -63,6 +73,10 @@ class ChatRecord:
     total_ms: int | None = None
     streamed: bool = False
     created_at: datetime = field(default_factory=_utcnow)
+    # Id the widget sends back with a thumbs up/down vote for this answer.
+    message_id: str = field(default_factory=lambda: uuid.uuid4().hex)
+    # "up" or "down" once the user voted (copied into the session if it is still unwritten).
+    feedback: str | None = None
 
     def message(self) -> dict:
         """The entry in the session's ``messages`` list."""
@@ -151,6 +165,7 @@ class ChatStore:
         self._wake: asyncio.Event | None = None
         self._task: asyncio.Task | None = None
         self._stopping = False
+        self.recent: OrderedDict[str, ChatRecord] = OrderedDict()
 
     @property
     def buffered(self) -> int:
@@ -179,6 +194,9 @@ class ChatStore:
 
     def record(self, item: ChatRecord) -> None:
         """Add a question/answer to its session's buffer (memory only)."""
+        self.recent[item.message_id] = item
+        while len(self.recent) > _RECENT_ANSWERS:
+            self.recent.popitem(last=False)
         now = self.clock()
         key = (item.tenant, item.session_id)
         session = self.sessions.setdefault(key, _Session())
@@ -261,6 +279,75 @@ class ChatStore:
             [("tenant", ASCENDING), ("messages.outcome", ASCENDING)], name="tenant_message_outcome"
         )
         await self._ensure_ttl(sessions, "last_message_at")
+        feedback = self.db[FEEDBACK]
+        await feedback.create_index(
+            [("tenant", ASCENDING), ("message_id", ASCENDING), ("user_id", ASCENDING)],
+            name="tenant_message_user", unique=True,
+        )
+        # The review list: a tenant's open thumbs-down answers, newest first.
+        await feedback.create_index(
+            [("tenant", ASCENDING), ("rating", ASCENDING), ("status", ASCENDING), ("created_at", DESCENDING)],
+            name="tenant_rating_status",
+        )
+        await self._ensure_ttl(feedback, "created_at")
+
+    async def save_feedback(
+        self, tenant: str, user_id: str | None, message_id: str, rating: str, comment: str | None
+    ) -> bool:
+        """Store (or change) one user's vote on one of their answers. False if the answer is unknown."""
+        item = self.recent.get(message_id)
+        if item is None or item.tenant != tenant or (item.user_id or None) != (user_id or None):
+            return False
+        item.feedback = rating
+        now = _utcnow()
+        await self.db[FEEDBACK].update_one(
+            {"tenant": tenant, "message_id": message_id, "user_id": user_id},
+            {
+                "$set": {
+                    "rating": rating,
+                    "comment": (comment or "").strip() or None,
+                    "updated_at": now,
+                    # A changed vote is reviewed again.
+                    "status": OPEN,
+                },
+                "$setOnInsert": {
+                    "tenant": tenant,
+                    "message_id": message_id,
+                    "user_id": user_id,
+                    "role": item.role,
+                    "session_id": item.session_id,
+                    "question": item.question,
+                    "answer": item.answer,
+                    "outcome": item.outcome,
+                    "route": item.route,
+                    "screen_title": item.screen_title,
+                    "sport": item.sport,
+                    "language": item.language,
+                    "retrieval_mode": item.retrieval_mode,
+                    "doc_ids": item.doc_ids,
+                    "sources": item.sources,
+                    "model": item.model,
+                    "answered_at": item.created_at,
+                    "created_at": now,
+                },
+            },
+            upsert=True,
+        )
+        return True
+
+    async def list_feedback(
+        self, tenant: str | None, rating: str | None, status: str | None, limit: int
+    ) -> list[dict]:
+        query = {k: v for k, v in (("tenant", tenant), ("rating", rating), ("status", status)) if v}
+        cursor = self.db[FEEDBACK].find(query, {"_id": 0}).sort("created_at", DESCENDING).limit(limit)
+        return [doc async for doc in cursor]
+
+    async def set_feedback_status(self, tenant: str, message_id: str, status: str, note: str | None) -> int:
+        result = await self.db[FEEDBACK].update_many(
+            {"tenant": tenant, "message_id": message_id},
+            {"$set": {"status": status, "review_note": (note or "").strip() or None, "reviewed_at": _utcnow()}},
+        )
+        return result.modified_count
 
     async def _ensure_ttl(self, collection, field_name: str) -> None:
         """TTL index on ``field_name``; changes the expiry in place when retention_days changes."""
@@ -355,6 +442,35 @@ def record(item: ChatRecord) -> None:
         _store.record(item)
     except Exception:
         logger.exception("chat_store_record_failed")
+
+
+async def save_feedback(
+    tenant: str, user_id: str | None, message_id: str, rating: str, comment: str | None = None
+) -> str:
+    """"saved", "unknown" (no such answer for this user) or "unavailable" (no store). Never raises."""
+    if _store is None:
+        return "unavailable"
+    try:
+        saved = await _store.save_feedback(tenant, user_id, message_id, rating, comment)
+    except Exception:
+        logger.exception("chat_feedback_failed")
+        return "unavailable"
+    return "saved" if saved else "unknown"
+
+
+async def list_feedback(
+    tenant: str | None = None, rating: str | None = None, status: str | None = None, limit: int = 100
+) -> list[dict] | None:
+    """Votes for review, newest first; None when the store is not running."""
+    if _store is None:
+        return None
+    return await _store.list_feedback(tenant, rating, status, limit)
+
+
+async def set_feedback_status(tenant: str, message_id: str, status: str, note: str | None = None) -> int | None:
+    if _store is None:
+        return None
+    return await _store.set_feedback_status(tenant, message_id, status, note)
 
 
 def close_session(tenant: str, session_id: str) -> None:

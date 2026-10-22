@@ -183,3 +183,7 @@ The home of the allocation is the page **Ranking Management** with the choice "S
 **What is the Point Exchange?** For a rating, the change in rating for each match, showing the rating before and after.
 
 **How do I set the initial points of a new player?** In the New Players Detected dialog, type the initial points in each row and click **Calculate**, or click **Skip** to leave them out.
+
+**What is the penalty point and where do I add it?** A penalty lowers a player's points for a stage. In the report, open the player's **Edit** sidebar, click **Add Penalty** on the stage and enter it as a negative number, then **Save Changes**.
+
+**What does the Award and Standing Configuration popup ask for?** **Ranking points till which position?** (a position range, for example 17-32) and **Calculate positions upto** (how many positions to calculate). **Save** stores them for the category.

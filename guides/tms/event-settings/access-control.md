@@ -160,3 +160,17 @@ No. Event permissions are managed separately for each event. A person may have e
 The main administrator account has full access according to the current system behaviour.
 
 If you are unsure whether you have enough authority to grant a permission, ask your administrator to review it.
+
+## Frequently asked questions
+
+**How can I let someone manage my event?** Give them access on the **Access-Control** step: open **Event** from the sidebar, click **Access-Control**, select the **Users** tab and click **User Accesses**. Choose the person's role and the person, the parts of the event, Read or Write, and the access dates, then click **Save**.
+
+**How do I allow my colleague to edit match details?** Give them **Write** permission for the module they need on the **Access-Control** step and save. Write on one module does not give Write on the others.
+
+**How can I give someone access for just three days?** When setting their access, choose **3 Days** in the quick selections of the **Access Date** fields (or set **From** and **To**), then save. Outside those dates the permission shows Read instead of Edit.
+
+**Why can't my staff open Playing Order?** They may not have permission for that module in this event. On **Access-Control**, check their permissions for Playing Order and give Edit if they need to change it.
+
+**How do I remove a person's event access?** On **Access-Control**, click the edit icon of the person or role in the **Action** column, then **Delete** in the side panel and confirm. To remove several entries, select their rows and use **Delete**. This removes their access to this event only.
+
+**Why can't I give someone permission?** You may not have the right to manage this event's access. If you cannot grant the permission yourself, ask an administrator.

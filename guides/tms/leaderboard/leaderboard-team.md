@@ -108,3 +108,5 @@ The **Team Leaderboard** tab (the default tab) ranks the teams of the chosen cat
 **What are All groups, All matches and All Rounds?** Three views of a group stage: the group tables, the group matches, and the matches by round.
 
 **Why is there no team table on a knockout stage?** A knockout stage shows the bracket instead of standings.
+
+**How do I see the matches of a team?** Under the table, **Compare with Other Teams** lists the selected team's matches against the others. Click **Match Details** on a row to see each sub match with its players, sets and points.

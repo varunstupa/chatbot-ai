@@ -70,6 +70,7 @@ class Hit:
     tenant_specific: bool
     # Position in the keyword (BM25) results, 0 = best; None when keyword search did not find it.
     keyword_rank: int | None = None
+    chunk_id: str = ""
 
 
 # ---------- wiring ----------
@@ -117,7 +118,8 @@ def ingest_guide(text: str) -> dict[str, Any]:
     """
     meta, body = parse_guide(text)
     cfg = get_settings().app_chat
-    doc_hash = content_hash(meta, body)
+    skip = frozenset(s.casefold() for s in cfg.index_skip_sections)
+    doc_hash = content_hash(meta, body, skip)
     registry, index = _registry(), _index()
 
     with _lock:
@@ -136,7 +138,7 @@ def ingest_guide(text: str) -> dict[str, Any]:
         else:
             chunks = build_chunks(
                 meta, body, doc_hash,
-                chunk_size=cfg.chunk_size, chunk_overlap=cfg.chunk_overlap,
+                chunk_size=cfg.chunk_size, chunk_overlap=cfg.chunk_overlap, skip_sections=skip,
             )
             if not chunks:
                 raise GuideError("Guide produced no content")
@@ -302,6 +304,7 @@ def _checked_hit(
         content=text,
         distance=distance,
         tenant_specific=is_tenant_specific(allowed[doc_id]),
+        chunk_id=str(metadata.get("chunk_id") or ""),
     )
 
 
@@ -391,7 +394,7 @@ def overview(
 _suggestion_vectors: dict[str, list[float]] = {}
 
 
-def _is_backend_guide(doc_id: str) -> bool:
+def is_backend_guide(doc_id: str) -> bool:
     """Guides about the APIs: their questions are about backend logic, never suggested to users."""
     return doc_id.endswith(".api") or ".api-" in doc_id
 
@@ -410,7 +413,7 @@ def warm_up_suggestions() -> None:
     pending = sorted({
         str(q)
         for doc_id, entry in _registry().all().items()
-        if not _is_backend_guide(doc_id)
+        if not is_backend_guide(doc_id)
         for q in entry.get("suggested_questions") or []
         if str(q) not in _suggestion_vectors
     })
@@ -440,7 +443,7 @@ def suggest_questions(
     asked = get_knowledge_embeddings().embed_query(q)
     scored: dict[str, float] = {}
     for doc_id, entry in visible_guides(scope, sport).items():
-        if _is_backend_guide(doc_id):
+        if is_backend_guide(doc_id):
             continue
         for text in entry.get("suggested_questions") or []:
             text = str(text)
@@ -454,3 +457,121 @@ def suggest_questions(
         scored[hit.chunk_id] -= cfg.keyword_boost * 2 / (1 + rank)
     ranked = sorted((d, t) for t, d in scored.items() if d <= limit_distance)
     return [t for _, t in ranked[:limit]]
+
+
+# ---------- question routing ----------
+#
+# Every suggested question of a screen guide is linked to the passage that answers it: its FAQ
+# entry when the guide has one, else the guide's closest passage when that is a strong match.
+# A user question that is a close rewording of a suggested question goes straight to that
+# passage, before the general search can pick a passage that only sounds similar.
+
+# (doc_id, question) -> chunk_id, built on first use; rebuilt when the guides change.
+_routes: dict[tuple[str, str], str] = {}
+_routes_built_for: int | None = None
+
+
+def _chunk_id_of(hit: Hit) -> str:
+    return hit.chunk_id
+
+
+def _faq_question(chunk_text: str) -> str | None:
+    """The question of an FAQ chunk ("**Why ...?** answer"), else None."""
+    for line in chunk_text.split("\n")[1:]:
+        if line.strip():
+            asked = re.match(r"^\*\*([^*\n]+\?)[^*\n]*\*\*", line)
+            return asked.group(1).strip() if asked else None
+    return None
+
+
+def _faq_chunk(question: str, chunks: list[tuple[str, dict]]) -> str | None:
+    """The chunk answering the question: its FAQ entry, else a section or ### heading asking it."""
+    from app.knowledge.guide_check import answered
+
+    for text, meta in chunks:
+        asked = _faq_question(text)
+        if asked and answered(question, [asked]):
+            return str(meta.get("chunk_id") or "")
+    for text, meta in chunks:
+        headings = [str(meta.get("section") or "")]
+        headings += [ln[4:].strip() for ln in text.split("\n") if ln.startswith("### ")]
+        if any(h.endswith("?") and answered(question, [h]) for h in headings):
+            return str(meta.get("chunk_id") or "")
+    return None
+
+
+def _build_routes() -> None:
+    global _routes_built_for
+    cfg = get_settings().app_chat
+    index = _index()
+    total = index.total()
+    if _routes_built_for == total:
+        return
+    routes: dict[tuple[str, str], str] = {}
+    for doc_id, entry in _registry().all().items():
+        if is_backend_guide(doc_id):
+            continue
+        chunks = index.document_chunks(doc_id)
+        # Each FAQ entry routes its own question to itself: the curated question/answer pairs.
+        for text, meta in chunks:
+            asked = _faq_question(text)
+            if asked:
+                routes[(doc_id, asked)] = str(meta.get("chunk_id") or "")
+        questions = [str(q) for q in entry.get("suggested_questions") or []]
+        for question in questions:
+            chunk_id = _faq_chunk(question, chunks)
+            if not chunk_id:
+                best = index.query(question, [doc_id], 1)
+                if best and best[0][2] <= cfg.route_passage_max_distance:
+                    chunk_id = str(best[0][1].get("chunk_id") or "")
+            if chunk_id:
+                routes[(doc_id, question)] = chunk_id
+    with _lock:
+        _routes.clear()
+        _routes.update(routes)
+        _routes_built_for = total
+    logger.info("routes_ready | questions=%s", len(routes))
+
+
+def warm_up_routes() -> None:
+    _build_routes()
+
+
+def route_question(
+    scope: CallerScope,
+    question: str,
+    sport: str | None = None,
+    screen_doc_ids: list[str] | None = None,
+) -> list[Hit]:
+    """Passages answering the suggested questions the user's question rewords; [] when none is close.
+
+    Ties (the same question in two guides) prefer the guides of the user's screen; otherwise the
+    answer of each matching guide is returned (at most two), so the model sees both.
+    """
+    cfg = get_settings().app_chat
+    q = (question or "").strip()
+    if not q or cfg.route_max_distance <= 0:
+        return []
+    _build_routes()
+    allowed = visible_guides(scope, sport)
+    asked = get_knowledge_embeddings().embed_query(q)
+    on_screen_ids = set(screen_doc_ids or [])
+    close: dict[str, tuple[float, str]] = {}  # doc_id -> (question distance, chunk_id)
+    for (doc_id, suggested), chunk_id in _routes.items():
+        if doc_id not in allowed:
+            continue
+        distance = sum((a - b) ** 2 for a, b in zip(asked, _suggestion_vector(suggested)))
+        limit = cfg.route_max_distance + (cfg.route_screen_margin if doc_id in on_screen_ids else 0)
+        if distance <= limit and (doc_id not in close or distance < close[doc_id][0]):
+            close[doc_id] = (distance, chunk_id)
+    if not close:
+        return []
+    on_screen = [d for d in close if d in on_screen_ids]
+    chosen = sorted(on_screen or close, key=lambda d: close[d][0])[: 1 if on_screen else 2]
+    rows = _index().chunks_with_distance(q, [close[d][1] for d in chosen])
+    hits = [h for text, meta, dist in rows if (h := _checked_hit(text, meta, dist, scope, allowed)) is not None]
+    order = {close[d][1]: i for i, d in enumerate(chosen)}
+    hits.sort(key=lambda h: order.get(_chunk_id_of(h), 99))
+    logger.info("app_chat_route | docs=%s question_distance=%s", ",".join(chosen),
+                ",".join(f"{close[d][0]:.3f}" for d in chosen))
+    return hits

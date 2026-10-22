@@ -26,6 +26,14 @@ def _no_did_you_mean(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _no_question_routing(monkeypatch):
+    """Routing reads the real index; unit tests patch it themselves when they need it."""
+    from app.knowledge import service
+
+    monkeypatch.setattr(service, "route_question", lambda *a, **kw: [])
+
+
+@pytest.fixture(autouse=True)
 def _no_query_rewrite(monkeypatch):
     """The weak-question rewrite calls the model; retrieval tests must not depend on it."""
     from app.services import query_rewrite

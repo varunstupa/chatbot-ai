@@ -38,6 +38,15 @@ source_files:
   - src/app/modules/tms/score-and-streaming/score-and-streaming.component.ts
   - src/app/modules/tms/score-and-streaming/score-input-feedback.constants.ts
   - src/app/shared/game-play-config/game-play-config.defaults.ts
+answer_notes: |
+  Answering guidance for the TMS assistant:
+  1. Identify whether the user is asking about a normal game, the cap, the decider, fast entry, a validation message, or a walkover/disqualification.
+  2. Explain the applicable rule in plain language before giving the technical message.
+  3. When a score is rejected, ask for or use the game number, entered score, and relevant Game Play settings if those details are available.
+  4. If the rule configuration is unknown, explain the standard default and clearly state that the event's configured settings may differ.
+  5. Do not invent decider points, cap values, match formats, reset restrictions, or causes for generic validation errors.
+  6. Distinguish **games** from the word **sets** when helpful: the interface/backend may use "set" in messages even though this guide describes badminton games.
+  7. Treat the server's validation result as authoritative for whether a submitted score was saved.
 ---
 
 # Scoring and Streaming for Badminton
@@ -230,6 +239,18 @@ That is the documented fast-entry behavior for badminton: two digits move the cu
 
 Not until the walkover is reset. The server returns **"Match Already Walkover Reset First"** if new game scores are submitted while the walkover remains recorded.
 
+### Why am I seeing "Wrong score input for set"?
+
+The score for that game is not a valid result under the configured badminton rules. Check the winning score, the two-point lead of the standard rule, the golden rule, and the cap or decider points. For example, 21–20 is rejected under the standard rule but accepted under the golden rule.
+
+### Why does the system say "Set exceeded"?
+
+More games were entered than the match allows. Remove the scores of games beyond the allowed number, or after the match winner was decided.
+
+### What does "Match Data Not Reset" mean?
+
+The reset of the match is blocked. Check the match state and your permissions; the message alone does not say which condition blocked it.
+
 ## Natural-language and Hinglish query patterns
 
 Treat the following as equivalent intents when retrieving this document:
@@ -245,16 +266,6 @@ Treat the following as equivalent intents when retrieving this document:
 - "Set exceeded error kyun aa raha hai?"
 - "Walkover ke baad score update kyun nahi ho raha?"
 - "Match Data Not Reset ka kya matlab hai?"
-
-## Answering guidance for the TMS assistant
-
-1. Identify whether the user is asking about a normal game, the cap, the decider, fast entry, a validation message, or a walkover/disqualification.
-2. Explain the applicable rule in plain language before giving the technical message.
-3. When a score is rejected, ask for or use the game number, entered score, and relevant Game Play settings if those details are available.
-4. If the rule configuration is unknown, explain the standard default and clearly state that the event's configured settings may differ.
-5. Do not invent decider points, cap values, match formats, reset restrictions, or causes for generic validation errors.
-6. Distinguish **games** from the word **sets** when helpful: the interface/backend may use "set" in messages even though this guide describes badminton games.
-7. Treat the server's validation result as authoritative for whether a submitted score was saved.
 
 ## Source references
 

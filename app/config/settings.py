@@ -239,6 +239,8 @@ class AppChatConfig(BaseModel):
     keyword_search: bool = True
     keyword_pool: int = Field(default=10, ge=0, le=50)
     keyword_boost: float = Field(default=0.03, ge=0)
+    # Added to the distance of backend (API) guides, so a screen guide wins a close call.
+    backend_guide_penalty: float = Field(default=0.03, ge=0)
     # Cross-encoder rerank of the candidates left after the limits. Its score divided by
     # rerank_scale is used as the distance, so the boosts above still decide near ties.
     rerank: bool = False
@@ -255,6 +257,17 @@ class AppChatConfig(BaseModel):
     # with none that close is not about the modules and gets the plain no-answer message.
     suggest_max_distance: float = Field(default=0.27, gt=0)
     suggest_count: int = Field(default=3, ge=0, le=6)
+    # Question routing: a question within route_max_distance of a guide's suggested question goes
+    # straight to the passage answering it (its FAQ entry, else the guide passage closest to that
+    # suggested question when it is within route_passage_max_distance). 0 turns routing off.
+    route_max_distance: float = Field(default=0.05, ge=0)
+    route_passage_max_distance: float = Field(default=0.25, gt=0)
+    # Extra distance allowed for the guides of the user's current screen, so a rewording of an
+    # on-screen question wins over the same question in another screen's guide.
+    route_screen_margin: float = Field(default=0.03, ge=0)
+    # Guides that only say where things are: routed to for where-is and list questions only, so a
+    # how-to question gets the guide with the actual settings.
+    route_where_only_docs: list[str] = Field(default_factory=lambda: ["tms.navigation"])
     # Where each guide's screen is in the app, by doc_id prefix (the longest prefix wins).
     # Added to every passage, so an answer from another screen says where to go.
     screen_locations: dict[str, str] = Field(
@@ -306,6 +319,15 @@ class AppChatConfig(BaseModel):
     )
     # multilingual-e5-base reads 512 tokens; 1500-character chunks stay under it.
     chunk_size: int = Field(default=1500, ge=200)
+    # Guide sections (## or ###) that are notes for whoever writes the answers ("Guidance for the
+    # assistant", "When to ask a follow-up question"), not content for users. They stay in the
+    # guide files but are not indexed, so they never crowd out the real passages. A heading is
+    # skipped when it contains one of these phrases, ignoring case.
+    index_skip_sections: list[str] = Field(
+        default_factory=lambda: [
+            "assistant", "when to ask a follow-up question", "source-of-truth", "question patterns",
+        ],
+    )
     chunk_overlap: int = Field(default=150, ge=0)
     # Earlier messages resent with each question; fewer keeps follow-ups fast.
     history_messages: int = Field(default=6, ge=0, le=30)
@@ -365,6 +387,50 @@ class AppChatConfig(BaseModel):
             "Context:\n{context}\n\nQuestion:\n{question}\n\n"
             "Answer (concise Markdown):"
         ),
+    )
+
+    # Dynamic prompt: a short fixed core plus only the rules for the question's type
+    # (how-to, problem, where-is, what-is, list), and a ready-made opening sentence when
+    # the answer is on another screen. Off: prompt_template above is used for every question.
+    dynamic_prompt: bool = False
+    prompt_core: str = Field(
+        default=(
+            "You are the in-app assistant of an event management system.\n"
+            "The user is on the screen: {screen}. The organisation's sport is: {sport}. Ignore "
+            "passages written for another sport.\n"
+            "Answer ONLY from the Context below. Use the exact button and field names it gives. "
+            "Never mention the Context, passages or guides in the answer.\n"
+            "Prefer passages from the screen the user is on; use another screen's passage only when "
+            "none from the user's screen answers the Question.\n"
+            "If the Context starts with 'The user is already told:', that sentence is already shown "
+            "above your answer: do not repeat where the page is, continue with the answer itself. "
+            "Never tell the user to go to the screen they are on.\n"
+            "{type_rules}\n"
+            "Call on and off controls toggles. Never write the word switch.\n"
+            "Write the entire answer in {language}. Keep numbers and exact values unchanged. "
+            "No headings and no code blocks.\n"
+            "Never name an API, endpoint, URL path, route or backend service, and never write code.\n"
+            "If the Context does not answer the Question, or the Question is not about the event "
+            "management system, reply with exactly NO_ANSWER and nothing else. Never translate NO_ANSWER.\n\n"
+            "Context:\n{context}\n\nQuestion:\n{question}\n\n"
+            "Answer:"
+        ),
+    )
+    prompt_type_rules: dict[str, str] = Field(
+        default_factory=lambda: {
+            "how-to": "This is a how-to question. Give every step and every setting the Context "
+                      "describes for it, as numbered steps in the order the page shows them. Name the "
+                      "page only as its passage's 'Where it is in the app' says; never make up a path.",
+            "problem": "The user reports a problem. Use only a passage about the same feature the "
+                       "Question names. First state the cause that passage gives. If it also gives "
+                       "steps to fix it, list them as numbered steps; if it gives none, stop after the "
+                       "cause. Never invent a cause or a fix.",
+            "where-is": "The user asks where something is. Answer in one or two sentences with the "
+                        "path its passage's 'Where it is in the app' gives; never make up a path.",
+            "what-is": "The user asks what something is or means. Answer in one to three sentences.",
+            "list": "The user asks for a list. Give the complete list from the Context; leave nothing out.",
+            "general": "Answer in a few clear sentences, or numbered steps for a task.",
+        },
     )
 
     @field_validator("prompt_template")

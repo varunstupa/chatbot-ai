@@ -117,3 +117,7 @@ Open **Rankings** from the sidebar. It shows only when your organisation has ran
 **Why is the Ranking page empty?** Either no event is selected (open the event first), the season settings have neither system switched on, or no category matches the filters.
 
 **What do the Status values mean?** Active means the category has a configuration in use; inactive means it has none or it is switched off.
+
+**How do I filter the categories on the Ranking page?** Use the filters above the list: **Category Name** (tick one or more names), **Category Level** and **Status**. Changing a filter reloads the list from the first page.
+
+**What does the Configuration Type column mean?** It shows the type of point configuration saved for the category. A category that has not been set up has no configuration and is inactive.

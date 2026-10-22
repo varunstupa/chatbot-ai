@@ -22,7 +22,13 @@ from app.api.dependencies import get_rag_pipeline
 from app.api.routes import _attach_session
 from app.config.settings import get_settings
 from app.core import constants
-from app.models.schemas import QueryRequest, QueryResponse, RetrievedChunk
+from app.models.schemas import (
+    FeedbackRequest,
+    FeedbackStatusRequest,
+    QueryRequest,
+    QueryResponse,
+    RetrievedChunk,
+)
 from app.knowledge import service as knowledge
 from app.services import app_chat, chat_store
 from app.services.auth import CallerScope, require_scope, require_service_key
@@ -38,6 +44,7 @@ _SESSION_RE = re.compile(r"^[A-Za-z0-9_-]{8,64}$")
 # Characters of a streamed answer held back, so the guardrail can see an API path
 # or code before any part of it is sent.
 _HOLD_BACK = 60
+NL = chr(10)
 
 
 def _client_session_id(body_session_id: str | None, request: Request) -> str:
@@ -84,6 +91,12 @@ def _retriever(scope: CallerScope, body: QueryRequest, holder: dict):
     return run
 
 
+def _location_prefix(holder: dict) -> str:
+    """The code-written opening sentence when the answer is on another screen (dynamic prompt)."""
+    result = holder.get("result")
+    return result.location_prefix if result is not None else ""
+
+
 def _screen_title(scope: CallerScope, body: QueryRequest) -> str:
     if not body.screen:
         return ""
@@ -111,12 +124,14 @@ def _store_chat(
     started: float,
     first_token: float | None,
     streamed: bool,
-) -> None:
-    """Queue the question and the answer the user saw for the chat store (never raises)."""
+) -> str:
+    """Queue the question and the answer the user saw for the chat store (never raises).
+
+    Returns the answer's message id, which the widget sends back with a thumbs up/down.
+    """
     result = holder.get("result")
     llm = get_settings().llm
-    chat_store.record(
-        chat_store.ChatRecord(
+    record = chat_store.ChatRecord(
             tenant=scope.tenant,
             session_id=session_id,
             question=question,
@@ -136,7 +151,8 @@ def _store_chat(
             total_ms=_ms(time.monotonic(), started),
             streamed=streamed,
         )
-    )
+    chat_store.record(record)
+    return record.message_id
 
 
 async def _answer_json(
@@ -156,8 +172,8 @@ async def _answer_json(
     started, holder = time.monotonic(), {}
     screen_title = _screen_title(scope, body)
 
-    def store(answer_text: str, outcome: str) -> None:
-        _store_chat(
+    def store(answer_text: str, outcome: str) -> str:
+        return _store_chat(
             scope, body, session_id=session_id, question=q, answer=answer_text, outcome=outcome,
             screen_title=screen_title, language=language, holder=holder, started=started,
             first_token=None, streamed=False,
@@ -168,7 +184,7 @@ async def _answer_json(
             q,
             scoped,
             prompt_template=app_chat.prompt_for(
-                screen_title, language, app_chat.sport_from_id(body.sport_id)
+                screen_title, language, app_chat.sport_from_id(body.sport_id), question=q
             ),
             retriever=_retriever(scope, body, holder),
             no_answer_text=no_answer,
@@ -187,6 +203,8 @@ async def _answer_json(
             )
             if found:
                 answer, suggestions = found
+        elif app_chat.needs_location_prefix(prefix := _location_prefix(holder), answer):
+            answer = prefix + NL + NL + answer
     except RuntimeError as e:
         logger.error("llm_unavailable | %s", str(e))
         store(str(e), chat_store.ERROR)
@@ -199,13 +217,14 @@ async def _answer_json(
         store(s.messages.query_processing_failed, chat_store.ERROR)
         raise HTTPException(status_code=500, detail=s.messages.query_processing_failed) from e
 
-    store(answer, chat_store.NOT_FOUND if answer == no_answer or suggestions else chat_store.ANSWERED)
+    message_id = store(answer, chat_store.NOT_FOUND if answer == no_answer or suggestions else chat_store.ANSWERED)
     _attach_session(response, session_id)
     return QueryResponse(
         answer=answer,
         chunks=[RetrievedChunk(**src) for src in sources],
         session_id=session_id,
         suggestions=suggestions,
+        message_id=message_id,
     )
 
 
@@ -233,15 +252,28 @@ def _answer_stream(
         # containing code is caught before it reaches the browser. When that happens the
         # stream stops and the final "done" answer replaces the message.
         sent_upto, decided, is_marker, blocked, full = 0, False, False, False, ""
+        # The location sentence goes out once, before the model's first words.
+        opening_sent, opening_text = False, ""
+
+        def opening() -> str:
+            nonlocal opening_sent, opening_text
+            if opening_sent:
+                return ""
+            opening_sent = True
+            prefix = _location_prefix(holder)
+            # Decided on the first words held back so far: no duplicate when the model gives the path.
+            if app_chat.needs_location_prefix(prefix, full):
+                opening_text = prefix + NL + NL
+            return opening_text
         first_token: float | None = None
         stored = False
 
-        def store(answer_text: str, outcome: str) -> None:
+        def store(answer_text: str, outcome: str) -> str | None:
             nonlocal stored
             if stored:
-                return
+                return None
             stored = True
-            _store_chat(
+            return _store_chat(
                 scope, body, session_id=session_id, question=q, answer=answer_text, outcome=outcome,
                 screen_title=screen_title, language=language, holder=holder, started=started,
                 first_token=first_token, streamed=True,
@@ -252,7 +284,7 @@ def _answer_stream(
                 q,
                 scoped,
                 prompt_template=app_chat.prompt_for(
-                    screen_title, language, app_chat.sport_from_id(body.sport_id)
+                    screen_title, language, app_chat.sport_from_id(body.sport_id), question=q
                 ),
                 retriever=_retriever(scope, body, holder),
                 no_answer_text=no_answer,
@@ -277,7 +309,7 @@ def _answer_stream(
                         continue
                     safe_end = len(full) - _HOLD_BACK
                     if safe_end > sent_upto:
-                        yield _line({"type": "token", "text": full[sent_upto:safe_end]})
+                        yield _line({"type": "token", "text": opening() + full[sent_upto:safe_end]})
                         sent_upto = safe_end
                     continue
                 if kind == "done":
@@ -303,10 +335,18 @@ def _answer_stream(
                         item = {"type": "done", "answer": final}
                         if suggestions:
                             item["suggestions"] = suggestions
-                    elif sent_upto < len(full):
-                        yield _line({"type": "token", "text": full[sent_upto:]})
-                        sent_upto = len(full)
-                    store(final, chat_store.NOT_FOUND if not_found else chat_store.ANSWERED)
+                    else:
+                        lead = opening() if sent_upto == 0 else ""
+                        if sent_upto < len(full) or lead:
+                            yield _line({"type": "token", "text": lead + full[sent_upto:]})
+                            sent_upto = len(full)
+                        if opening_text:
+                            final = opening_text + final
+                            if item.get("answer"):
+                                item = {**item, "answer": final}
+                    message_id = store(final, chat_store.NOT_FOUND if not_found else chat_store.ANSWERED)
+                    if message_id:
+                        item = {**item, "message_id": message_id}
                 elif kind == "session":
                     # Never hand the tenant-scoped history key to the browser.
                     item = {"type": "session", "session_id": session_id}
@@ -381,6 +421,52 @@ async def app_chat_session_close(
     if _SESSION_RE.match(session_id):
         chat_store.close_session(scope.tenant, session_id)
     return Response(status_code=204)
+
+
+@router.post("/app-chat/feedback", tags=["app-chat"])
+async def app_chat_feedback(
+    body: FeedbackRequest,
+    scope: CallerScope = Depends(require_scope),
+) -> dict:
+    """Thumbs up/down on one of the caller's own answers; stored with that question and answer.
+
+    Voting again changes the vote. Only the answering user of the same tenant can rate an answer.
+    """
+    status = await chat_store.save_feedback(scope.tenant, scope.user_id, body.message_id, body.rating, body.comment)
+    if status == "unknown":
+        raise HTTPException(status_code=404, detail="This answer can no longer be rated.")
+    if status == "unavailable":
+        raise HTTPException(status_code=503, detail="Feedback cannot be saved right now.")
+    logger.info("app_chat_feedback | tenant=%s rating=%s", scope.tenant, body.rating)
+    return {"saved": True, "rating": body.rating}
+
+
+@router.get("/app-chat/feedback", tags=["app-chat"], dependencies=[Depends(require_service_key)])
+async def app_chat_feedback_list(
+    tenant: str | None = Query(default=None, max_length=100),
+    rating: str | None = Query(default="down", pattern="^(up|down)$"),
+    status: str | None = Query(default="open", pattern="^(open|fixed|wont_fix)$"),
+    limit: int = Query(default=100, ge=1, le=1000),
+) -> dict:
+    """Votes for review (default: open thumbs-down answers), newest first. Service key only."""
+    items = await chat_store.list_feedback(tenant, rating, status, limit)
+    if items is None:
+        raise HTTPException(status_code=503, detail="The chat store is not running.")
+    return {"count": len(items), "items": items}
+
+
+@router.patch(
+    "/app-chat/feedback/{tenant}/{message_id}", tags=["app-chat"],
+    dependencies=[Depends(require_service_key)],
+)
+async def app_chat_feedback_status(tenant: str, message_id: str, body: FeedbackStatusRequest) -> dict:
+    """Mark a reviewed vote fixed or wont_fix (or open it again). Service key only."""
+    changed = await chat_store.set_feedback_status(tenant, message_id, body.status, body.note)
+    if changed is None:
+        raise HTTPException(status_code=503, detail="The chat store is not running.")
+    if changed == 0:
+        raise HTTPException(status_code=404, detail="No vote for this answer.")
+    return {"updated": changed, "status": body.status}
 
 
 @router.get("/knowledge/screen", tags=["knowledge"])

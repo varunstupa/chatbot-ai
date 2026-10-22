@@ -133,3 +133,5 @@ Image messages: "File exceeds max limit of N MB.", "… resolution must be W px 
 **How do I edit the roster of a team in a league?** Click the **Player Details** icon on the team's row, add players with **Add Players** → **Add** (or **Loan**), set **Active** / **Reserve**, and save. The team's name, members, venues and images are edited under **Team Details**.
 
 **How do I add a team logo in a league?** **Team Details** icon → **Upload Photos** → **Team Logo** (80 × 75 px).
+
+**How do I change the players of a team?** In a league event, click **Player Details** on the team's row. In the roster use **Add Players** → **Add** to add players, set each player **Active** or **Reserve**, and click **Save**.

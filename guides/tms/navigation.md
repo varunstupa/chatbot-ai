@@ -99,3 +99,7 @@ Open **Event** from the sidebar. The page shows a row of numbered setup steps at
 **How do I open the registration settings?** Open Event from the sidebar, then click Registration in the setup steps at the top.
 
 **Why can I not see Rankings or Leaderboard?** They show only when your organisation has them turned on.
+
+**Where is the Players page?** Open **Players** from the sidebar.
+
+**Where do I set up payment and invoices?** Open **Event** from the sidebar, then click **Payment & Invoice** in the setup steps at the top.

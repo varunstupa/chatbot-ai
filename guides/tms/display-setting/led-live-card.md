@@ -103,3 +103,7 @@ The **LED live card** is the page the LED boards show. It lists the matches in p
 **Why does a finished match stay on the screen?** Its table keeps the last card until a new live match appears on that table.
 
 **How do I change the layout?** Open LED Settings on the Display Setting screen, click a layout, then click Save. Reload the LED card to see it.
+
+**How often does the LED card change the matches?** When there are more matches than fit on one screen, the cards are shown in batches and the batch changes every 20 seconds.
+
+**What does the LED card show for doubles?** Both players of each side are shown, with their flags, short names and club or member association.

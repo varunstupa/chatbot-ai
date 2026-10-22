@@ -41,7 +41,7 @@ _HINGLISH_WORDS = frozenset(
 HINGLISH = QuestionLanguage(code="hi-latn", name="Hinglish (Hindi written in English letters)")
 
 
-def _is_hinglish(text: str) -> bool:
+def is_hinglish(text: str) -> bool:
     """Latin-letter text with at least two distinct common Hindi words."""
     if re.search("[ऀ-ॿ]", text):  # Devanagari is plain Hindi
         return False
@@ -76,7 +76,7 @@ def detect_language(text: str) -> QuestionLanguage | None:
     English questions such as "How do I forfeit a player?" as German.
     """
     text = (text or "").strip()
-    if _is_hinglish(text):
+    if is_hinglish(text):
         return HINGLISH
     values = _get_detector().compute_language_confidence_values(text)
     if not values:

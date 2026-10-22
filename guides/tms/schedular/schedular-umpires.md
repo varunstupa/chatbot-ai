@@ -39,6 +39,15 @@ source_files:
   - src/app/modules/tms/schedular/schedular.component.ts
   - src/app/core/services/schedular-service/schedular.service.ts
   - src/app/core/constants/api-constant.ts
+answer_notes: |
+  Answering guidance for the TMS assistant:
+  1. Identify whether the user wants to assign to selected matches, assign across a table, auto-assign, change settings, remove an umpire, undo, or reset assignments.
+  2. Check the key prerequisite: the match must already be scheduled in a slot.
+  3. Explain the difference between a match without a slot and an empty slot without a match.
+  4. State the two-umpire maximum when the user asks why another umpire cannot be added.
+  5. For auto assignment, say it follows the event's Umpiring Settings, but do not invent the algorithm or setting fields.
+  6. Use exact UI labels and validation messages from this guide.
+  7. For server-side failures not explained here, refer to the Scheduler API guide rather than guessing.
 ---
 
 # Scheduler umpire tab
@@ -209,6 +218,18 @@ They are event-level rules shown in the **Umpiring Settings** side panel. Auto a
 
 Select **Undo**. A successful undo displays `Action undone successfully!`.
 
+### Why does the Scheduler say "No match is assigned to this slot"?
+
+The selected slot is empty. Assign a match to the slot first (**Go to Matches**), or use **Add Umpire Manually**.
+
+### Why can't I assign a third umpire to a match?
+
+A match can have at most two umpires. If it already has two, remove one before assigning another.
+
+### What does "Please schedule a match to have an umpire assigned" mean?
+
+The match has no table and time slot yet. Schedule the match first, then assign the umpire.
+
 ## Natural-language and Hinglish query patterns
 
 Treat these as equivalent intents when retrieving this document:
@@ -223,16 +244,6 @@ Treat these as equivalent intents when retrieving this document:
 - "Umpiring Settings kahan milti hain?"
 - "Umpire assignment undo kaise karun?"
 - "Table par koi match scheduled nahi hai to kya karun?"
-
-## Answering guidance for the TMS assistant
-
-1. Identify whether the user wants to assign to selected matches, assign across a table, auto-assign, change settings, remove an umpire, undo, or reset assignments.
-2. Check the key prerequisite: the match must already be scheduled in a slot.
-3. Explain the difference between a match without a slot and an empty slot without a match.
-4. State the two-umpire maximum when the user asks why another umpire cannot be added.
-5. For auto assignment, say it follows the event's Umpiring Settings, but do not invent the algorithm or setting fields.
-6. Use exact UI labels and validation messages from this guide.
-7. For server-side failures not explained here, refer to the Scheduler API guide rather than guessing.
 
 ## Source references
 

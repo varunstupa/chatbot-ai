@@ -106,3 +106,13 @@ For each tenant, then each active season:
 
 **How do I restore an old leaderboard?** Use the restore action on the history screen with a reason. It creates a new published list from the old one.
 **How do I publish a ranking list?** Open the list on the Ranking Management page, click **Publish report**, read the confirmation, then click **Proceed**. This validates the list. The list goes live when the publication run promotes it, on its schedule or after a manual trigger.
+
+**What are the states of a ranking or rating list?** **Calculated** (or **edited** after a change), then **validated**, then **published**. A published list is the live one; it is never changed in place, and a new calculation creates a new list.
+
+**When does the publication run happen?** A validated list waits for the publication run, which runs on the schedule of each season and category. It can also be started at once with a manual trigger.
+
+**How do I trigger publication now?** Trigger the publication pipeline for the tenant (ranking) or the rating publication task (rating) from the admin tools. It processes all active seasons and categories at once.
+
+**What does the publication run do in order?** It publishes the settings snapshots, then promotes the validated lists oldest first (so the latest stays published), then applies the deductions on lists that are already published.
+
+**Why does a publication run show failed?** A list that fails during the run is logged and skipped while the other lists go on; a failure for the whole tenant is recorded in the pipeline log. Check the list in the log and run the publication again once it is fixed.

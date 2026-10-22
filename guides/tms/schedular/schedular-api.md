@@ -42,6 +42,17 @@ source_files:
   - src/app/modules/tms/schedular/schedular.component.ts
   - src/app/core/services/schedular-service/schedular.service.ts
   - src/app/core/constants/api-constant.ts
+answer_notes: |
+  Answering guidance for the TMS assistant:
+  1. Identify the operation: day schedule, manual assignment, auto schedule, swap, remove/reset, visibility, event slots, or official assignment.
+  2. Use the exact endpoint-specific validation message where available.
+  3. For auto-schedule pending matches, explain the returned pending reason directly.
+  4. Distinguish a successful empty day-schedule response from a failed request.
+  5. Distinguish official assignment by venue/date from assignment by match IDs; their validations differ.
+  6. If the message has no English translation, say that the source indicates the UI may show a raw key; do not invent the missing text.
+  7. Do not claim to cover untraced match-list, umpire-settings, live match-centre, official-notes, or venue-day behavior.
+  8. The gateway checks login and permissions before forwarding each call. If a request is refused, consider permission/access before attributing the issue to scheduling data.
+  9. Do not invent additional placement rules, conflict resolutions, or reset safeguards beyond the documented behavior.
 ---
 
 # Backend logic – Scheduler APIs
@@ -289,18 +300,6 @@ Treat these as equivalent intents when retrieving this document:
 - "Day schedule empty kyun aa raha hai?"
 - "Match slots remove aur reset mein kya difference hai?"
 - "Schedule ko Hide ya Unhide kaise karte hain?"
-
-## Answering guidance for the TMS assistant
-
-1. Identify the operation: day schedule, manual assignment, auto schedule, swap, remove/reset, visibility, event slots, or official assignment.
-2. Use the exact endpoint-specific validation message where available.
-3. For auto-schedule pending matches, explain the returned pending reason directly.
-4. Distinguish a successful empty day-schedule response from a failed request.
-5. Distinguish official assignment by venue/date from assignment by match IDs; their validations differ.
-6. If the message has no English translation, say that the source indicates the UI may show a raw key; do not invent the missing text.
-7. Do not claim to cover untraced match-list, umpire-settings, live match-centre, official-notes, or venue-day behavior.
-8. The gateway checks login and permissions before forwarding each call. If a request is refused, consider permission/access before attributing the issue to scheduling data.
-9. Do not invent additional placement rules, conflict resolutions, or reset safeguards beyond the documented behavior.
 
 ## Source references
 

@@ -36,6 +36,16 @@ source_files:
   - src/app/modules/tms/score-and-streaming/score-and-streaming.component.ts
   - src/app/modules/tms/score-and-streaming/score-input-feedback.constants.ts
   - src/app/shared/game-play-config/game-play-config.defaults.ts
+answer_notes: |
+  Answering guidance for the TMS assistant:
+  1. Identify whether the user is asking about standard scoring, golden point, sudden death, the decider game, fast entry, or a validation message.
+  2. Explain the applicable rule in plain language before discussing the error message.
+  3. When diagnosing a rejected score, use the entered score and the event's configured Game Play settings if available.
+  4. If the rule configuration is unknown, explain the default target and standard rule, and clearly state that event settings may differ.
+  5. Do not invent a death-point value, decider target, match format, or reset restriction not specified by the source.
+  6. Clarify that the backend may call a game a "set" in its validation messages.
+  7. Do not attribute Badminton's two-digit auto-advance behavior to Table Tennis.
+  8. Treat the server's validation result as authoritative for whether a submitted score was accepted.
 ---
 
 # Scoring and Streaming for Table Tennis
@@ -205,6 +215,18 @@ The last game can use its own configured target and the golden-point rule, with 
 
 Not until the walkover is reset. The server rejects new game scores while the walkover remains recorded.
 
+### What does "Wrong score input for set 1" mean in table tennis?
+
+The score does not form a valid game result under the configured rules. For example, 11–10 is invalid as a final score under the standard rule. Continue the game if it is still in progress, or check the golden-point, sudden-death and decider settings.
+
+### Why does the system say "Set exceeded"?
+
+More games were entered than the match allows. Remove the scores of games beyond the allowed number, or after the match winner was decided.
+
+### Why is a table tennis score rejected?
+
+The entered points do not form a valid game result under the Game Play rules (the default game is to 11). Check the two-point lead of the standard rule, the golden point, sudden death and decider settings, and do not enter games after the match winner is decided.
+
 ## Natural-language and Hinglish query patterns
 
 Treat these as equivalent intents when retrieving this document:
@@ -220,17 +242,6 @@ Treat these as equivalent intents when retrieving this document:
 - "Set exceeded error kyun aa raha hai?"
 - "Walkover ke baad score update kyun nahi ho raha?"
 - "Cursor automatically next game par kyun ja raha hai?"
-
-## Answering guidance for the TMS assistant
-
-1. Identify whether the user is asking about standard scoring, golden point, sudden death, the decider game, fast entry, or a validation message.
-2. Explain the applicable rule in plain language before discussing the error message.
-3. When diagnosing a rejected score, use the entered score and the event's configured Game Play settings if available.
-4. If the rule configuration is unknown, explain the default target and standard rule, and clearly state that event settings may differ.
-5. Do not invent a death-point value, decider target, match format, or reset restriction not specified by the source.
-6. Clarify that the backend may call a game a "set" in its validation messages.
-7. Do not attribute Badminton's two-digit auto-advance behavior to Table Tennis.
-8. Treat the server's validation result as authoritative for whether a submitted score was accepted.
 
 ## Source references
 

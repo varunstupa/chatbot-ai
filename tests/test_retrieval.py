@@ -181,3 +181,139 @@ def test_passages_say_where_their_screen_is():
 def test_prompt_uses_the_screen_name_only():
     prompt = app_chat.prompt_for("Event Details page --- Organiser Guide and Troubleshooting")
     assert "on the screen: Event Details page.\n" in prompt
+
+
+# ---------- dynamic prompt ----------
+
+import pytest
+
+
+@pytest.mark.parametrize("question, kind", [
+    ("How can we enable streaming?", "how-to"),
+    ("Why can't I publish my event?", "problem"),
+    ("Event live nahi ho raha, kya karun?", "problem"),
+    ("Where is the players page?", "where-is"),
+    ("Which modules are in the sidebar?", "list"),
+    ("What are the predefined fixture templates?", "list"),
+    ("What does MA mean?", "what-is"),
+    ("Thanks", "general"),
+])
+def test_question_type(question, kind):
+    assert app_chat.question_type(question) == kind
+
+
+def test_location_sentence():
+    assert app_chat.location_sentence("tms.fixture.templates") == (
+        "This is on the Fixtures/Results page: open Fixtures/Results from the sidebar."
+    )
+    assert app_chat.location_sentence("unknown.guide") == ""
+
+
+def test_dynamic_prompt_keeps_the_core_and_only_the_type_rules(monkeypatch):
+    _settings(monkeypatch, dynamic_prompt=True)
+    prompt = app_chat.prompt_for("Event Details page", None, None, question="Where is the players page?")
+    assert "reply with exactly NO_ANSWER" in prompt and "never write code" in prompt
+    assert "The user asks where something is." in prompt
+    assert "This is a how-to question." not in prompt
+    assert "{context}" in prompt and "{question}" in prompt
+
+
+def test_static_prompt_when_dynamic_is_off(monkeypatch):
+    _settings(monkeypatch, dynamic_prompt=False)
+    prompt = app_chat.prompt_for("Event Details page", None, None, question="Where is the players page?")
+    assert "The user asks where something is." not in prompt
+
+
+def test_answer_location_line_only_for_another_screen(monkeypatch):
+    from app.services.app_chat import Retrieval
+
+    _settings(monkeypatch, dynamic_prompt=True)
+    other = Retrieval(hits=[_hit("tms.fixture.templates", 0.3)], screen_doc_ids=["tms.event-settings.create-event"])
+    assert other.context.startswith("The user is already told: This is on the Fixtures/Results page")
+    assert other.location_prefix == "This is on the Fixtures/Results page: open Fixtures/Results from the sidebar."
+    own = Retrieval(hits=[_hit("tms.event-settings.create-event", 0.3)], screen_doc_ids=["tms.event-settings.create-event"])
+    assert "already told" not in own.context and own.location_prefix == ""
+
+
+def test_passage_that_names_another_module_sets_the_location(monkeypatch):
+    from app.knowledge.service import Hit
+    from app.services.app_chat import Retrieval
+
+    _settings(monkeypatch, dynamic_prompt=True)
+    streaming = Hit(doc_id="tms.fixture.scoring", title="Scoring", section="Streaming", distance=0.3,
+                    tenant_specific=False,
+                    content="To reach it, open **Scoring and Streaming** from the sidebar and click the Streaming tab.")
+    r = Retrieval(hits=[streaming], screen_doc_ids=["tms.event-settings.create-event"])
+    assert r.location_prefix == "This is on the Scoring and Streaming page: open Scoring and Streaming from the sidebar."
+
+
+def test_instruction_sections_are_not_indexed():
+    from app.knowledge.parser import build_chunks, content_hash, parse_guide
+
+    text = (
+        "---\ndoc_id: tms.x\ntitle: X page\nroutes: [tms/x]\ntenants: all\n---\n"
+        "## Overview\n\nThe X page.\n\n### Guidance for the assistant\n\nAnswer briefly.\n\n"
+        "## When to ask a follow-up question\n\nAsk when unclear.\n\n## Publish\n\nUse the toggle.\n"
+    )
+    meta, body = parse_guide(text)
+    skip = frozenset({"assistant", "when to ask a follow-up question"})
+    chunks = build_chunks(meta, body, content_hash(meta, body, skip), chunk_size=1500, chunk_overlap=0,
+                          skip_sections=skip)
+    texts = " ".join(c.text for c in chunks)
+    assert "The X page." in texts and "Use the toggle." in texts
+    assert "Answer briefly" not in texts and "Ask when unclear" not in texts
+    assert content_hash(meta, body, skip) != content_hash(meta, body)
+
+
+# ---------- question routing ----------
+
+
+def test_routed_answer_goes_first(monkeypatch):
+    routed = replace(_hit("create-event", 0.31), chunk_id="faq-visible")
+    _fake_knowledge(monkeypatch, [_hit("playing-order", 0.27), _hit("players", 0.29)])
+    monkeypatch.setattr(app_chat.knowledge, "route_question", lambda *a, **kw: [routed])
+    result = app_chat.retrieve(SCOPE, "Why is my event not visible to players?", ROUTE, None)
+    assert result.routed and result.hits[0] is routed
+    assert len(result.hits) <= app_chat.get_settings().app_chat.top_k
+
+
+def test_no_route_keeps_the_ranking(monkeypatch):
+    _fake_knowledge(monkeypatch, [_hit("game-play", 0.30)])
+    monkeypatch.setattr(app_chat.knowledge, "route_question", lambda *a, **kw: [])
+    result = app_chat.retrieve(SCOPE, "intervals between games", ROUTE, None)
+    assert not result.routed and result.hits[0].doc_id == "game-play"
+
+
+def test_faq_entry_is_found_for_a_suggested_question():
+    from app.knowledge.service import _faq_chunk
+
+    chunks = [
+        ("Event page\n\n**Why are all fields greyed out?** Click Edit.", {"chunk_id": "a"}),
+        ("Event page\n\n**Why is my event not visible to players?** Publish it.", {"chunk_id": "b"}),
+    ]
+    assert _faq_chunk("Why is my event not visible to players?", chunks) == "b"
+    assert _faq_chunk("How do I add a hotel?", chunks) is None
+
+
+def test_where_only_guide_is_not_routed_for_a_how_to_question(monkeypatch):
+    nav = replace(_hit("tms.navigation", 0.31), chunk_id="nav-payment")
+    _fake_knowledge(monkeypatch, [_hit("payment-invoice", 0.30)])
+    monkeypatch.setattr(app_chat.knowledge, "route_question", lambda *a, **kw: [nav])
+    how_to = app_chat.retrieve(SCOPE, "How do I set up payment methods?", ROUTE, None)
+    assert not how_to.routed and how_to.hits[0].doc_id == "payment-invoice"
+    where = app_chat.retrieve(SCOPE, "Where do I set up payment and invoices?", ROUTE, None)
+    assert where.routed and where.hits[0].doc_id == "tms.navigation"
+
+
+def test_hindi_in_english_letters_is_always_searched_in_english(monkeypatch):
+    k = app_chat.knowledge
+    monkeypatch.setattr(k, "guides_for_screen", lambda *a, **kw: ["game-play"])
+    monkeypatch.setattr(k, "screen_info", lambda *a, **kw: {"title": "Game Play"})
+    monkeypatch.setattr(k, "guides_named_in", lambda *a, **kw: [])
+    by_query = {"score sheet print karna hai": [_hit("score-stream", 0.25)],
+                "How do I print a score sheet?": [_hit("printing", 0.30)]}
+    monkeypatch.setattr(k, "search", lambda scope, query, **kw: by_query.get(query, []))
+    monkeypatch.setattr(app_chat.query_rewrite, "rewrite", lambda q: "How do I print a score sheet?")
+    _settings(monkeypatch, rewrite_weak_questions=True, rerank=False)
+    result = app_chat.retrieve(SCOPE, "score sheet print karna hai", ROUTE, None)
+    assert result.rewritten and result.hits[0].doc_id == "printing"

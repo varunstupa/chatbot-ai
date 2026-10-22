@@ -114,3 +114,9 @@ Two award types exist. **Best Player** gives points for the position a player fi
 **What are the tie breaker criteria?** The criterion chosen for each category to decide between players with equal points: Won, Win-Loss, or Win/Loss Ratio.
 
 **What does Apply to all do?** It applies one set of points to all the selected categories.
+
+**What is the Order of Merit weightage?** Each outcome of a player in a category (win, loss and participation) has points and a weightage (**Wt.**, in %). The points are worked out as wins × win points × win weight %, plus losses × loss points × loss weight %, plus participation points × participation weight % when the player played at least one match. The weightages of one category must total at most 100.
+
+**Why does the award say "Total % exceeds 100"?** The weightages of one category's outcomes (win, loss and participation) add up to more than 100. Lower them until the total is 100 or less; **Save** stays greyed out until then.
+
+**How is the Order of Merit points calculated?** For each category: wins × win points × win weight %, plus losses × loss points × loss weight %, plus participation points × participation weight % if the player played at least one match. A category with no points set gives zero points.

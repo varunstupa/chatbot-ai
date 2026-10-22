@@ -274,3 +274,7 @@ Messages after **Refresh** or **Generate financial report** come from the server
 **What does +N next to a merged payer mean?** N invoices were created after the merge. Use Regenerate to include them.
 
 **What is the difference between Pay Before and Pay After Verification?** Pay Before: the player pays first, then is verified. Pay After: verification must be complete before the player can pay.
+
+**How do I choose who the invoice is raised to?** In **Raised To**, click the role cards in the order invoices should be raised; the number on a card is its order. A registration is billed to the participant's parent (for example their club) with the first matching role, otherwise to the event organiser. Select at least one role, then **Save**.
+
+**How do I send invoices for registrations?** Open **Invoice History**. Click the **Send** icon on an order to generate its invoice, or tick several orders and click **Send Invoice** to generate them grouped per payer. Invoicing must be on: set **Enable Invoicing for this Event?** to **Yes** and save.

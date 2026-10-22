@@ -46,6 +46,15 @@ source_files:
   - src/app/modules/tms/score-and-streaming/score-input-feedback.constants.ts
   - src/app/modules/tms/tms.module.ts
   - src/assets/i18n/en.json
+answer_notes: |
+  Answering guidance for the TMS assistant:
+  1. Identify which part of the page the user means: match list, score dialog, walkover, manual scoring, streaming, stream preferences, lineup, sub-match, notes, or print queue.
+  2. Give the shortest relevant UI path using the exact control labels in this document.
+  3. For empty results, distinguish **No records found** (filters match no records) from **Create fixtures to begin with** (no fixtures exist).
+  4. For score errors, identify the sport and use its sport-specific guide; do not generalize one sport's scoring rules to another.
+  5. For streaming or score updates that fail, check the relevant permission and the specific error message.
+  6. Do not invent extra controls, permissions, reset conditions, or streaming behavior not stated in the source.
+  7. Treat server validation and permission responses as authoritative for whether an action succeeded.
 ---
 
 # Scoring and Streaming page
@@ -358,6 +367,22 @@ The required walkover choices may be incomplete. Select the reason and the playe
 
 The accepted scores and validation rules depend on the event's sport and Game Play configuration. Use the sport-specific guide for Table Tennis, Badminton, Padel, or Tennis rather than applying one sport's rules to another.
 
+### How do I search a match by its match ID?
+
+Enter the match ID in **Search by Match ID**, then press **Enter** or wait for the search.
+
+### How do I filter the matches on this page?
+
+Click **Filter**, add the Participant Type, Category, Stage, Round, Groups or Umpire filters, then click **Apply**. **Reset** clears them.
+
+### Why is there no record on the Scoring and Streaming page?
+
+"No records found" means no matches fit the current category, stage and filters; check them. "Create fixtures to begin with." means the event has no fixtures yet; use **Go to Fixtures**.
+
+### Why is the Update button disabled for a walkover?
+
+The walkover choices are not complete. Select the reason and the player who did not play when the option needs one (a double walkover needs no player).
+
 ## Natural-language and Hinglish query patterns
 
 Treat these as equivalent intents when retrieving this document:
@@ -376,16 +401,6 @@ Treat these as equivalent intents when retrieving this document:
 - "Walkover ke baad score edit kyun nahi ho raha?"
 - "Ready for Print ka use kya hai?"
 - "Manual scoring start ya stop kaise karun?"
-
-## Answering guidance for the TMS assistant
-
-1. Identify which part of the page the user means: match list, score dialog, walkover, manual scoring, streaming, stream preferences, lineup, sub-match, notes, or print queue.
-2. Give the shortest relevant UI path using the exact control labels in this document.
-3. For empty results, distinguish **No records found** (filters match no records) from **Create fixtures to begin with** (no fixtures exist).
-4. For score errors, identify the sport and use its sport-specific guide; do not generalize one sport's scoring rules to another.
-5. For streaming or score updates that fail, check the relevant permission and the specific error message.
-6. Do not invent extra controls, permissions, reset conditions, or streaming behavior not stated in the source.
-7. Treat server validation and permission responses as authoritative for whether an action succeeded.
 
 ## Source references
 

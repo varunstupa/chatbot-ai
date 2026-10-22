@@ -155,3 +155,5 @@ Padel and Tennis have extra timeout options (medical timeouts, minimum time betw
 **How do I limit yellow cards?** Set **Max Card Limit** under Yellow Card in Cards Configuration.
 
 **Why did my changes disappear when I switched tabs?** Each tab is saved separately; click **Update** before switching.
+
+**How do I set the number of timeouts per match?** In **Timeouts Configuration**, turn on **Player Timeouts** and set **Number of Timeouts**: per match (0–9) for singles and doubles, and for team events either per match or one allowance across all their matches.

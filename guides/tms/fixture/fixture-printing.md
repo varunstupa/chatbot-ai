@@ -95,3 +95,21 @@ Printing on the fixtures page works in three ways: the **match print popup** (sh
 ## Permissions
 
 - If the server refuses a print or queue request, the server message is shown on the screen.
+
+## Frequently asked questions
+
+**How do I print a match?** When a match is ready, the print popup offers **Print Now** to print it at once or **Queue** to add it to the print queue. Matches in the print queue are printed from the print queue sidebar.
+
+**What is the difference between Print Now and Queue?** **Print Now** prints the match at once. **Queue** adds it to the print queue without printing; the queue is printed later from the print queue sidebar.
+
+**How do I print all matches of a category?** When several matches of a category are created, the print popup shows them together. Click **Print All matches** to print them, or **Queue All** to add them all to the print queue.
+
+**What does "New Match Ready" mean?** A match was just added and is ready to print. The popup offers **Print Now** or **Queue** for it.
+
+**Why does the print popup close by itself?** The print alert settings set a time after which the popup closes itself (it shows "Auto-dismissing in …s"). The matches are queued first, the same as **Close**.
+
+**How do I print the day-wise sheet?** The day-wise sheet prints the matches of one day, with back numbers, names, club and member association, and the games and result. Turn on **print without score** to print empty score boxes for filling in by hand.
+
+**What is the Badminton print sheet?** Badminton uses its own day-wise sheet layout, with the team logos and team settings of the event. **Print without score** prints a blank sheet for a match.
+
+**How do I print a match without the score?** Turn on **print without score**. The match sheets then print with empty score boxes, so they can be filled in by hand. The same option applies to the print queue.

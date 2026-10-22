@@ -134,3 +134,11 @@ This guide covers the operations on the standings of one category: publishing th
 **Can I reset everything?** Use the reset of the category; it clears the stage and cumulative standings. Rebuild them with Generate.
 
 **How do I export?** Click **Export**, choose the format and categories, then export. The file is produced by the export job.
+
+**What is the difference between publishing the stage standing and the cumulative standing?** Each has its own **Publish** toggle. Publishing a stage standing makes that stage's standing public. The cumulative toggle publishes the category-level standing, which the public category listing uses. Turning on one does not change the other.
+
+**How do I set a participant's cumulative standing by hand?** Click the **Cumulative Standing** number of the row, type a whole number of at least 1 and press Enter (Escape cancels). Success shows "Manual Standings Updated". The next finalized score recalculates the standings and overwrites the manual position.
+
+**What does Reset do to the standings?** **Reset** on the final standing clears the chosen stage's standing; a reset of the cumulative standing clears the category's cumulative positions. Success shows "Standings Reset". The page does not ask for confirmation first.
+
+**Which standings are shown to the public?** Only published standings. The public category listing shows a standing only when the cumulative (category) **Publish** toggle is on, and players see a standing only after it is published.

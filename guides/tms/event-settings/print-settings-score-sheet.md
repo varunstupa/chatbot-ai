@@ -61,3 +61,5 @@ For **Teams** the panels are the same, plus:
 **How do I print a toss sheet?** Select **Teams**, save the layout, then choose **Toss Sheet** and print.
 
 **Why is the team line-up empty on the sheet?** Choose a format under **Playing Order** and save.
+
+**What does Best Of change on the score sheet?** **Best Of** (1 to 6) sets how many game columns the score sheet has for writing scores.

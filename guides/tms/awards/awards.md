@@ -143,3 +143,9 @@ Open **Awards and Standing** from the sidebar.
 **How do I set the prize money?** Turn on **Enable Prize money** in Settings, then enter the price for each standing in the awarding preferences.
 
 **How do I sync awards from the federation?** Click **Sync Awards**, tick the awards, and press **Add**.
+
+**What is the Awards and Standings page for?** It shows the standings of the event (**Final Standing** and **Cumulative Standing**, or the **Leaderboard** for a league) and holds the **Best Player** and **Order of Merit** award hubs, with **Create Awards**, **Sync Awards** and **Settings**.
+
+**How do I choose the stages for the cumulative standing?** Click **Set awarding preferences**. In the side panel, tick the stages that count and drag them into order, then click **Generate** to build the cumulative standing. **Reset priority** clears the stage order.
+
+**Why does the page say "Standings not generated yet"?** The standing was requested before it was generated. Complete the stage, then click **Generate stage standing**.

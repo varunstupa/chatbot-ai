@@ -121,3 +121,7 @@ Click **Back No.** in the page header. The **Back No Settings** window lists the
 **Why does a player have no back number?** They are unpaid, queued, not accepted, or registered after numbers were given – choose the start number again.
 
 **Are back numbers per category?** No, one back number per person for the whole event.
+
+**Why does it say Back No Duplicate?** The same back number was typed twice. Give each participant a different number; one back number is used per person for the whole event.
+
+**How do I seed all categories at once?** Click **Seeding** in the page header, choose the participant type, **Internal Points-Rank** or **External Points-Rank** (for internal also **Points** or **Rank**) and a **Seeding Range**, then **Next**. The **Execution Summary Report** shows the result per category; categories whose draw already exists are skipped.

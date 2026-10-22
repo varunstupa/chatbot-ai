@@ -83,3 +83,7 @@ This guide applies to events whose sport is **Badminton** (sport ID 4). Badminto
 **What does Result show?** The number of games each side has won.
 
 **Why does the sheet look different from the other sports?** The Badminton sheet has rally boxes for the points of each game. The other sports use the score sheet layout of the day-wise and score sheets.
+
+**What does the Result column show on the Badminton sheet?** The number of games each side has won.
+
+**How are the team logos printed on the Badminton sheet?** They are printed when the print settings enable the team logos (Logo 1 to Logo 6).

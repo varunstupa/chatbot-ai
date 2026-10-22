@@ -117,3 +117,17 @@ The bonus points of a match are added after the MULTIPLIER phase, so the tournam
 ## Frequently asked questions
 
 **How is the Elo rating change for a match calculated?** Each player's change is K multiplied by the actual score minus the expected score. The actual score is 1 for a win, 0.5 for a draw and 0 for a loss. The expected score is 1 divided by 1 plus 10 raised to the power of (opponent rating minus player rating) divided by 400. The K factor is the provisional value for a player with few matches, and the normal value otherwise. In a draw the lower-rated player can receive the draw bonus points on top.
+
+**What is the K factor for a new player?** A player with fewer matches than the provisional threshold uses the provisional K factor; everyone else uses the normal K factor.
+
+**How is a draw treated in the rating?** A draw counts as an actual score of 0.5. If the opponent is rated higher by more than the draw margin, the lower-rated player also gets the configured draw bonus points.
+
+**When is a rating normalized?** At the end of the season. Players are grouped by gender and placed in rating classes; inside each class the ratings are stretched onto that class's band.
+
+**How are ranking points added up?** Points are added up from the results; the match outcome points (**Win**, **Lost**, **Tie** and **Participant**) are weighted by the tournament weight. Eligible players are then sorted by total points, highest first.
+
+**How are players with the same points ranked?** Without a tie-breaker, players with the same points share a rank and the next rank skips the tied places (1, 1, 3). With a tie-breaker, they are ordered by its criteria and each gets a different rank (1, 2, 3).
+
+**Where do the league bonus points come from?** From the match outcome rules: points for **Win**, **Lost**, **Tie** and **Participant** (for playing, whatever the result). They are added per match and weighted by the tournament weight; an unfinished special outcome gets only the Participant points.
+
+**How are protected players ranked?** A protected player (a ranking freeze with a start and end date) is ranked after all unprotected eligible players, in name order.

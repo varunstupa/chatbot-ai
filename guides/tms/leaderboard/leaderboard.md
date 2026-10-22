@@ -107,3 +107,5 @@ Open **Leaderboard** from the sidebar. It shows only when your organisation has 
 **Which categories appear?** Only team categories. Singles and doubles categories are not listed on this page.
 
 **How do I search?** Type a team or player name in the Search box; the list updates after a short pause.
+
+**Which categories appear on the Leaderboard?** Only team categories. Singles and doubles categories are not listed on the Leaderboard.

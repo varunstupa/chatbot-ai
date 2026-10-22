@@ -55,6 +55,40 @@ backend_sources:
 source_files:
   - src/app/modules/tms/score-and-streaming/score-and-streaming.component.ts
   - src/app/core/constants/api-constant.ts
+answer_notes: |
+  Guidance for the assistant:
+  - Identify whether the user is asking about a score, a scoring rule, a walkover, match status, streaming, sub-matches, lineups or rule settings.
+  - Explain the documented request flow and checks in order where relevant.
+  - Use the exact error message and HTTP status code when the user supplies them.
+  - Do not infer a specific cause from a status code alone if the message or context is missing.
+  - Do not claim to inspect a live match, request payload, database record, permission or streaming provider unless live system data is available.
+  - The streaming service's internal rules, live match-centre status logic and CTMS sport configuration are not described in this document. State this limitation instead of guessing.
+  - Sport-specific scoring details belong to the separate sport guides for Table Tennis, Badminton, Padel and Tennis. This document explains dispatch and shared backend behaviour, not every sport's scoring rules.
+
+  Intent: score will not save: Ask for or use the exact response message. A rule rejection can return 403 with a message such as “Wrong score input for set 2”. Check the relevant sport's scoring rules, sport ID, participant type and effective Game Play settings. If the message indicates a permission problem, check Update Score and Edit permissions or the live match scorer path. Do not treat every 403 as the same failure.
+
+  Intent: identify which sport calculator is used: Use the sport ID mapping in this document. Padel uses the Padel calculator, which uses Tennis rules. If no sport ID is supplied, the legacy path is used. If the sport ID has no registered strategy, the request is refused with the documented error. Do not guess what an unlisted sport ID represents.
+
+  Intent: rule settings do not match expectations: Explain that Game Play settings are read from event, stage, category and round. Round-level settings override stage-level settings, and the round is matched by name. For a group stage, the group-stage round's rule is used. Mention that detailed sport rules are in the separate sport guides.
+
+  Intent: live score versus final score: The live flag selects the in-progress scoring path. Manual score entry is the final result and must resolve the match by identifying a winner before saving. Reset operations use a separate path.
+
+  Intent: walkover blocks score entry: A walkover must be reset before new sets can be added. “Match Already Walkover Reset First” is 422. “Match Data Not Reset” is 403 when reset is blocked by rules. A knockout result change may be refused if a later round has already used the result. Do not infer a more specific reason without the exact response.
+
+  Intent: streaming update failed: Check Update Stream and Edit permissions, confirm the event exists, and use the exact response. “Event Not Found” is documented as 400; “Video Not Found” is 404. The streaming service's internal rules are outside this document, so do not invent provider-specific fixes.
+
+  Intent: team sub-match or lineup issue: Sub-matches require a team-match parent and are created one per playing table. Reversing order swaps sides of the team match's sub-matches. Automatic lineup creation requires team members. “Participant Not Found” means the requested participant could not be found during lineup update.
+
+  When to ask a follow-up question:
+  Ask one focused question if the reported problem is too broad to diagnose from the available details.
+
+  - “Score not saving.” → “What exact error message or HTTP status do you see?”
+  - “Rules are wrong.” → “Which sport and participant type is the match, and what rule or score is being rejected?”
+  - “Streaming isn't working.” → “What exact response do you see: Event Not Found, Video Not Found, Access Denied, or something else?”
+  - “Lineup failed.” → “Are you fetching/creating the lineup, or updating an existing participant's status?”
+  - “Match can't be changed.” → “Is there a walkover, or has a later knockout round already used this match result?”
+
+  Do not ask for information already present in the user's message. Ask for payloads, logs or identifiers only when needed for authorised technical diagnosis.
 ---
 
 # Scoring and Streaming APIs — Backend Behaviour and Troubleshooting
@@ -64,16 +98,6 @@ source_files:
 This document explains the documented backend behaviour behind scoring, match status and streaming-related APIs in Stupa TMS. It covers how score updates are routed, which scoring calculator is selected, how Game Play rule settings are read, how live and manual scores differ, how walkovers are handled, and how team-match sub-matches and lineups are managed.
 
 It is a technical reference. When answering an organiser's question, explain the relevant behaviour in plain language and avoid exposing implementation details unless they help answer the question. When answering a developer or support question, preserve API names, response codes and source-file references.
-
-### Guidance for the assistant
-
-- Identify whether the user is asking about a score, a scoring rule, a walkover, match status, streaming, sub-matches, lineups or rule settings.
-- Explain the documented request flow and checks in order where relevant.
-- Use the exact error message and HTTP status code when the user supplies them.
-- Do not infer a specific cause from a status code alone if the message or context is missing.
-- Do not claim to inspect a live match, request payload, database record, permission or streaming provider unless live system data is available.
-- The streaming service's internal rules, live match-centre status logic and CTMS sport configuration are not described in this document. State this limitation instead of guessing.
-- Sport-specific scoring details belong to the separate sport guides for Table Tennis, Badminton, Padel and Tennis. This document explains dispatch and shared backend behaviour, not every sport's scoring rules.
 
 ## Quick reference
 
@@ -307,9 +331,6 @@ Possible questions:
 - “Why did the score API return 403?”
 - “I entered the result, but it was rejected.”
 
-Answer direction:
-Ask for or use the exact response message. A rule rejection can return 403 with a message such as “Wrong score input for set 2”. Check the relevant sport's scoring rules, sport ID, participant type and effective Game Play settings. If the message indicates a permission problem, check Update Score and Edit permissions or the live match scorer path. Do not treat every 403 as the same failure.
-
 ### Intent: identify which sport calculator is used
 
 Possible questions:
@@ -318,9 +339,6 @@ Possible questions:
 - “Why is the wrong scoring logic being used?”
 - “What happens if sport ID is missing?”
 - “No scoring strategy registered for sport_id 5 — what does that mean?”
-
-Answer direction:
-Use the sport ID mapping in this document. Padel uses the Padel calculator, which uses Tennis rules. If no sport ID is supplied, the legacy path is used. If the sport ID has no registered strategy, the request is refused with the documented error. Do not guess what an unlisted sport ID represents.
 
 ### Intent: rule settings do not match expectations
 
@@ -331,9 +349,6 @@ Possible questions:
 - “Does the round setting override the stage setting?”
 - “Which rule settings are read when saving a score?”
 
-Answer direction:
-Explain that Game Play settings are read from event, stage, category and round. Round-level settings override stage-level settings, and the round is matched by name. For a group stage, the group-stage round's rule is used. Mention that detailed sport rules are in the separate sport guides.
-
 ### Intent: live score versus final score
 
 Possible questions:
@@ -341,9 +356,6 @@ Possible questions:
 - “Why is the match showing an in-progress score?”
 - “Live score aur manual score mein kya difference hai?”
 - “Why does manual score need a winner?”
-
-Answer direction:
-The live flag selects the in-progress scoring path. Manual score entry is the final result and must resolve the match by identifying a winner before saving. Reset operations use a separate path.
 
 ### Intent: walkover blocks score entry
 
@@ -353,9 +365,6 @@ Possible questions:
 - “What does Match Data Not Reset mean?”
 - “Can I change a knockout result after the next round is ready?”
 
-Answer direction:
-A walkover must be reset before new sets can be added. “Match Already Walkover Reset First” is 422. “Match Data Not Reset” is 403 when reset is blocked by rules. A knockout result change may be refused if a later round has already used the result. Do not infer a more specific reason without the exact response.
-
 ### Intent: streaming update failed
 
 Possible questions:
@@ -363,9 +372,6 @@ Possible questions:
 - “Video Not Found aa raha hai.”
 - “The match status did not update.”
 - “Why is the streaming API returning an error?”
-
-Answer direction:
-Check Update Stream and Edit permissions, confirm the event exists, and use the exact response. “Event Not Found” is documented as 400; “Video Not Found” is 404. The streaming service's internal rules are outside this document, so do not invent provider-specific fixes.
 
 ### Intent: team sub-match or lineup issue
 
@@ -375,21 +381,6 @@ Possible questions:
 - “Team lineup auto-create nahi ho rahi.”
 - “No Team Participants For Auto Creation aa raha hai.”
 - “Why does it say Participant Not Found?”
-
-Answer direction:
-Sub-matches require a team-match parent and are created one per playing table. Reversing order swaps sides of the team match's sub-matches. Automatic lineup creation requires team members. “Participant Not Found” means the requested participant could not be found during lineup update.
-
-## When to ask a follow-up question
-
-Ask one focused question if the reported problem is too broad to diagnose from the available details.
-
-- “Score not saving.” → “What exact error message or HTTP status do you see?”
-- “Rules are wrong.” → “Which sport and participant type is the match, and what rule or score is being rejected?”
-- “Streaming isn't working.” → “What exact response do you see: Event Not Found, Video Not Found, Access Denied, or something else?”
-- “Lineup failed.” → “Are you fetching/creating the lineup, or updating an existing participant's status?”
-- “Match can't be changed.” → “Is there a walkover, or has a later knockout round already used this match result?”
-
-Do not ask for information already present in the user's message. Ask for payloads, logs or identifiers only when needed for authorised technical diagnosis.
 
 ## API and error quick reference
 

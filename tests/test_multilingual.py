@@ -319,3 +319,77 @@ def test_helper_calls_stay_at_temperature_zero(monkeypatch):
         assert rag_pipeline.get_llm().temperature == 0.8
     finally:
         rag_pipeline.reset_llm_for_tests()
+
+
+# ---------- dynamic prompt: the code writes the location sentence ----------
+
+
+class RetrievingPipeline(ScriptedPipeline):
+    """Like ScriptedPipeline, but runs the retriever first as the real pipeline does."""
+
+    async def answer(self, question, session_id, corpus="merged", *, prompt_template=None,
+                     retriever=None, no_answer_text=None):
+        retriever(question)
+        return await super().answer(question, session_id, corpus, prompt_template=prompt_template,
+                                    retriever=retriever, no_answer_text=no_answer_text)
+
+    async def stream(self, question, session_id, corpus="merged", *, prompt_template=None,
+                     retriever=None, no_answer_text=None):
+        retriever(question)
+        async for item in super().stream(question, session_id, corpus, prompt_template=prompt_template,
+                                         retriever=retriever, no_answer_text=no_answer_text):
+            yield item
+
+
+OPENING = "This is on the Fixtures/Results page: open Fixtures/Results from the sidebar."
+
+
+@pytest.fixture()
+def other_screen(kb, monkeypatch):  # noqa: F811
+    from app.knowledge.service import Hit
+    from app.services.app_chat import Retrieval
+
+    hit = Hit(doc_id="tms.fixture.templates", title="Fixture templates", section="s",
+              content="Six templates.", distance=0.3, tenant_specific=False)
+    monkeypatch.setattr(app_chat.get_settings().app_chat, "dynamic_prompt", True)
+    monkeypatch.setattr(app_chat, "retrieve", lambda *a, **kw: Retrieval(
+        hits=[hit], screen_doc_ids=["tms.event-settings.create-event"], mode="fallback"))
+
+    def make(tokens):
+        pipeline = RetrievingPipeline(tokens)
+        app.dependency_overrides[get_rag_pipeline] = lambda: pipeline
+        return TestClient(app)
+
+    yield make
+    app.dependency_overrides.clear()
+
+
+def test_stream_opens_with_the_location_sentence(other_screen):
+    client = other_screen(["There are six templates: Group Playoff, Round Robin, Knockout and three more."])
+    text, done = _streamed_text(_ask(client, "What are the predefined templates?", stream=True))
+    assert text.startswith(OPENING + "\n\nThere are six templates")
+    assert "answer" not in done or done["answer"].startswith(OPENING)
+
+
+def test_short_streamed_answer_also_gets_the_location_sentence(other_screen):
+    client = other_screen(["Six templates."])
+    text, _ = _streamed_text(_ask(client, "What are the predefined templates?", stream=True))
+    assert text == OPENING + "\n\nSix templates."
+
+
+def test_json_answer_opens_with_the_location_sentence(other_screen):
+    client = other_screen(["Six templates."])
+    assert _ask(client, "What are the predefined templates?", stream=False).json()["answer"] == OPENING + "\n\nSix templates."
+
+
+def test_no_answer_gets_no_location_sentence(other_screen):
+    client = other_screen(["NO_ANSWER"])
+    text, done = _streamed_text(_ask(client, "tell me a joke", stream=True))
+    assert OPENING not in text and OPENING not in done["answer"]
+
+
+def test_no_duplicate_when_the_model_already_gives_the_path(other_screen):
+    client = other_screen(["Open Fixtures/Results from the sidebar and look under Select from our Templates."])
+    text, _ = _streamed_text(_ask(client, "What are the predefined templates?", stream=True))
+    assert not text.startswith(OPENING)
+    assert text.count("from the sidebar") == 1

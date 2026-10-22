@@ -165,3 +165,5 @@ Open **Display Settings** from the sidebar.
 **How do I export the match list?** Click **Export** on the Live Matches or All matches tab. The file is matches.xlsx.
 
 **Why does the Hide/Unhide toggle not change?** Check that the event is valid and that you have the Display Settings edit permission. If the server refused the change, no message is shown; reload the screen to see the saved state.
+
+**What does LED Output open?** It opens the live LED card of the event in a new tab, which draws the layout saved on this page.

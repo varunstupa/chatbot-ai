@@ -56,8 +56,12 @@ async def lifespan(_app: FastAPI):
 
         from app.knowledge import service as knowledge
 
-        # Embeds the guides' suggested questions for "Did you mean" in the background.
-        threading.Thread(target=knowledge.warm_up_suggestions, daemon=True).start()
+        def warm_up() -> None:
+            # Suggested questions for "Did you mean", then the question routes to their answers.
+            knowledge.warm_up_suggestions()
+            knowledge.warm_up_routes()
+
+        threading.Thread(target=warm_up, daemon=True).start()
     yield
     await chat_store.stop()
     logger.info("shutdown")

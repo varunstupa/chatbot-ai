@@ -47,6 +47,16 @@ source_files:
   - src/app/modules/tms/score-and-streaming/score-input-feedback.constants.ts
   - src/app/shared/padel-score-navigation/padel-score-navigation.engine.ts
   - src/app/shared/game-play-config/game-play-config.defaults.ts
+answer_notes: |
+  Answering guidance for the TMS assistant:
+  1. Identify the sport (Padel or Tennis) and whether the user is entering live game points or a completed match score.
+  2. Determine which rule is relevant: ST/SP format, normal set, tie-break, super tie-break, decider tie-break, advantage, or walkover.
+  3. Explain the rule in plain language and quote the exact validation message when useful.
+  4. Ask for the entered set/game score and relevant Game Play settings when the cause cannot be determined from the message alone.
+  5. If a setting is unknown, state the documented default and explain that event configuration may differ.
+  6. Do not invent decider targets, configured set counts, or format options that are not present in the source.
+  7. Do not assume Tennis uses the same cursor navigation behavior as Padel; the provided source explicitly names Padel navigation.
+  8. Treat the server's validation result as authoritative for whether the submitted score was accepted.
 ---
 
 # Scoring and Streaming for Padel and Tennis
@@ -247,6 +257,26 @@ The value 50 represents advantage. It is valid only when the opponent is at 40, 
 
 The entered sets do not yet determine the match winner. Check the selected format and whether all required sets have been entered.
 
+### How does the tie-break work in padel and tennis?
+
+At 6–6 the set goes to a tie-break when tie-breaks are on. A tie-break is played to 7 points with a two-point margin (7–5 and 8–6 are valid, 7–6 is not). Enter the tie-break points in the tie-break boxes. A super tie-break is played to 10 points with a two-point margin.
+
+### What does "Advantage (50) is only valid when the opponent is at 40" mean?
+
+The value 50 means advantage. It is valid only when the opponent is at 40 (deuce), and both sides cannot have advantage at the same time.
+
+### Why does the scorer see "Tie-break required in set 1"?
+
+The set reached a score that needs a tie-break, but no tie-break score was entered. Enter the tie-break points in the tie-break boxes of that set.
+
+### Why is the super tie-break rejected?
+
+Check that the format uses a super tie-break, that it replaces the last set, that the sets before it are level, and that the score reaches 10 points with a two-point margin without overshooting.
+
+### Why does the cursor move to the next game or tie-break boxes?
+
+For padel the cursor follows the score-navigation rules: once a game is complete it moves to the next game, or to the tie-break boxes when the set needs a tie-break.
+
 ## Natural-language and Hinglish query patterns
 
 Treat these as equivalent intents when retrieving this document:
@@ -263,17 +293,6 @@ Treat these as equivalent intents when retrieving this document:
 - "Super tie-break accept kyun nahi ho raha?"
 - "Walkover ke baad set score edit kyun nahi ho raha?"
 - "Cursor next game ya tie-break box par kyun ja raha hai?"
-
-## Answering guidance for the TMS assistant
-
-1. Identify the sport (Padel or Tennis) and whether the user is entering live game points or a completed match score.
-2. Determine which rule is relevant: ST/SP format, normal set, tie-break, super tie-break, decider tie-break, advantage, or walkover.
-3. Explain the rule in plain language and quote the exact validation message when useful.
-4. Ask for the entered set/game score and relevant Game Play settings when the cause cannot be determined from the message alone.
-5. If a setting is unknown, state the documented default and explain that event configuration may differ.
-6. Do not invent decider targets, configured set counts, or format options that are not present in the source.
-7. Do not assume Tennis uses the same cursor navigation behavior as Padel; the provided source explicitly names Padel navigation.
-8. Treat the server's validation result as authoritative for whether the submitted score was accepted.
 
 ## Source references
 

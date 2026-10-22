@@ -144,3 +144,17 @@ The mode is chosen from the print options. The default is **Day Wise Score Sheet
 **Why does a match say Printed?** The match was printed (the print dialog was closed after printing). Print it again if the sheet was lost.
 
 **How do I print the back numbers?** Open the Back no. mode and use **Print back no** or **Print list**.
+
+**What is the Printing page for?** It prints the paper for the matches: score sheets of a day, group or round, the fixtures (group and knockout trees), the schedule, back number lists and the players list. **Ready for Print** opens the print queue.
+
+**How do I print the score sheets of a day?** Choose the venue and the day, tick the matches (or print them all), choose with or without scores, then print.
+
+**How do I print one match?** Tick the match and click **Print**. **Print all matches** prints every match of the list, not only the ticked one.
+
+**How do I print the fixtures of a group or a knockout?** Choose the **Fixtures** print mode. Group stages use **Print Group-wise**; for a knockout stage **Print** prints the tree (with **Knockout Matches** and **Position Matches** tabs when the stage has position matches).
+
+**How do I print the players list?** Choose the **Players List** print mode, pick **Category Wise** or **Entity Wise**, and click **Print Players List**.
+
+**What does "Please Select Match" mean?** No match is ticked. Tick at least one match, or use **Print all matches**.
+
+**What is shown on the print queue?** The matches waiting to be printed: those added with **Queue** in the match print popup or by the Ready for Print action. Open it with **Ready for Print** (the badge shows how many wait); **Print All** and **Print Selected** print the queued matches.

@@ -109,3 +109,19 @@ Two screens from the fixtures page sit beside the fixture: the **Schedule Matche
 
 - Changing schedules or access is limited by the user's permissions on the event; when refused, the server message is shown.
 - Without the permission the change is refused.
+
+## Frequently asked questions
+
+**How do I schedule matches to tables and times?** Select the matches in the fixture tree, then open **Schedule Matches**. Set the **Match Time**, **Venue** and **Table** (use **GLOBAL SETTINGS** and **Apply** to set all rows at once), choose the **Schedule Criteria** and click **Save**.
+
+**What is the difference between By Table and By Duration?** With **By Table** each match is put on a table and its time follows that table. With **By Duration** each match gets a match duration and the next match starts after it.
+
+**Why does the schedule say a table conflict was detected?** Another match already uses that table at that time, so no matches were scheduled. Choose another table or time for the conflicting match and save again.
+
+**How do I clear the slot of a match?** In **Schedule Matches**, click **Clear** on the match's row to remove its slot. "Slot removed successfully" confirms it. **Reset** clears all the slots in the popup.
+
+**How do I give a user access to a match?** Open **Match Access**, select the matches (step 1) and the roles (step 2), tick the users in **Select Users**, then click **Give Permission to write**.
+
+**What is auto access?** Auto access gives match access through a parent role. On the **Auto Access** tab, choose the team or organisation, select the **Parent Role** (and filter with **All Role**), then save, and check the result in the match list.
+
+**How do I change the organiser of a match?** In **Match Access**, use **Select Match to Edit Organiser** to choose the matches, pick the organisers from the users with scoring permission, then click **Save**.

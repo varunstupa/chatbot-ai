@@ -161,3 +161,7 @@ With a category selected the toolbar shows:
 **Why does the Club or Member Association column not appear?** Choose **Club**, **Member Association** or **Both** under **Select Organisation** in the category's **Settings** and save. Each category and sub category has its own setting.
 
 **Why do I see Singles and Team-up tabs?** The category is doubles, mixed doubles or teams: **Singles** lists players who registered alone, **Team-up** the formed entries.
+
+**What do the columns of the player list mean?** **Sr.No**, **License ID**, the player or team name, **Club** and **Member Association** (shown once **Select Organisation** is saved), **Back No.**, **Seed**, **Rank**, **Points** ("In" from the internal platform, "Ex" from an external one), **Gender**, **DOB** or **Total Player**, **Registration Entry Date** and **Action** (the ⋮ menu).
+
+**Why do I not see a category on the Players page?** The tab row shows one tab per category; use the arrows to scroll, and check the participant type dropdown before the tabs (**All**, **Singles**, **Teams**, **Doubles**, **Mixed Doubles**). A category with sub categories shows their tabs after you select it. If the event has no categories, add them on the event's **Details** step.

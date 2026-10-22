@@ -43,7 +43,7 @@ SESSION_KEYS = {
 MESSAGE_KEYS = {
     "question", "answer", "outcome", "route", "screen_title", "sport", "language",
     "retrieval_mode", "doc_ids", "sources", "model", "first_token_ms", "total_ms",
-    "streamed", "created_at",
+    "streamed", "created_at", "message_id", "feedback",
 }
 
 
@@ -100,7 +100,7 @@ def test_start_creates_collection_and_indexes(db_name):
 
     asyncio.run(run())
     coll = sessions(db_name)
-    assert coll.database.list_collection_names() == ["chat_sessions"]
+    assert sorted(coll.database.list_collection_names()) == ["chat_feedback", "chat_sessions"]
     idx = coll.index_information()
     assert idx["tenant_session"]["key"] == [("tenant", 1), ("session_id", 1)]
     assert idx["tenant_session"]["unique"] is True
@@ -429,3 +429,115 @@ def test_chat_request_and_close_signal_end_up_in_mongodb(kb, db_name, monkeypatc
     assert (msg["answer"], msg["outcome"], msg["language"]) == (NO_ANSWER_DE, "not_found", "de")
     assert msg["route"] == DETAILS_ROUTE
     assert sessions(db_name).count_documents({"tenant": "denmark"}) == 0
+
+
+# ---------- thumbs up/down feedback ----------
+
+
+def feedback_docs(db_name: str) -> list[dict]:
+    return list(MongoClient(MONGO_URI, tz_aware=True)[db_name][chat_store.FEEDBACK].find({}, {"_id": 0}))
+
+
+def test_vote_is_stored_with_its_question_and_answer(db_name):
+    async def run():
+        store = new_store(db_name)
+        await store.start()
+        item = rec("denmark", "s1", "How do I publish?", route="tms/x", doc_ids=["tms.a"])
+        store.record(item)
+        assert await store.save_feedback("denmark", "u1", item.message_id, "down", " wrong page ")
+        await store.stop()
+        return item
+
+    item = asyncio.run(run())
+    [doc] = feedback_docs(db_name)
+    assert doc["rating"] == "down" and doc["status"] == "open" and doc["comment"] == "wrong page"
+    assert (doc["question"], doc["answer"], doc["route"], doc["doc_ids"]) == (
+        "How do I publish?", "answer to How do I publish?", "tms/x", ["tms.a"])
+    # The vote is also in the session document, which was still unwritten.
+    msg = sessions(db_name).find_one({"session_id": "s1"})["messages"][0]
+    assert msg["message_id"] == item.message_id and msg["feedback"] == "down"
+
+
+def test_voting_again_changes_the_vote(db_name):
+    async def run():
+        store = new_store(db_name)
+        await store.start()
+        item = rec("denmark", "s1", "q")
+        store.record(item)
+        await store.save_feedback("denmark", "u1", item.message_id, "down", None)
+        await store.save_feedback("denmark", "u1", item.message_id, "up", None)
+        await store.stop()
+
+    asyncio.run(run())
+    docs = feedback_docs(db_name)
+    assert len(docs) == 1 and docs[0]["rating"] == "up"
+
+
+def test_only_the_answering_user_of_the_tenant_can_vote(db_name):
+    async def run():
+        store = new_store(db_name)
+        await store.start()
+        item = rec("denmark", "s1", "q")
+        store.record(item)
+        results = [
+            await store.save_feedback("norway", "u1", item.message_id, "down", None),
+            await store.save_feedback("denmark", "someone-else", item.message_id, "down", None),
+            await store.save_feedback("denmark", "u1", "0" * 32, "down", None),
+        ]
+        await store.stop()
+        return results
+
+    assert asyncio.run(run()) == [False, False, False]
+    assert feedback_docs(db_name) == []
+
+
+def test_review_list_and_status(db_name):
+    async def run():
+        store = new_store(db_name)
+        await store.start()
+        good, bad = rec("denmark", "s1", "good"), rec("denmark", "s1", "bad")
+        store.record(good)
+        store.record(bad)
+        await store.save_feedback("denmark", "u1", good.message_id, "up", None)
+        await store.save_feedback("denmark", "u1", bad.message_id, "down", None)
+        open_down = await store.list_feedback("denmark", "down", "open", 10)
+        changed = await store.set_feedback_status("denmark", bad.message_id, "fixed", "guide updated")
+        still_open = await store.list_feedback("denmark", "down", "open", 10)
+        await store.stop()
+        return open_down, changed, still_open
+
+    open_down, changed, still_open = asyncio.run(run())
+    assert [d["question"] for d in open_down] == ["bad"]
+    assert changed == 1 and still_open == []
+
+
+def test_answers_carry_a_message_id_and_feedback_endpoint_saves_it(db_name, kb, monkeypatch):  # noqa: F811
+    store = new_store(db_name)
+    monkeypatch.setattr(chat_store, "_store", store)
+    votes = []
+
+    async def fake_save(tenant, user_id, message_id, rating, comment=None):
+        votes.append((tenant, user_id, message_id, rating, comment))
+        return "saved" if message_id in store.recent else "unknown"
+
+    monkeypatch.setattr(chat_store, "save_feedback", fake_save)
+    app.dependency_overrides[get_rag_pipeline] = lambda: ScriptedPipeline(["Turn on Publish."])
+    try:
+        client = TestClient(app)
+        body = {"question": "How do I publish?", "screen": {"route": DETAILS_ROUTE}}
+        answer = client.post("/api/app-chat", json=body, headers={"accept": "application/json", **auth()}).json()
+        message_id = answer["message_id"]
+        assert store.recent[message_id].answer == "Turn on Publish."
+        stream = client.post("/api/app-chat", json=body, headers={"accept": "text/event-stream", **auth()})
+        done = [line for line in stream.text.splitlines() if '"type": "done"' in line][0]
+        assert '"message_id"' in done
+        vote = {"message_id": message_id, "rating": "down", "comment": "not this page"}
+        r = client.post("/api/app-chat/feedback", json=vote, headers=auth())
+        assert r.status_code == 200 and r.json() == {"saved": True, "rating": "down"}
+        assert votes[-1][2:] == (message_id, "down", "not this page")
+        assert client.post("/api/app-chat/feedback", json={**vote, "message_id": "f" * 32},
+                           headers=auth()).status_code == 404
+        assert client.post("/api/app-chat/feedback", json={**vote, "rating": "maybe"},
+                           headers=auth()).status_code == 422
+    finally:
+        app.dependency_overrides.clear()

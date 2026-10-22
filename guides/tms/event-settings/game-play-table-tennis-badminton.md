@@ -99,3 +99,9 @@ Under **Advanced Settings**:
 **How do I add a practice time before a game?** Tick **Start Game** in Interval Configuration and set its duration.
 
 **What is expedite?** A system that limits match length; it can be triggered by the umpire or automatically after the Time Trigger.
+
+**What is the difference between Standard and Golden Point System?** With **Standard Point System** a tied game (10-10 in Table Tennis) goes on until one side leads by 2 points, or until **Max Point** when **Sudden Death Point** is on. With **Golden Point System** there is no deuce: at 10-10 the next point wins.
+
+**What does the Decider set option do?** It lets the deciding (last) game use its own **Point** target and **Serve** option. For example, games to 11 with Decider set Point 7: the final game is played to 7.
+
+**How does the Challenge System work?** Under **Advanced Settings**, **Challenge System** lets players or teams contest umpire decisions. Set the **Number of challenges**: a limit per match for singles and doubles, and for team events per match or one allowance across all their matches. "Reduce timeout after unsuccessful challenge" makes a lost challenge cost a timeout.

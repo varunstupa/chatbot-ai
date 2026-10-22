@@ -45,3 +45,5 @@ Badminton organisations have their own score sheet layout under **Print Layout â
 **Can the sheet show how long the match took?** Yes, tick **Commencement Time**, **Conclusion Time** and **Duration**.
 
 **Is the court number printed?** Tick **Court Number** under Match Details.
+
+**Can the score sheet show match duration?** Yes. Tick **Commencement Time**, **Conclusion Time** and **Duration** in the score sheet settings.

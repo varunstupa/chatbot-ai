@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -63,6 +63,21 @@ class ScreenContext(BaseModel):
         description="Angular route pattern, e.g. tms/event-settings/create-event/:event_id",
     )
     url: str | None = Field(default=None, max_length=500)
+
+
+class FeedbackRequest(BaseModel):
+    """A thumbs up/down on one admin-chat answer (the id comes from that answer)."""
+
+    message_id: str = Field(min_length=8, max_length=64, pattern=r"^[A-Za-z0-9_-]+$")
+    rating: Literal["up", "down"]
+    comment: str | None = Field(default=None, max_length=1000)
+
+
+class FeedbackStatusRequest(BaseModel):
+    """Review result of a vote: fixed (guide or code changed) or wont_fix."""
+
+    status: Literal["open", "fixed", "wont_fix"]
+    note: str | None = Field(default=None, max_length=1000)
 
 
 class QueryRequest(BaseModel):
@@ -146,6 +161,8 @@ class QueryResponse(BaseModel):
     ticket_flow: TicketFlowState | None = None
     # Only set on the admin chat when nothing was found: questions the user may have meant.
     suggestions: list[str] | None = None
+    # Admin chat: the id to send back with a thumbs up/down vote on this answer.
+    message_id: str | None = None
     ticket_workflow: TicketWorkflowResponse | None = None
 
 

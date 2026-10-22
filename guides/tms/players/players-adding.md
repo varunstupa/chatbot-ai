@@ -141,3 +141,15 @@ From the **Singles** tab you can also **Delete** or **Delete & Refund** single e
 **Does the registration closing date stop me adding players here?** No, organisers can add players on the Players page outside the registration dates, as long as the **Registration** toggle is on.
 
 **Why "Please Wait For Verification Add Members"?** Your own account is still waiting for verification; temporary players can be created once it is accepted.
+
+**What is a temporary player?** A player added without an account. In the **Add Player** panel click **Add Temporary Player**, fill in the required fields, the member association and the club, then click **Submit**. It can be changed later with ⋮ → **Edit**.
+
+**Why is a player in the Ineligible players list?** The player does not match the category's rules. Ineligible players cannot be added; click **Eligible players** to go back to the list of players who can be added.
+
+**How do I pair two singles into a doubles team?** Open the **Singles** tab of the category, tick both players, click **Team-up**, then **Save**. The new pair appears on the **Team-up** tab.
+
+**What does the Self toggle do?** With **Self** on, every player of a pair or team gets an individual entry and pays their own fee. With **Self** off, the pair or team is one entry with one order. The setting is saved for the category at once.
+
+**Why does adding a player say "Event payment settings are required"?** The event's payment setup is incomplete. Open **Event** → **Payment & Invoice**, select at least one **Raised To** role, choose **Enable Invoicing for this Event?** and the **Payment Type** (for **Online** also the receiving account), click **Save**, then add the player again.
+
+**How do I add a player to the event?** Open **Players** from the sidebar, select the category tab and click **Add**. In the **Add Player** panel, search for the players, click **Add** on each one, then click **Add** at the bottom. "Participants Registered Successfully" confirms it.

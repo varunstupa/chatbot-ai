@@ -106,3 +106,5 @@ When a criterion is switched off, its basis options are cleared and it is not us
 **How do I save the winner logic?** Make the changes, then click **Update**.
 
 **Which permission do I need?** Display Settings in edit mode.
+
+**Which permission do I need to change the winner logic?** The Display Settings permission in edit mode. Without it the server refuses the **Update**.

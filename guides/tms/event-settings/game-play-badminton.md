@@ -70,3 +70,5 @@ In **Interval Configuration**, Badminton sets each break between games separatel
 **What is a black card?** A disqualification card; set the penalty-point threshold and reasons in **Black Card**.
 
 **How do I set a 120-second break between games 1 and 2?** Tick **Set Change Intervals** and enter 120 in **Set Timer** for Interval 1.
+
+**What is the Black Card setting?** In **Cards Configuration**, turn on **Black Card** to let the umpire disqualify a player. Set **Max Penalty Points** (0–9), the penalty points that lead to disqualification, and tick the **Reason for Disqualification** options; **Add Custom** adds your own reason.

@@ -441,3 +441,5 @@ At the moment of registering the server also applies: the registration dates aga
 **Why is a role missing from Allow Registrations?** Only roles that your organisation has given permission to register are listed. An administrator must enable it for that role.
 
 **How long does my session last on this page?** Two days by default. After that, saving shows "Unauthorized Access" and you must sign in again.
+
+**How do I set the fee and refund rules?** In the **Fee & Refund Information** card, enter the registration fee and click **Save**. For refunds, turn on **Enable Refund Options** and choose **Full Refund** (one Withdraw Before date) or **Partial Refund** (rows of Withdraw Before date and Refund %). Withdraw Before dates must be before the event's Start Date.

@@ -1,0 +1,799 @@
+[
+ {
+  "id": "T01",
+  "type": "answer",
+  "route": "tms/event-settings/create-event/:event_id",
+  "sport": 1,
+  "q": "How can we enable streaming?",
+  "must": [
+   [
+    "Scoring and Streaming"
+   ],
+   [
+    "Streaming tab",
+    "**Streaming** tab"
+   ],
+   [
+    "Enable Streaming"
+   ]
+  ],
+  "kind": "how-to"
+ },
+ {
+  "id": "T02",
+  "type": "answer",
+  "route": "tms/event-settings/registration/:event_id",
+  "sport": 1,
+  "q": "How do I set up payment and invoices?",
+  "must": [
+   [
+    "Payment & Invoice"
+   ]
+  ],
+  "kind": "how-to"
+ },
+ {
+  "id": "T03",
+  "type": "answer",
+  "route": "tms/event-settings/create-event/:event_id",
+  "sport": 1,
+  "q": "Why can't I publish my event?",
+  "must": [
+   [
+    "verif"
+   ],
+   [
+    "publish"
+   ]
+  ],
+  "kind": "problem"
+ },
+ {
+  "id": "T04",
+  "type": "answer",
+  "route": "tms/score-stream/:participant_id/:category_id/:event_id/:event_category_id/:stage_id",
+  "sport": 4,
+  "q": "When is a badminton game won?",
+  "must": [
+   [
+    "21"
+   ],
+   [
+    "two point",
+    "two-point",
+    "2 point",
+    "2-point"
+   ]
+  ],
+  "kind": "what-is"
+ },
+ {
+  "id": "T05",
+  "type": "answer",
+  "route": "tms/score-stream/:participant_id/:category_id/:event_id/:event_category_id/:stage_id",
+  "sport": 4,
+  "q": "Why is 21-20 not accepted in badminton?",
+  "must": [
+   [
+    "two point",
+    "two-point",
+    "2 point",
+    "2-point",
+    "22-20"
+   ]
+  ],
+  "kind": "problem"
+ },
+ {
+  "id": "T06",
+  "type": "answer",
+  "route": "tms/event-settings/create-event/:event_id",
+  "sport": 1,
+  "q": "Which modules are in the sidebar?",
+  "must": [
+   [
+    "Players"
+   ],
+   [
+    "Fixtures/Results",
+    "Fixtures"
+   ],
+   [
+    "Schedule"
+   ],
+   [
+    "Printing"
+   ],
+   [
+    "Leaderboard"
+   ]
+  ],
+  "kind": "list"
+ },
+ {
+  "id": "T07",
+  "type": "answer",
+  "route": "tms/fixture/:participant_id/:category_id/:event_id/:event_category_id/:stage_id",
+  "sport": 1,
+  "q": "Where is the players page?",
+  "must": [
+   [
+    "Players"
+   ],
+   [
+    "sidebar"
+   ]
+  ],
+  "kind": "where-is"
+ },
+ {
+  "id": "T08",
+  "type": "answer",
+  "route": "tms/event-settings/create-event/:event_id",
+  "sport": 1,
+  "q": "What are the predefined fixture templates?",
+  "must": [
+   [
+    "Round Robin"
+   ],
+   [
+    "Knockout"
+   ],
+   [
+    "Fixtures/Results"
+   ]
+  ],
+  "kind": "list"
+ },
+ {
+  "id": "T09",
+  "type": "answer",
+  "route": "tms/schedular/:event_id",
+  "sport": 1,
+  "q": "How do I auto assign umpires?",
+  "must": [
+   [
+    "umpire"
+   ],
+   [
+    "auto"
+   ]
+  ],
+  "kind": "how-to"
+ },
+ {
+  "id": "T10",
+  "type": "answer",
+  "route": "tms/event-settings/create-event/:event_id",
+  "sport": 1,
+  "q": "What size should the thumbnail be?",
+  "must": [
+   [
+    "379"
+   ],
+   [
+    "200"
+   ]
+  ],
+  "kind": "what-is"
+ },
+ {
+  "id": "T11",
+  "type": "answer",
+  "route": "tms/event-settings/create-event/:event_id",
+  "sport": 1,
+  "q": "Event live nahi ho raha, kya karun?",
+  "must": [
+   [
+    "verif",
+    "publish"
+   ]
+  ],
+  "kind": "problem"
+ },
+ {
+  "id": "T12",
+  "type": "answer",
+  "route": "tms/score-stream/:participant_id/:category_id/:event_id/:event_category_id/:stage_id",
+  "sport": 4,
+  "q": "How does the decider game work in badminton?",
+  "must": [
+   [
+    "golden",
+    "deuce",
+    "decider points"
+   ]
+  ],
+  "kind": "what-is"
+ },
+ {
+  "id": "T13",
+  "type": "answer",
+  "route": "tms/event-settings/create-event/:event_id",
+  "sport": 1,
+  "q": "How do I add players to the event?",
+  "must": [
+   [
+    "Players"
+   ]
+  ],
+  "kind": "how-to"
+ },
+ {
+  "id": "T14",
+  "type": "refuse",
+  "route": "tms/event-settings/create-event/:event_id",
+  "sport": 1,
+  "q": "who is prime minister",
+  "kind": "refuse"
+ },
+ {
+  "id": "T15",
+  "type": "refuse",
+  "route": "tms/event-settings/create-event/:event_id",
+  "sport": 1,
+  "q": "give me python code for two sum",
+  "kind": "refuse"
+ },
+ {
+  "id": "T16",
+  "type": "suggest",
+  "route": "tms/event-settings/create-event/:event_id",
+  "sport": 1,
+  "q": "which api is responsible for event creation",
+  "kind": "suggest"
+ },
+ {
+  "id": "D01",
+  "type": "answer",
+  "kind": "how-to",
+  "route": "tms/players/:event_id",
+  "sport": 1,
+  "q": "How do I merge two categories?",
+  "must": [
+   [
+    "Merge"
+   ],
+   [
+    "Proceed"
+   ]
+  ]
+ },
+ {
+  "id": "D02",
+  "type": "answer",
+  "kind": "how-to",
+  "route": "tms/event-settings/create-event/:event_id",
+  "sport": 1,
+  "q": "how to add a hotel with rooms",
+  "must": [
+   [
+    "Manage Listings"
+   ],
+   [
+    "Add new hotel"
+   ],
+   [
+    "Room Details"
+   ]
+  ]
+ },
+ {
+  "id": "D03",
+  "type": "answer",
+  "kind": "how-to",
+  "route": "tms/event-settings/game-play/:event_id",
+  "sport": 4,
+  "q": "How do I set a 120-second break between games 1 and 2?",
+  "must": [
+   [
+    "Set Change Intervals"
+   ],
+   [
+    "120"
+   ]
+  ]
+ },
+ {
+  "id": "D04",
+  "type": "answer",
+  "kind": "how-to",
+  "route": "tms/event-settings/game-play/:event_id",
+  "sport": 1,
+  "q": "How do I limit yellow cards?",
+  "must": [
+   [
+    "Max Card Limit"
+   ]
+  ]
+ },
+ {
+  "id": "D05",
+  "type": "answer",
+  "kind": "how-to",
+  "route": "tms/awards/:participant_id/:category_id/:event_id/:event_category_id/:stage_id",
+  "sport": 1,
+  "q": "How do I generate the stage standing?",
+  "must": [
+   [
+    "Generate stage standing"
+   ],
+   [
+    "complete"
+   ]
+  ]
+ },
+ {
+  "id": "D06",
+  "type": "answer",
+  "kind": "how-to",
+  "route": "tms/awards/:participant_id/:category_id/:event_id/:event_category_id/:stage_id",
+  "sport": 1,
+  "q": "How do I sync awards from the federation?",
+  "must": [
+   [
+    "Sync Awards"
+   ],
+   [
+    "Add"
+   ]
+  ]
+ },
+ {
+  "id": "D07",
+  "type": "answer",
+  "kind": "how-to",
+  "route": "tms/event-settings/create-event/:event_id",
+  "sport": 1,
+  "q": "how can I show a document on OTT",
+  "must": [
+   [
+    "Documents"
+   ],
+   [
+    "Publish"
+   ]
+  ]
+ },
+ {
+  "id": "D08",
+  "type": "answer",
+  "kind": "how-to",
+  "route": "tms/event-settings/game-play/:event_id",
+  "sport": 2,
+  "q": "How do I play best of 3 sets?",
+  "must": [
+   [
+    "ST"
+   ],
+   [
+    "3"
+   ]
+  ]
+ },
+ {
+  "id": "D09",
+  "type": "answer",
+  "kind": "how-to",
+  "route": "tms/event-settings/game-play/:event_id",
+  "sport": 2,
+  "q": "How do I replace the third set with a super tie-break?",
+  "must": [
+   [
+    "Additional Tie Break"
+   ],
+   [
+    "Super Tie"
+   ]
+  ]
+ },
+ {
+  "id": "D10",
+  "type": "answer",
+  "kind": "how-to",
+  "route": "tms/event-settings/event-accomodation/:event_id",
+  "sport": 1,
+  "q": "How do I export the bookings?",
+  "must": [
+   [
+    "Export"
+   ],
+   [
+    "Accommodation"
+   ]
+  ]
+ },
+ {
+  "id": "D11",
+  "type": "answer",
+  "kind": "how-to",
+  "route": "tms/fixture/:participant_id/:category_id/:event_id/:event_category_id/:stage_id",
+  "sport": 1,
+  "q": "How do I create a knockout stage?",
+  "must": [
+   [
+    "max round",
+    "Max Round"
+   ],
+   [
+    "legs",
+    "Legs"
+   ],
+   [
+    "position",
+    "Position"
+   ]
+  ]
+ },
+ {
+  "id": "D12",
+  "type": "answer",
+  "kind": "how-to",
+  "route": "tms/awards/:participant_id/:category_id/:event_id/:event_category_id/:stage_id",
+  "sport": 1,
+  "q": "How do I create an Order of Merit award?",
+  "must": [
+   [
+    "Create Award"
+   ],
+   [
+    "Save"
+   ]
+  ]
+ },
+ {
+  "id": "D13",
+  "type": "answer",
+  "kind": "problem",
+  "route": "tms/players/:event_id",
+  "sport": 1,
+  "q": "why I am not able to delete a player",
+  "must": [
+   [
+    "stage"
+   ],
+   [
+    "Forfeit",
+    "forfeit"
+   ]
+  ]
+ },
+ {
+  "id": "D14",
+  "type": "answer",
+  "kind": "problem",
+  "route": "tms/event-settings/event-accomodation/:event_id",
+  "sport": 1,
+  "q": "Why is the accommodation toggle greyed out?",
+  "must": [
+   [
+    "not enabled",
+    "enabled"
+   ],
+   [
+    "organisation",
+    "organization"
+   ]
+  ]
+ },
+ {
+  "id": "D15",
+  "type": "answer",
+  "kind": "problem",
+  "route": "tms/fixture/:participant_id/:category_id/:event_id/:event_category_id/:stage_id",
+  "sport": 1,
+  "q": "Why can I not swap two byes?",
+  "must": [
+   [
+    "bye",
+    "BYE"
+   ]
+  ]
+ },
+ {
+  "id": "D16",
+  "type": "answer",
+  "kind": "problem",
+  "route": "tms/event-settings/game-play/:event_id",
+  "sport": 1,
+  "q": "Why do I not see team point options?",
+  "must": [
+   [
+    "Fixtures"
+   ],
+   [
+    "Teams",
+    "team"
+   ]
+  ]
+ },
+ {
+  "id": "D17",
+  "type": "answer",
+  "kind": "problem",
+  "route": "tms/players/:event_id",
+  "sport": 1,
+  "q": "club column is not showing in players list",
+  "must": [
+   [
+    "Select Organisation"
+   ],
+   [
+    "Settings"
+   ]
+  ]
+ },
+ {
+  "id": "D18",
+  "type": "answer",
+  "kind": "what-is",
+  "route": "tms/event-settings/document-sponsors/:event_id",
+  "sport": 1,
+  "q": "What file types can I upload?",
+  "must": [
+   [
+    "PDF"
+   ],
+   [
+    "10 MB"
+   ],
+   [
+    "PNG"
+   ]
+  ]
+ },
+ {
+  "id": "D19",
+  "type": "answer",
+  "kind": "what-is",
+  "route": "tms/event-settings/game-play/:event_id",
+  "sport": 1,
+  "q": "What is the difference between ST and SP?",
+  "must": [
+   [
+    "majority"
+   ],
+   [
+    "all"
+   ]
+  ]
+ },
+ {
+  "id": "D20",
+  "type": "answer",
+  "kind": "what-is",
+  "route": "tms/players/:event_id",
+  "sport": 1,
+  "q": "What does MA mean?",
+  "must": [
+   [
+    "Member Association"
+   ]
+  ]
+ },
+ {
+  "id": "D21",
+  "type": "answer",
+  "kind": "what-is",
+  "route": "tms/event-settings/draw-settings/:event_id",
+  "sport": 1,
+  "q": "What does Group Separation do?",
+  "must": [
+   [
+    "same group"
+   ],
+   [
+    "knockout",
+    "Knockout"
+   ]
+  ]
+ },
+ {
+  "id": "D22",
+  "type": "answer",
+  "kind": "what-is",
+  "route": "tms/fixture/:participant_id/:category_id/:event_id/:event_category_id/:stage_id",
+  "sport": 1,
+  "q": "What are Primary Group Size and Secondary Group Size?",
+  "must": [
+   [
+    "one",
+    "1"
+   ],
+   [
+    "group",
+    "Group"
+   ]
+  ]
+ },
+ {
+  "id": "D23",
+  "type": "answer",
+  "kind": "what-is",
+  "route": "tms/players/:event_id",
+  "sport": 1,
+  "q": "How many rows can one import sheet have?",
+  "must": [
+   [
+    "500"
+   ]
+  ]
+ },
+ {
+  "id": "D24",
+  "type": "answer",
+  "kind": "what-is",
+  "route": "tms/event-settings/payment-invoice/:event_id",
+  "sport": 1,
+  "q": "How many payers can I merge at once?",
+  "must": [
+   [
+    "10"
+   ]
+  ]
+ },
+ {
+  "id": "D25",
+  "type": "answer",
+  "kind": "what-is",
+  "route": "tms/display-live-card/:event_id",
+  "sport": 1,
+  "q": "What does the G badge mean?",
+  "must": [
+   [
+    "golden"
+   ]
+  ]
+ },
+ {
+  "id": "D26",
+  "type": "answer",
+  "kind": "what-is",
+  "route": "tms/players/:event_id",
+  "sport": 1,
+  "q": "What does the red mark next to a player mean?",
+  "must": [
+   [
+    "forfeit"
+   ]
+  ]
+ },
+ {
+  "id": "D27",
+  "type": "answer",
+  "kind": "what-is",
+  "route": "tms/event-settings/game-play/:event_id",
+  "sport": 1,
+  "q": "What happens at 10-10 in Table Tennis?",
+  "must": [
+   [
+    "2-point",
+    "two-point",
+    "2 point",
+    "two point"
+   ],
+   [
+    "Golden"
+   ]
+  ]
+ },
+ {
+  "id": "D28",
+  "type": "answer",
+  "kind": "what-is",
+  "route": "tms/event-settings/game-play/:event_id",
+  "sport": 4,
+  "q": "How many points are needed to win a badminton game?",
+  "must": [
+   [
+    "Game Limit"
+   ],
+   [
+    "30"
+   ]
+  ]
+ },
+ {
+  "id": "D29",
+  "type": "answer",
+  "kind": "where-is",
+  "route": "tms/event-settings/draw-settings/:event_id",
+  "sport": 1,
+  "q": "Where are the organisation-wide draw settings?",
+  "must": [
+   [
+    "Event Configuration"
+   ],
+   [
+    "Draw Settings"
+   ]
+  ]
+ },
+ {
+  "id": "D30",
+  "type": "answer",
+  "kind": "what-is",
+  "route": "tms/fixture/:participant_id/:category_id/:event_id/:event_category_id/:stage_id",
+  "sport": 1,
+  "q": "What does \"Two BYEs are not allowed in a pair\" mean?",
+  "must": [
+   [
+    "bye",
+    "BYE"
+   ],
+   [
+    "another match",
+    "other match",
+    "move"
+   ]
+  ]
+ },
+ {
+  "id": "D31",
+  "type": "answer",
+  "kind": "how-to",
+  "route": "tms/players/:event_id",
+  "sport": 1,
+  "q": "How do I add a team logo in a league?",
+  "must": [
+   [
+    "Team Details"
+   ],
+   [
+    "Upload Photos"
+   ],
+   [
+    "Team Logo"
+   ]
+  ]
+ },
+ {
+  "id": "D32",
+  "type": "answer",
+  "kind": "how-to",
+  "route": "tms/event-settings/event-accomodation/:event_id",
+  "sport": 1,
+  "q": "How do I require approval of accommodation requests?",
+  "must": [
+   [
+    "Enable verification"
+   ],
+   [
+    "verifier",
+    "role"
+   ]
+  ]
+ },
+ {
+  "id": "D33",
+  "type": "answer",
+  "kind": "where-is",
+  "route": "tms/fixture/:participant_id/:category_id/:event_id/:event_category_id/:stage_id",
+  "sport": 1,
+  "q": "where can I set the payment settings",
+  "must": [
+   [
+    "Payment & Invoice"
+   ],
+   [
+    "Event"
+   ]
+  ]
+ },
+ {
+  "id": "D34",
+  "type": "answer",
+  "kind": "how-to",
+  "route": "tms/ranking/:param1/:param2/:event_id",
+  "sport": 1,
+  "q": "How do I set the initial points of a new player?",
+  "must": [
+   [
+    "New Players Detected"
+   ],
+   [
+    "Calculate"
+   ]
+  ]
+ }
+]

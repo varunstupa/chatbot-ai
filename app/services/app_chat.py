@@ -9,7 +9,7 @@ from app.config.settings import get_settings
 from app.knowledge import service as knowledge
 from app.services import query_rewrite, reranker
 from app.services.auth import CallerScope
-from app.services.language import QuestionLanguage
+from app.services.language import QuestionLanguage, is_hinglish
 from app.knowledge.parser import SPORTS_BY_ID
 from app.knowledge.service import Hit
 from app.utils.logger import get_logger
@@ -34,6 +34,10 @@ def screen_location(doc_id: str) -> str:
     return locations.get(best, "")
 
 
+# "open **Scoring and Streaming** from the sidebar" in a passage: the module it names.
+_SIDEBAR_RE = re.compile(r"\bopen \*{0,2}([A-Z][A-Za-z/& ]{1,40}?)\*{0,2} from the sidebar", re.IGNORECASE)
+
+
 @dataclass
 class Retrieval:
     hits: list[Hit] = field(default_factory=list)
@@ -43,6 +47,8 @@ class Retrieval:
     mode: str = "none"
     # The English search query used instead of the question, when the question found too little.
     rewritten: str = ""
+    # True when a suggested question's answer was put first (question routing).
+    routed: bool = False
 
     @property
     def context(self) -> str:
@@ -58,7 +64,32 @@ class Retrieval:
             elif where:
                 header += " This is NOT the screen the user is on."
             blocks.append(f"{header}\n{h.content}")
+        if self.location_prefix:
+            # The reply already opens with this sentence (added by the code, not the model).
+            blocks.insert(0, f"The user is already told: {self.location_prefix}")
         return "\n\n".join(blocks)
+
+    @property
+    def location_prefix(self) -> str:
+        """Opening sentence of the reply when the best passage is on another screen (dynamic prompt).
+
+        Written by the code so it is always there and always names the right sidebar path.
+        """
+        if not self.hits or not get_settings().app_chat.dynamic_prompt:
+            return ""
+        top = self.hits[0]
+        if top.doc_id in set(self.screen_doc_ids):
+            return ""
+        guide_sentence = location_sentence(top.doc_id)
+        # A passage that names its own sidebar module (for example a streaming section inside a
+        # fixtures guide) wins when that module differs from the guide's screen.
+        named = _SIDEBAR_RE.search(top.content)
+        if named:
+            module = named.group(1).strip()
+            if module.casefold() not in guide_sentence.casefold():
+                return f"This is on the {module} page: open {module} from the sidebar."
+        return guide_sentence
+
 
     @property
     def sources(self) -> list[dict]:
@@ -72,6 +103,11 @@ class Retrieval:
             }
             for i, h in enumerate(self.hits)
         ]
+
+
+def needs_location_prefix(prefix: str, answer_start: str) -> bool:
+    """False when the model's answer already opens with a sidebar path (no duplicate)."""
+    return bool(prefix) and "sidebar" not in answer_start[:160].lower()
 
 
 def _within(hits: list[Hit], limit: float) -> list[Hit]:
@@ -104,6 +140,7 @@ def _rank(
 ) -> list[Hit]:
     """Passages from every guide ranked together, best first, at most top_k."""
     cfg = get_settings().app_chat
+    where_question = question_type(question) in ("where-is", "list")
     candidates: list[Hit] = []
     for hit in knowledge.search(scope, question, sport=sport, limit=cfg.candidate_pool):
         limit = cfg.screen_max_distance if hit.doc_id in on_screen else cfg.max_distance
@@ -117,6 +154,12 @@ def _rank(
             base -= cfg.topic_boost
         if hit.keyword_rank is not None:
             base -= cfg.keyword_boost / (1 + hit.keyword_rank)
+        if knowledge.is_backend_guide(hit.doc_id):
+            # Backend (API) guides lose close calls to the screen guides users act on.
+            base += cfg.backend_guide_penalty
+        if hit.doc_id in cfg.route_where_only_docs and not where_question:
+            # A guide that only says where things are loses close calls on how-to questions.
+            base += cfg.backend_guide_penalty
         return base
 
     scored = [(boosted(hit.distance, hit), hit) for hit in candidates]
@@ -141,6 +184,15 @@ def _rank(
     return hits
 
 
+def _routed(scope: CallerScope, question: str, sport: str | None, screen_ids: list[str]) -> list[Hit]:
+    """Routed answers for the question; "where is" guides only for where-is and list questions."""
+    cfg = get_settings().app_chat
+    routed = knowledge.route_question(scope, question, sport, screen_ids)
+    if question_type(question) not in ("where-is", "list"):
+        routed = [h for h in routed if h.doc_id not in cfg.route_where_only_docs]
+    return routed
+
+
 def _weak(hits: list[Hit]) -> bool:
     return not hits or min(h.distance for h in hits) > get_settings().app_chat.rewrite_above
 
@@ -163,13 +215,36 @@ def retrieve(
     on_screen = set(screen_ids)
     named = set(knowledge.guides_named_in(scope, question, sport))
     hits = _rank(scope, question, on_screen, named, sport)
+    # A rewording of a guide's suggested question goes straight to the passage answering it.
+    routed = _routed(scope, question, sport, screen_ids)
+    if routed:
+        # Several routed guides (the same question in two guides): keep the search's order.
+        position = {h.doc_id: i for i, h in reversed(list(enumerate(hits)))}
+        routed = sorted(routed, key=lambda h: position.get(h.doc_id, len(hits)))
+        taken = {h.chunk_id for h in routed}
+        hits = routed + [h for h in hits if h.chunk_id not in taken][: max(cfg.top_k - len(routed), 0)]
+        result.routed = True
 
-    if cfg.rewrite_weak_questions and _weak(hits) and not _VAGUE_RE.search(question or ""):
+    # Hindi in English letters is matched poorly by the embedding model, so it is always searched
+    # again as English; other questions only when the first search found too little.
+    hinglish = is_hinglish(question or "")
+    if (
+        not routed
+        and cfg.rewrite_weak_questions
+        and (hinglish or _weak(hits))
+        and not _VAGUE_RE.search(question or "")
+    ):
         query = query_rewrite.rewrite(question)
         if query:
             named_too = named | set(knowledge.guides_named_in(scope, query, sport))
             again = _rank(scope, query, on_screen, named_too, sport)
-            if again and (not hits or min(h.distance for h in again) < min(h.distance for h in hits)):
+            again_routed = _routed(scope, query, sport, screen_ids)
+            if again_routed:
+                taken = {h.chunk_id for h in again_routed}
+                again = again_routed + [h for h in again if h.chunk_id not in taken][: max(cfg.top_k - len(again_routed), 0)]
+                result.routed = True
+            better = again and (not hits or min(h.distance for h in again) < min(h.distance for h in hits))
+            if again and (hinglish or better):
                 hits, named, result.rewritten = again, named_too, query
                 logger.info("app_chat_rewrite | used | query=%s", query)
 
@@ -233,16 +308,65 @@ def sport_from_id(sport_id: int | None) -> str | None:
     return SPORTS_BY_ID.get(sport_id) if sport_id is not None else None
 
 
+def location_sentence(doc_id: str) -> str:
+    """ "This is on the Players page: open Players from the sidebar." for the guide's screen."""
+    where = screen_location(doc_id)
+    page, _, how = where.partition(" (")
+    if not page or not how:
+        return ""
+    return f"This is on {page}: {how.rstrip(')')}."
+
+
+# Question types for the dynamic prompt, checked in this order. Keyword patterns, not a model
+# call, so no time is added; a wrong guess only changes the formatting rules.
+_QUESTION_TYPES = [
+    ("problem", re.compile(
+        r"\b(why|not|can'?t|cannot|unable|error|fail\w*|greyed|missing|stuck|wrong|problem|issue"
+        r"|nahi|nhi|kyu|kyun|galat)\b|n't\b", re.IGNORECASE)),
+    ("where-is", re.compile(r"\b(where|kahan|kaha|which (page|screen|tab))\b", re.IGNORECASE)),
+    ("list", re.compile(
+        r"\b(which|what)\s+(\w+\s+){0,4}(modules|templates|types|options|formats|statuses)\b"
+        r"|\blist (of|all)\b", re.IGNORECASE)),
+    ("how-to", re.compile(
+        r"\bhow\s+(do|can|to|should|does one)\b|\b(steps|kaise|kese|set up|setup|configure)\b",
+        re.IGNORECASE)),
+    ("what-is", re.compile(
+        r"\b(what|when|meaning|mean|means|explain|difference|how many|how much)\b|\bkya hai\b",
+        re.IGNORECASE)),
+]
+
+
+def question_type(question: str) -> str:
+    """how-to, problem, where-is, what-is, list or general."""
+    for name, pattern in _QUESTION_TYPES:
+        if pattern.search(question or ""):
+            return name
+    return "general"
+
+
 def prompt_for(
-    screen_title: str, language: QuestionLanguage | None = None, sport: str | None = None
+    screen_title: str,
+    language: QuestionLanguage | None = None,
+    sport: str | None = None,
+    question: str | None = None,
 ) -> str:
-    """Prompt template with screen, answer language and sport filled in; {context}/{question} remain."""
+    """Prompt template with screen, answer language and sport filled in; {context}/{question} remain.
+
+    With app_chat.dynamic_prompt and the question given, the short core prompt is used with only
+    the rules for the question's type.
+    """
     # The screen name only: "Event Details page --- Organiser Guide" -> "Event Details page".
     title = re.split(r"\s+(?:---|–|—)\s+", screen_title or "")[0].strip() or "not documented yet"
     title = title.replace("{", "(").replace("}", ")")
     answer_language = language.name if language else "the same language as the Question"
+    cfg = get_settings().app_chat
+    template = cfg.prompt_template
+    if cfg.dynamic_prompt and question is not None:
+        kind = question_type(question)
+        rules = cfg.prompt_type_rules.get(kind) or cfg.prompt_type_rules.get("general", "")
+        template = cfg.prompt_core.replace("{type_rules}", rules)
     return (
-        get_settings().app_chat.prompt_template
+        template
         .replace("{screen}", title)
         .replace("{language}", answer_language)
         .replace("{sport}", _SPORT_NAMES.get(sport or "", "not specified"))
@@ -298,11 +422,12 @@ def could_become_no_answer(text: str) -> bool:
 
 def audit(scope: CallerScope, route: str | None, result: Retrieval) -> None:
     logger.info(
-        "app_chat_audit | tenant=%s user=%s route=%s mode=%s docs=%s rewritten=%s",
+        "app_chat_audit | tenant=%s user=%s route=%s mode=%s docs=%s rewritten=%s routed=%s",
         scope.tenant,
         scope.user_id,
         route or "-",
         result.mode,
         ",".join(sorted({h.doc_id for h in result.hits})) or "-",
         "yes" if result.rewritten else "no",
+        "yes" if result.routed else "no",
     )

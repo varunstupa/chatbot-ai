@@ -106,3 +106,7 @@ Open **Event** from the sidebar, then click **Print Settings** in the row of set
 **Are the layouts for Singles, Doubles and Teams shared?** No. Each participant type has its own layout; save each one.
 
 **Where do I set back number logos?** **Print Layout** → **Back No.** tab.
+
+**How do I print a score sheet?** Choose the participant type in **Print Settings**, set the options and click **Save**. The **Print** button then appears; **Preview** opens a print preview, where **Print** prints the sheet.
+
+**How do I add logos to the score sheet?** In **Logo(s)**, turn on the logo toggle, choose how many logos (1 to 6) and upload each one (up to 15 MB each). Logos appear at the top and bottom of the sheet. Click **Save** to keep them.

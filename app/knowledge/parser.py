@@ -17,7 +17,7 @@ ALL_TENANTS = "all"
 SPORTS_BY_ID = {1: "table_tennis", 2: "padel", 3: "tennis", 4: "badminton"}
 SPORTS = frozenset(SPORTS_BY_ID.values())
 # Bump when chunking changes, so unchanged guides are re-embedded on the next sync.
-CHUNKER_VERSION = "2"
+CHUNKER_VERSION = "3"
 
 _DOC_ID_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{1,99}$")
 _ROLE_RE = re.compile(r"^[a-z0-9][a-z0-9 _-]{0,59}$")
@@ -136,10 +136,13 @@ def parse_guide(text: str) -> tuple[GuideMeta, str]:
     return meta, body
 
 
-def content_hash(meta: GuideMeta, body: str) -> str:
-    """Fingerprint of everything that ends up in a chunk's text or embedding."""
+def content_hash(meta: GuideMeta, body: str, skip_sections: frozenset[str] = frozenset()) -> str:
+    """Fingerprint of everything that ends up in a chunk's text or embedding.
+
+    The skipped sections are part of it, so changing that list re-embeds the guides.
+    """
     digest = hashlib.sha256()
-    for part in (CHUNKER_VERSION, meta.title, body):
+    for part in (CHUNKER_VERSION, meta.title, body, "|".join(sorted(skip_sections))):
         digest.update(part.encode("utf-8"))
         digest.update(b"\0")
     return digest.hexdigest()
@@ -165,6 +168,36 @@ def _sections(body: str) -> list[tuple[str, str]]:
     return sections
 
 
+# Paragraphs that are notes for whoever writes the answers, not content ("Answer direction: ...").
+_NOTE_PARAGRAPH_RE = re.compile(r"^(answer direction|guidance for the assistant)\s*:", re.IGNORECASE)
+
+
+def _without_note_paragraphs(text: str) -> str:
+    paragraphs = re.split(r"\n\s*\n", text)
+    return "\n\n".join(p for p in paragraphs if not _NOTE_PARAGRAPH_RE.match(p.strip())).strip()
+
+
+def _heading_question_parts(section: str, text: str) -> list[str] | None:
+    """One part per ``### Question?`` subsection of an FAQ section, as ``**Question?** answer``.
+
+    Guides that write their FAQ with ### headings get the same one-question-per-chunk
+    treatment as the ``**Question?**`` format, instead of several answers in one chunk.
+    """
+    if not section.casefold().startswith("frequently asked"):
+        return None
+    blocks = re.split(r"(?m)^### ", text)
+    lead, entries = blocks[0].strip(), [b for b in blocks[1:] if b.strip()]
+    if len(entries) < 2:
+        return None
+    parts = []
+    for entry in entries:
+        heading, _, body = entry.partition("\n")
+        parts.append(f"**{heading.strip()}** {' '.join(body.split())}".strip())
+    if lead:
+        parts[0] = f"{lead}\n\n{parts[0]}"
+    return parts
+
+
 def _question_answer_parts(text: str) -> list[str] | None:
     """One part per `**Question?** answer` paragraph of an FAQ section, else None.
 
@@ -183,6 +216,25 @@ def _question_answer_parts(text: str) -> list[str] | None:
     return parts
 
 
+def _skipped(heading: str, skip_sections: frozenset[str]) -> bool:
+    lowered = heading.casefold()
+    return any(phrase in lowered for phrase in skip_sections)
+
+
+def _without_skipped_subsections(text: str, skip_sections: frozenset[str]) -> str:
+    """The section text without its ``###`` subsections that are skipped."""
+    if not skip_sections:
+        return text
+    kept: list[str] = []
+    dropping = False
+    for line in text.splitlines():
+        if line.startswith("### "):
+            dropping = _skipped(line[4:], skip_sections)
+        if not dropping:
+            kept.append(line)
+    return "\n".join(kept).strip()
+
+
 def build_chunks(
     meta: GuideMeta,
     body: str,
@@ -190,13 +242,23 @@ def build_chunks(
     *,
     chunk_size: int,
     chunk_overlap: int,
+    skip_sections: frozenset[str] = frozenset(),
 ) -> list[Chunk]:
-    """Content chunks with content-only metadata. Access rules live in the registry."""
+    """Content chunks with content-only metadata. Access rules live in the registry.
+
+    Sections and ``###`` subsections whose heading contains a phrase of ``skip_sections``
+    (lowercase) are not indexed: they are notes for whoever writes the answers, not content.
+    """
     splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
     route = meta.routes[0] if meta.routes else ""
     chunks: list[Chunk] = []
     for section, text in _sections(body):
-        qa_parts = _question_answer_parts(text)
+        if _skipped(section, skip_sections):
+            continue
+        text = _without_note_paragraphs(_without_skipped_subsections(text, skip_sections))
+        if not text:
+            continue
+        qa_parts = _heading_question_parts(section, text) or _question_answer_parts(text)
         if qa_parts:
             parts, lead = qa_parts, meta.title
         else:

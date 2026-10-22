@@ -60,6 +60,14 @@ def load_guides(root: Path | None = None) -> LoadReport:
         except (GuideError, OSError, UnicodeDecodeError) as e:
             report.errors.append(f"{rel}: {e}")
 
+    # Writing-rule problems (no FAQ answer for a suggested question, notes in the body) do not stop
+    # a guide from loading; they are logged so they get fixed (see app/knowledge/guide_check.py).
+    from app.knowledge.guide_check import check_directory
+
+    problems = sum(len(r.problems) for r in check_directory(root))
+    if problems:
+        logger.warning("guide_check | %s writing-rule problem(s); run python -m app.knowledge.guide_check", problems)
+
     if report.errors:
         logger.error("guides_not_pruned | %s guide(s) failed to load", len(report.errors))
     elif not seen:

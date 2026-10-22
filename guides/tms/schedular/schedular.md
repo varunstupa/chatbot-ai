@@ -46,6 +46,17 @@ source_files:
   - src/app/modules/tms/schedular/schedular.component.ts
   - src/app/core/services/schedular-service/schedular.service.ts
   - src/app/core/constants/api-constant.ts
+answer_notes: |
+  Answering guidance for the TMS assistant:
+  1. Identify whether the user is asking about navigation, match placement, auto scheduling, reset/remove, filters, slot visibility, or a validation message.
+  2. Use the exact UI labels and messages documented here.
+  3. Distinguish the empty-stage message from the missing-day-plan message and from a filter result with no matches.
+  4. Distinguish **Reset** (clears scheduled slots) from **Reset Preferences** (clears filters) and **Remove** (clears the selected slot).
+  5. For auto-schedule pending matches, explain the specific pending reason returned by the backend; do not guess.
+  6. For conflicts or unavailable slots, use the message returned by the server and the Scheduler API guide.
+  7. Do not invent the meaning of slot colours; the source lists state labels but does not specify colour mappings.
+  8. For umpire assignment details, refer to `tms.schedular.umpires`.
+  9. Do not claim that filters alter the actual schedule; they affect the displayed matches.
 ---
 
 # Scheduler – place matches on tables and times
@@ -296,6 +307,30 @@ Select **Hide** and choose the applicable option, such as time or table and time
 
 The slot may be unavailable or the assignment may violate scheduling rules, such as a participant already playing at that time. Check the displayed message and the Scheduler API guide for the relevant validation.
 
+### Why does the Scheduler say "It seems that no matches have been created yet"?
+
+The selected stage has no matches. Click **Go to Fixtures** and create the matches before scheduling.
+
+### What do the colours in the legend mean?
+
+The legend shows the slot states: **Unoccupied** (free), **Occupied** (has a match), **Selected** and **Blocked** (cannot be used). Match tags show **S** (stage), **K** (knockout), **G** (group), **R** (round) and the category abbreviation.
+
+### Why does the Scheduler say "Slot not available"?
+
+The selected slot cannot take the match. Choose an available slot or check the scheduling conflict.
+
+### What is the difference between Reset and Reset Preferences?
+
+**Reset** clears the scheduled slots of the selected venue after confirmation. **Reset Preferences** only clears the selected filters; it does not change the schedule.
+
+### Why is a match pending after Auto Schedule?
+
+Auto Schedule could not place that match. It stays pending for manual scheduling with a reason, for example no feasible date or slot, or a missing home venue registration. Check the reason and schedule it by hand.
+
+### Why can't I schedule a later round first?
+
+You can. The Scheduler warns "It looks like you haven't scheduled previous rounds. Are you sure you want to proceed with scheduling?"; select **Yes** to continue.
+
 ## Natural-language and Hinglish query patterns
 
 Treat these as equivalent intents when retrieving this document:
@@ -313,18 +348,6 @@ Treat these as equivalent intents when retrieving this document:
 - "Time slot ko Hide ya Unhide kaise karun?"
 - "Previous round schedule nahi hua to warning kyun aati hai?"
 - "Slot not available error kyun aa raha hai?"
-
-## Answering guidance for the TMS assistant
-
-1. Identify whether the user is asking about navigation, match placement, auto scheduling, reset/remove, filters, slot visibility, or a validation message.
-2. Use the exact UI labels and messages documented here.
-3. Distinguish the empty-stage message from the missing-day-plan message and from a filter result with no matches.
-4. Distinguish **Reset** (clears scheduled slots) from **Reset Preferences** (clears filters) and **Remove** (clears the selected slot).
-5. For auto-schedule pending matches, explain the specific pending reason returned by the backend; do not guess.
-6. For conflicts or unavailable slots, use the message returned by the server and the Scheduler API guide.
-7. Do not invent the meaning of slot colours; the source lists state labels but does not specify colour mappings.
-8. For umpire assignment details, refer to `tms.schedular.umpires`.
-9. Do not claim that filters alter the actual schedule; they affect the displayed matches.
 
 ## Source references
 

@@ -184,3 +184,5 @@ Export needs **Edit** permission on the fixture feature.
 **How do I export the fixtures?** Click **Export**, choose the format and the categories or dates, then click export. Download it when it is ready.
 
 **What is "All matches in this stage are completed"?** Every match of this stage has a result. Move on to the next stage.
+
+**How do I notify users about published fixtures?** Click **Notify Users** and confirm with **Yes, Send**. The button appears only when your organisation has the notify-users feature on and the event has a notification set up for published fixtures.

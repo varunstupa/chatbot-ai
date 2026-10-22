@@ -131,3 +131,11 @@ Team categories print the toss sheet and the detailed result; singles, doubles a
 **Why is the toss sheet printed for one match only?** The Score Sheet toss print uses the first chosen match. Use **Print All Toss Sheet** in the day-wise mode for every match of the list.
 
 **Where are the back numbers printed?** In the Back no. mode, as a list or as back number labels.
+
+**What is a toss sheet and when is it printed?** A sheet for team categories that lists the playing order of the team match: the players of each team for each game. **Print Toss Sheet** prints it for the first chosen match; **Print All Toss Sheet** prints one for each match of the day. It needs a playing order.
+
+**What does Print Detailed Result show?** The detailed result of a team match: each game with its players and scores, and the team totals. It is offered for team categories.
+
+**What is printed on the back number list?** **S.No**, **Participant name**, **Participant No.** (the back number), **Seeding**, **Member Association**, **Club** and **Federation/Unaffiliated/Passport**. **Print list** prints the list on screen; **Print back no** prints all back numbers of the event.
+
+**How are the players printed in Category Wise and Entity Wise views?** **Category Wise** lists **S.No**, **License ID**, **Player Name**, **Elite**, **Member Association**, **Seed**, **Points**, **DOB**, **Club**, **Total Players** and **Registration Entry Date**. **Entity Wise** groups the players by **Parent Entity** (member association or club) with gender and date of birth.
