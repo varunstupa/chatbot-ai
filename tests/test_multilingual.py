@@ -100,12 +100,12 @@ class ScriptedPipeline:
         self.prompts: list[str] = []
 
     async def answer(self, question, session_id, corpus="merged", *, prompt_template=None,
-                     retriever=None, no_answer_text=None):
+                     retriever=None, no_answer_text=None, use_history=True):
         self.prompts.append(prompt_template)
         return "".join(self.tokens), []
 
     async def stream(self, question, session_id, corpus="merged", *, prompt_template=None,
-                     retriever=None, no_answer_text=None):
+                     retriever=None, no_answer_text=None, use_history=True):
         self.prompts.append(prompt_template)
         yield {"type": "session", "session_id": session_id}
         yield {"type": "sources", "chunks": []}
@@ -171,6 +171,25 @@ def test_marker_after_text_matches():
     assert app_chat.is_no_answer("The context does not mention it.\n\nNO_ANSWER")
     # Only the exact marker counts later in the text, not prose.
     assert not app_chat.is_no_answer("Players with no answer to the invitation stay in the queue.")
+
+
+@pytest.mark.parametrize("text", [
+    "The provided context does not contain information about the weather.",
+    "The Context provided does not contain information about why a tournament is not going live.",
+    "Based on the provided passages, the context does not mention any API.",
+    "The passages do not cover this.",
+])
+def test_refusal_in_own_words_is_no_answer(text):
+    assert app_chat.is_no_answer(text)
+
+
+@pytest.mark.parametrize("text", [
+    "The context menu of a match has **Edit** and **Delete**.",
+    "Open the event. The provided passages show the steps: 1. Click **Publish**.",
+    "The draw does not contain byes when the group is full.",
+])
+def test_answers_mentioning_context_are_kept(text):
+    assert not app_chat.is_no_answer(text)
 
 
 def test_marker_after_text_is_replaced_in_stream(scripted):
@@ -328,13 +347,13 @@ class RetrievingPipeline(ScriptedPipeline):
     """Like ScriptedPipeline, but runs the retriever first as the real pipeline does."""
 
     async def answer(self, question, session_id, corpus="merged", *, prompt_template=None,
-                     retriever=None, no_answer_text=None):
+                     retriever=None, no_answer_text=None, use_history=True):
         retriever(question)
         return await super().answer(question, session_id, corpus, prompt_template=prompt_template,
                                     retriever=retriever, no_answer_text=no_answer_text)
 
     async def stream(self, question, session_id, corpus="merged", *, prompt_template=None,
-                     retriever=None, no_answer_text=None):
+                     retriever=None, no_answer_text=None, use_history=True):
         retriever(question)
         async for item in super().stream(question, session_id, corpus, prompt_template=prompt_template,
                                          retriever=retriever, no_answer_text=no_answer_text):

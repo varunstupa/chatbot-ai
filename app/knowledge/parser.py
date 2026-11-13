@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from typing import Any
 
 import yaml
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_text_splitters import Language, RecursiveCharacterTextSplitter
 
 from app.services.auth import normalize_tenant
 
@@ -17,7 +17,7 @@ ALL_TENANTS = "all"
 SPORTS_BY_ID = {1: "table_tennis", 2: "padel", 3: "tennis", 4: "badminton"}
 SPORTS = frozenset(SPORTS_BY_ID.values())
 # Bump when chunking changes, so unchanged guides are re-embedded on the next sync.
-CHUNKER_VERSION = "3"
+CHUNKER_VERSION = "4"
 
 _DOC_ID_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{1,99}$")
 _ROLE_RE = re.compile(r"^[a-z0-9][a-z0-9 _-]{0,59}$")
@@ -216,6 +216,22 @@ def _question_answer_parts(text: str) -> list[str] | None:
     return parts
 
 
+def _subsections(text: str) -> list[tuple[str, str]]:
+    """Split a section on ``### `` headings into (subheading, text); "" for the text before the first."""
+    parts: list[tuple[str, str]] = []
+    heading, lines = "", []
+    for line in text.splitlines():
+        if line.startswith("### "):
+            if "".join(lines).strip():
+                parts.append((heading, "\n".join(lines).strip()))
+            heading, lines = line[4:].strip(), []
+        else:
+            lines.append(line)
+    if "".join(lines).strip():
+        parts.append((heading, "\n".join(lines).strip()))
+    return parts
+
+
 def _skipped(heading: str, skip_sections: frozenset[str]) -> bool:
     lowered = heading.casefold()
     return any(phrase in lowered for phrase in skip_sections)
@@ -249,7 +265,10 @@ def build_chunks(
     Sections and ``###`` subsections whose heading contains a phrase of ``skip_sections``
     (lowercase) are not indexed: they are notes for whoever writes the answers, not content.
     """
-    splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+    # Markdown-aware: prefers breaking at headings, then paragraphs and list items, then lines.
+    splitter = RecursiveCharacterTextSplitter.from_language(
+        Language.MARKDOWN, chunk_size=chunk_size, chunk_overlap=chunk_overlap
+    )
     route = meta.routes[0] if meta.routes else ""
     chunks: list[Chunk] = []
     for section, text in _sections(body):
@@ -259,13 +278,19 @@ def build_chunks(
         if not text:
             continue
         qa_parts = _heading_question_parts(section, text) or _question_answer_parts(text)
+        # (lead, part) pairs; the lead (title, section, subsection) goes first so the embedding sees it.
         if qa_parts:
-            parts, lead = qa_parts, meta.title
+            pieces = [(meta.title, part) for part in qa_parts]
+        elif len(text) <= chunk_size:
+            pieces = [(f"{meta.title} – {section}", text)]
         else:
-            parts = [text] if len(text) <= chunk_size else splitter.split_text(text)
-            # Title and section lead the text so the embedding sees them.
-            lead = f"{meta.title} – {section}"
-        for part in parts:
+            # A long section is cut at its ### subsections first, so every piece keeps its subheading.
+            pieces = [
+                (" – ".join(filter(None, (meta.title, section, sub))), part)
+                for sub, sub_text in _subsections(text)
+                for part in ([sub_text] if len(sub_text) <= chunk_size else splitter.split_text(sub_text))
+            ]
+        for lead, part in pieces:
             index = len(chunks)
             chunk_id = f"{meta.doc_id}::{doc_hash[:12]}::{index:04d}"
             chunks.append(

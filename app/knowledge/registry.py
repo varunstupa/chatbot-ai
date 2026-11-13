@@ -24,9 +24,11 @@ from app.utils.logger import get_logger
 logger = get_logger(__name__)
 
 REGISTRY_VERSION = 2
+# Where a document comes from: the guides folder, or an upload kept in MongoDB.
+FOLDER, UPLOAD = "folder", "upload"
 
 
-def entry_from_meta(meta: GuideMeta, doc_hash: str, chunk_count: int) -> dict[str, Any]:
+def entry_from_meta(meta: GuideMeta, doc_hash: str, chunk_count: int, source: str = FOLDER) -> dict[str, Any]:
     return {
         "title": meta.title,
         "routes": list(meta.routes),
@@ -41,8 +43,13 @@ def entry_from_meta(meta: GuideMeta, doc_hash: str, chunk_count: int) -> dict[st
         "sports": list(meta.sports),
         "content_hash": doc_hash,
         "chunk_count": chunk_count,
+        "source": source,
         "updated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
     }
+
+
+def is_upload(entry: dict[str, Any]) -> bool:
+    return entry.get("source") == UPLOAD
 
 
 def is_sport_specific(entry: dict[str, Any]) -> bool:

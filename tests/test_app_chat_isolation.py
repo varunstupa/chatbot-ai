@@ -113,13 +113,13 @@ class FakePipeline:
         self.session_ids: list[str] = []
 
     async def answer(self, question, session_id, corpus="merged", *, prompt_template=None,
-                     retriever=None, no_answer_text=None):
+                     retriever=None, no_answer_text=None, use_history=True):
         self.session_ids.append(session_id)
         context, sources = retriever(question)
         return (context if sources else no_answer_text), sources
 
     async def stream(self, question, session_id, corpus="merged", *, prompt_template=None,
-                     retriever=None, no_answer_text=None):
+                     retriever=None, no_answer_text=None, use_history=True):
         self.session_ids.append(session_id)
         yield {"type": "session", "session_id": session_id}
         context, sources = retriever(question)

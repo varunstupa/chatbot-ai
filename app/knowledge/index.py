@@ -85,5 +85,17 @@ class ChunkIndex:
         rows = list(zip(got.get("documents") or [], got.get("metadatas") or []))
         return sorted(rows, key=lambda row: (row[1] or {}).get("chunk_index", 0))
 
+    def export_document(self, doc_id: str) -> list[dict[str, Any]]:
+        """A document's chunks with their stored embeddings, so they can be reloaded without re-embedding."""
+        got = self._collection.get(where={"doc_id": doc_id}, include=["documents", "metadatas", "embeddings"])
+        embeddings = got.get("embeddings")
+        return [
+            {"chunk_id": cid, "text": text or "", "metadata": meta or {}, "embedding": [float(x) for x in emb]}
+            for cid, text, meta, emb in zip(
+                got.get("ids") or [], got.get("documents") or [], got.get("metadatas") or [],
+                embeddings if embeddings is not None else [],
+            )
+        ]
+
     def collection_names(self) -> list[str]:
         return [c.name for c in self._store._client.list_collections()]

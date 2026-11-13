@@ -7,6 +7,7 @@ langchain-ollama>=1.1.0  # `reasoning` (thinking off) for qwen3.5
 langchain-chroma
 langchain-openai
 langchain-text-splitters
+langsmith
 chromadb
 sentence-transformers
 pydantic
@@ -16,6 +17,10 @@ markitdown[all]
 pyyaml
 pyjwt[crypto]
 lingua-language-detector
-pymongo>=4.9  # AsyncMongoClient: chat store
+pymongo>=4.9  # AsyncMongoClient: chat store; MongoClient: uploaded documents
+pdfplumber  # text of uploaded PDF documents
+python-docx  # text of uploaded Word (.docx) documents
+redis>=5  # redis.asyncio: per-user question limits (counters, usage stream)
+tzdata>=2024.1  # timezone database for the question-limit windows (python:slim has none)
 httpx
 

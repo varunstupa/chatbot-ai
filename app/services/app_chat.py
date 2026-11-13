@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
+from langsmith import traceable
+
 from app.config.settings import get_settings
 from app.knowledge import service as knowledge
 from app.services import query_rewrite, reranker
@@ -193,10 +195,45 @@ def _routed(scope: CallerScope, question: str, sport: str | None, screen_ids: li
     return routed
 
 
+# A question that leans on the previous answer: a pronoun or a link word, in English or Hinglish.
+_FOLLOW_UP_RE = re.compile(
+    r"\b(it|its|that|those|they|them|their|same|also|then|again|instead|else|above|previous|earlier"
+    r"|what about|how about|after that|iska|uska|isko|usko|ise|isme|usme|iske|uske|inka|unka|inhe|unhe"
+    r"|ye|yeh|wo|woh|vo|voh|phir|fir|aur)\b",
+    re.IGNORECASE,
+)
+
+
+def is_follow_up(question: str) -> bool:
+    """Whether the previous turn should go to the model with this question.
+
+    A new topic is sent alone, so an unrelated earlier answer cannot leak into it. Very short
+    questions ("and doubles?") are follow-ups too.
+    """
+    q = (question or "").strip()
+    return len(q.split()) <= 3 or bool(_FOLLOW_UP_RE.search(q))
+
+
 def _weak(hits: list[Hit]) -> bool:
     return not hits or min(h.distance for h in hits) > get_settings().app_chat.rewrite_above
 
 
+def _trace_inputs(inputs: dict) -> dict:
+    return {k: inputs.get(k) for k in ("question", "route", "sport")}
+
+
+def _trace_outputs(result: Retrieval) -> dict:
+    return {
+        "mode": result.mode,
+        "documents": [
+            {"type": "Document", "page_content": h.content,
+             "metadata": {"doc_id": h.doc_id, "section": h.section, "distance": h.distance}}
+            for h in result.hits
+        ],
+    }
+
+
+@traceable(run_type="retriever", name="retrieve", process_inputs=_trace_inputs, process_outputs=_trace_outputs)
 def retrieve(
     scope: CallerScope,
     question: str,
@@ -270,6 +307,15 @@ NO_ANSWER = "NO_ANSWER"
 _NO_ANSWER_RE = re.compile(r"^\W*no[\s_-]*answer\b", re.IGNORECASE)
 # Later in the answer only the exact marker counts, so "no answer" in prose does not.
 _NO_ANSWER_ANYWHERE_RE = re.compile(r"\bNO_ANSWER\b")
+# The model refusing in its own words instead of the marker, which also leaks the prompt's
+# wording: "The provided context does not contain ...", "The Context provided does not mention ...".
+# Only at the start of the answer, so a real answer that mentions a context menu is not caught.
+_CONTEXT_REFUSAL_RE = re.compile(
+    r"^\W*(?:based on the (?:provided|available|given) (?:context|passages?),?\s*)?(?:the\s+)?"
+    r"(?:provided\s+|given\s+)?(?:context|passages?)(?:\s+provided)?\s+(?:does|do)\s+not\s+"
+    r"(?:contain|mention|include|cover|provide|describe|say)\b",
+    re.IGNORECASE,
+)
 
 # Internal detail the admin chat must never show: an HTTP method with a path, API
 # paths (.../v1/...), API URLs, code fences and code statements. HTTP methods are
@@ -408,10 +454,13 @@ def is_no_answer(text: str) -> bool:
     """The model's NO_ANSWER marker, also with stray formatting or text around it.
 
     Some models explain first ("The context does not mention ...") and put the
-    marker last, so the marker anywhere in the answer counts.
+    marker last, so the marker anywhere in the answer counts. A refusal in the model's own
+    words ("The provided context does not contain ...") counts too.
     """
     text = text or ""
-    return bool(_NO_ANSWER_RE.match(text) or _NO_ANSWER_ANYWHERE_RE.search(text))
+    return bool(
+        _NO_ANSWER_RE.match(text) or _NO_ANSWER_ANYWHERE_RE.search(text) or _CONTEXT_REFUSAL_RE.match(text)
+    )
 
 
 def could_become_no_answer(text: str) -> bool:

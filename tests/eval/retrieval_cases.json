@@ -758,5 +758,65 @@
   "expect": [
    "tms.navigation"
   ]
+ },
+ {
+  "id": "R06",
+  "kind": "routed",
+  "screen": "event-settings",
+  "route": "tms/event-settings/create-event/:event_id",
+  "q": "what happen when we remove player from category",
+  "expect": [
+   "tms.players.queue-delete-forfeit"
+  ]
+ },
+ {
+  "id": "R07",
+  "kind": "routed",
+  "screen": "players",
+  "route": "tms/players/:event_id",
+  "q": "what are the impacts when we remove player",
+  "expect": [
+   "tms.players.queue-delete-forfeit"
+  ]
+ },
+ {
+  "id": "R08",
+  "kind": "same",
+  "screen": "fixture",
+  "route": "tms/fixture/:participant_id/:category_id/:event_id/:event_category_id/:stage_id",
+  "q": "fixture screen me game setting me winner basis ka kya use hai?",
+  "expect": [
+   "tms.fixture.game-settings"
+  ]
+ },
+ {
+  "id": "R09",
+  "kind": "same",
+  "screen": "fixture",
+  "route": "tms/fixture/:participant_id/:category_id/:event_id/:event_category_id/:stage_id",
+  "q": "How is the winner of a group stage decided?",
+  "expect": [
+   "tms.fixture.game-settings"
+  ]
+ },
+ {
+  "id": "R10",
+  "kind": "cross",
+  "screen": "event-settings",
+  "route": "tms/event-settings/create-event/:event_id",
+  "q": "when golden matches are created",
+  "expect": [
+   "tms.fixture.golden-match"
+  ]
+ },
+ {
+  "id": "R11",
+  "kind": "same",
+  "screen": "fixture",
+  "route": "tms/fixture/:participant_id/:category_id/:event_id/:event_category_id/:stage_id",
+  "q": "golden match kab create hota hai",
+  "expect": [
+   "tms.fixture.golden-match"
+  ]
  }
 ]

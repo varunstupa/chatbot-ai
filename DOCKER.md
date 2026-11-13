@@ -11,9 +11,10 @@ the Node/Playwright website crawler, and a local Ollama LLM.
 |---|-----------|-------|------|----------|
 | 1 | `stupa-ollama` | `ollama/ollama` | Serves the LLM (`qwen3.5:4b-q4_K_M`) on port 11434 | long-running |
 | 2 | `stupa-ollama-pull` | `ollama/ollama` | Pulls the model into Ollama, then **exits 0** | one-shot |
-| 3 | `stupa-backend` | built from `Dockerfile` | FastAPI API on port 8000 **+ bundled crawler** | long-running |
+| 3 | `stupa-redis` | `redis` | Question-limit counters and usage stream (`chat_limits`) | long-running |
+| 4 | `stupa-backend` | built from `Dockerfile` | FastAPI API on port 8000 **+ bundled crawler** | long-running |
 
-**Steady state = 2 running containers** (`stupa-ollama` + `stupa-backend`).
+**Steady state = 3 running containers** (`stupa-ollama` + `stupa-redis` + `stupa-backend`).
 `stupa-ollama-pull` runs once at startup and stops.
 
 ### Why not more containers?
@@ -144,6 +145,7 @@ Uncomment the `gpus: all` (or the `deploy.resources` block) under the `ollama` s
 | `app-data` | `/app/data` | Chroma stores (`chroma`, `chroma_website`), uploads, ticket/demo session JSON, attachments |
 | `hf-cache` | `/app/.cache/huggingface` | Embedding model `intfloat/multilingual-e5-base`, cached so it isn't re-downloaded |
 | `ollama-models` | `/root/.ollama` | Pulled LLM weights |
+| `redis-data` | `/data` (redis) | Redis AOF: question-limit counters and the not yet synced usage events |
 
 `docker compose down` keeps volumes. `docker compose down -v` **deletes all data** (vector
 index, sessions, models).
@@ -202,4 +204,17 @@ one line you'd touch.)
 - **Secrets** come only from `.env` at runtime; `.dockerignore` keeps `.env` out of the image.
 - The crawler runs **inside** the backend container (Node + Playwright Chromium are baked in,
   non-root); `POST /crawl` works with no extra setup.
+- **Question limits** (`chat_limits` in `config.production.yaml`, `mode` off / observe / enforce;
+  changing it needs a rebuild, as the YAML is in the image). Counters live in Redis and are synced
+  to MongoDB (the chat store's database) every `drain_seconds`; with Redis down the limits are
+  checked in MongoDB, and with both down questions get a 503.
+  - Production uses the gateway's Redis, not the `redis` container: set
+    `REDIS_URL=redis://:PASSWORD@HOST:6379/1` in `.env` (`rediss://` for TLS).
+  - That Redis must be **6.2 or newer** (`XAUTOCLAIM`, `SET EXAT`), with **AOF on**
+    (`appendonly yes`, `appendfsync everysec`) and `maxmemory-policy` **`noeviction`** or
+    `volatile-lru`; an `allkeys-*` policy can evict the usage stream before it is synced.
+  - The MongoDB user needs `createIndex`: the app creates `chat_usage`, `chat_quota`,
+    `chat_fallback_requests` and `chat_outage_users` indexes at startup.
+  - Deploy this backend **before** the gateway: the gateway calls `/api/app-chat/quota/reserve`
+    before every question, which an older backend answers with 404.
 - Put a TLS-terminating reverse proxy (nginx/Caddy/Traefik) in front of `:8000` for public use.

@@ -13,6 +13,7 @@ from fastapi.responses import JSONResponse
 
 from app.api.app_chat import router as app_chat_router
 from app.api.crawl import router as crawl_router
+from app.api.knowledge_manage import router as knowledge_manage_router
 from app.api.routes import router
 from app.config.settings import get_settings
 from app.utils.logger import configure_logging, get_logger
@@ -44,9 +45,26 @@ async def lifespan(_app: FastAPI):
     from app.services import chat_store
 
     await chat_store.start()
-    if s.app_chat.rerank:
-        import asyncio
+    from app.services.chat_limits import limits as chat_limits
 
+    await chat_limits.start()
+    from app.services import tracing
+
+    tracing.start()
+    import asyncio
+
+    from app.knowledge import documents as knowledge_documents
+    from app.knowledge import manage as knowledge_manage
+
+    try:
+        if await asyncio.to_thread(knowledge_documents.start) is not None:
+            # Before the warm-ups, so uploaded documents are searchable and suggested from the start.
+            await asyncio.to_thread(knowledge_manage.restore)
+    except Exception:
+        # Chat keeps answering from the last registry copy; uploads are refused until MongoDB is back.
+        logger.exception("startup | knowledge documents unavailable (MongoDB)")
+        knowledge_documents.stop()
+    if s.app_chat.rerank:
         from app.services import reranker
 
         # Load the cross-encoder now, so the first question does not wait for it.
@@ -63,6 +81,9 @@ async def lifespan(_app: FastAPI):
 
         threading.Thread(target=warm_up, daemon=True).start()
     yield
+    tracing.stop()
+    knowledge_documents.stop()
+    await chat_limits.stop()
     await chat_store.stop()
     logger.info("shutdown")
 
@@ -113,6 +134,8 @@ def create_app() -> FastAPI:
     application.include_router(crawl_router, prefix="/api")
     application.include_router(app_chat_router)
     application.include_router(app_chat_router, prefix="/api")
+    application.include_router(knowledge_manage_router)
+    application.include_router(knowledge_manage_router, prefix="/api")
     return application
 
 

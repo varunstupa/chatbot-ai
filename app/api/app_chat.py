@@ -12,6 +12,7 @@ from fastapi import (
     APIRouter,
     Depends,
     HTTPException,
+    Path as FastAPIPath,
     Query,
     Request,
     Response,
@@ -28,9 +29,10 @@ from app.models.schemas import (
     QueryRequest,
     QueryResponse,
     RetrievedChunk,
+    UsageResetRequest,
 )
 from app.knowledge import service as knowledge
-from app.services import app_chat, chat_store
+from app.services import app_chat, chat_limits, chat_store, llm_warmup, tracing
 from app.services.auth import CallerScope, require_scope, require_service_key
 from app.services.chat_memory import get_message_history
 from app.services.language import detect_language
@@ -110,6 +112,44 @@ def _ms(since: float | None, start: float) -> int | None:
     return None if since is None else int((since - start) * 1000)
 
 
+async def _reserve(scope: CallerScope) -> chat_limits.Reservation:
+    """Take one question from the caller's daily, weekly and monthly limits, or refuse."""
+    try:
+        return await chat_limits.limits.reserve(scope)
+    except chat_limits.LimitDenied as e:
+        logger.info("chat_limit_reached | tenant=%s window=%s", scope.tenant, e.payload.get("window"))
+        raise HTTPException(status_code=429, detail=e.payload) from e
+    except chat_limits.MissingUser as e:
+        raise HTTPException(status_code=401, detail={"code": "chat_user_required"}) from e
+    except chat_limits.LimitsUnavailable as e:
+        raise HTTPException(status_code=503, detail={"code": "chat_limits_unavailable"}) from e
+
+
+async def _reservation(scope: CallerScope, request: Request) -> chat_limits.Reservation:
+    """The gateway's reservation (X-Chat-Request-Id) when it reserved already, else reserve here."""
+    request_id = request.headers.get("x-chat-request-id")
+    if not request_id:
+        return await _reserve(scope)
+    try:
+        res = await chat_limits.limits.lookup(scope, request_id)
+    except Exception as e:
+        logger.error("chat_reservation_lookup_failed | %s", e)
+        raise HTTPException(status_code=503, detail={"code": "chat_limits_unavailable"}) from e
+    if res is None:
+        raise HTTPException(status_code=409, detail={"code": "chat_reservation_invalid"})
+    return res
+
+
+def _trace(
+    scope: CallerScope, body: QueryRequest, q: str, session_id: str, request_id: str, language, streamed: bool,
+) -> tracing.QuestionTrace:
+    return tracing.question(
+        q, request_id=request_id, session_id=session_id, tenant=scope.tenant, role=scope.role,
+        route=body.screen.route if body.screen else None, sport=app_chat.sport_from_id(body.sport_id),
+        language=language.code if language else None, streamed=streamed,
+    )
+
+
 def _store_chat(
     scope: CallerScope,
     body: QueryRequest,
@@ -124,6 +164,7 @@ def _store_chat(
     started: float,
     first_token: float | None,
     streamed: bool,
+    message_id: str | None = None,
 ) -> str:
     """Queue the question and the answer the user saw for the chat store (never raises).
 
@@ -151,6 +192,8 @@ def _store_chat(
             total_ms=_ms(time.monotonic(), started),
             streamed=streamed,
         )
+    if message_id:
+        record.message_id = message_id
     chat_store.record(record)
     return record.message_id
 
@@ -161,6 +204,7 @@ async def _answer_json(
     response: Response,
     pipeline: RAGPipeline,
     scope: CallerScope,
+    reservation: chat_limits.Reservation,
 ) -> QueryResponse:
     q = _question(body)
     session_id = _client_session_id(body.session_id, request)
@@ -171,16 +215,18 @@ async def _answer_json(
     no_answer = app_chat.no_answer_text(language)
     started, holder = time.monotonic(), {}
     screen_title = _screen_title(scope, body)
+    trace = _trace(scope, body, q, session_id, reservation.request_id, language, streamed=False)
 
     def store(answer_text: str, outcome: str) -> str:
+        trace.end(answer_text, outcome, holder.get("result"))
         return _store_chat(
             scope, body, session_id=session_id, question=q, answer=answer_text, outcome=outcome,
             screen_title=screen_title, language=language, holder=holder, started=started,
-            first_token=None, streamed=False,
+            first_token=None, streamed=False, message_id=reservation.request_id,
         )
 
     try:
-        answer, sources = await pipeline.answer(
+        answer, sources = await trace.run(pipeline.answer(
             q,
             scoped,
             prompt_template=app_chat.prompt_for(
@@ -188,7 +234,8 @@ async def _answer_json(
             ),
             retriever=_retriever(scope, body, holder),
             no_answer_text=no_answer,
-        )
+            use_history=app_chat.is_follow_up(q),
+        ))
         if app_chat.is_no_answer(answer):
             answer = no_answer
         elif app_chat.reveals_internal_detail(answer):
@@ -198,15 +245,16 @@ async def _answer_json(
         # A question about the modules gets "Did you mean" (also when the answer was
         # blocked for naming an API): only user questions are suggested, never API details.
         if answer == no_answer:
-            found = await asyncio.to_thread(
+            found = await trace.run(asyncio.to_thread(
                 app_chat.did_you_mean, scope, q, app_chat.sport_from_id(body.sport_id), language
-            )
+            ))
             if found:
                 answer, suggestions = found
         elif app_chat.needs_location_prefix(prefix := _location_prefix(holder), answer):
             answer = prefix + NL + NL + answer
     except RuntimeError as e:
         logger.error("llm_unavailable | %s", str(e))
+        await chat_limits.limits.refund(reservation)
         store(str(e), chat_store.ERROR)
         raise HTTPException(
             status_code=503,
@@ -214,10 +262,13 @@ async def _answer_json(
         ) from e
     except Exception as e:
         logger.exception("app_chat_failed")
+        await chat_limits.limits.refund(reservation)
         store(s.messages.query_processing_failed, chat_store.ERROR)
         raise HTTPException(status_code=500, detail=s.messages.query_processing_failed) from e
 
-    message_id = store(answer, chat_store.NOT_FOUND if answer == no_answer or suggestions else chat_store.ANSWERED)
+    not_found = answer == no_answer or bool(suggestions)
+    message_id = store(answer, chat_store.NOT_FOUND if not_found else chat_store.ANSWERED)
+    await chat_limits.limits.commit(reservation, "not_found" if not_found else "answered")
     _attach_session(response, session_id)
     return QueryResponse(
         answer=answer,
@@ -225,6 +276,7 @@ async def _answer_json(
         session_id=session_id,
         suggestions=suggestions,
         message_id=message_id,
+        usage=reservation.usage,
     )
 
 
@@ -233,6 +285,7 @@ def _answer_stream(
     request: Request,
     pipeline: RAGPipeline,
     scope: CallerScope,
+    reservation: chat_limits.Reservation,
 ) -> StreamingResponse:
     q = _question(body)
     session_id = _client_session_id(body.session_id, request)
@@ -267,20 +320,22 @@ def _answer_stream(
             return opening_text
         first_token: float | None = None
         stored = False
+        trace = _trace(scope, body, q, session_id, reservation.request_id, language, streamed=True)
 
         def store(answer_text: str, outcome: str) -> str | None:
             nonlocal stored
             if stored:
                 return None
             stored = True
+            trace.end(answer_text, outcome, holder.get("result"))
             return _store_chat(
                 scope, body, session_id=session_id, question=q, answer=answer_text, outcome=outcome,
                 screen_title=screen_title, language=language, holder=holder, started=started,
-                first_token=first_token, streamed=True,
+                first_token=first_token, streamed=True, message_id=reservation.request_id,
             )
 
         try:
-            async for item in pipeline.stream(
+            async for item in trace.stream(pipeline.stream(
                 q,
                 scoped,
                 prompt_template=app_chat.prompt_for(
@@ -288,7 +343,8 @@ def _answer_stream(
                 ),
                 retriever=_retriever(scope, body, holder),
                 no_answer_text=no_answer,
-            ):
+                use_history=app_chat.is_follow_up(q),
+            )):
                 kind = item.get("type")
                 if kind == "token":
                     full += item.get("text", "")
@@ -324,10 +380,10 @@ def _answer_stream(
                         suggestions = None
                         # A question about the modules gets "Did you mean" instead; the
                         # final "done" answer replaces any text already streamed.
-                        found = await asyncio.to_thread(
+                        found = await trace.run(asyncio.to_thread(
                             app_chat.did_you_mean, scope, q,
                             app_chat.sport_from_id(body.sport_id), language,
-                        )
+                        ))
                         if found:
                             final, suggestions = found
                         if sent_upto == 0:
@@ -345,8 +401,11 @@ def _answer_stream(
                             if item.get("answer"):
                                 item = {**item, "answer": final}
                     message_id = store(final, chat_store.NOT_FOUND if not_found else chat_store.ANSWERED)
+                    await chat_limits.limits.commit(reservation, "not_found" if not_found else "answered")
                     if message_id:
                         item = {**item, "message_id": message_id}
+                    if reservation.usage:
+                        item = {**item, "usage": reservation.usage}
                 elif kind == "session":
                     # Never hand the tenant-scoped history key to the browser.
                     item = {"type": "session", "session_id": session_id}
@@ -354,12 +413,19 @@ def _answer_stream(
                     # Model/server details stay in the log, not in the browser.
                     logger.error("app_chat_llm_error | %s", item.get("message"))
                     item = {"type": "error", "message": s.messages.query_processing_failed}
+                    await chat_limits.limits.refund(reservation)
                     store(s.messages.query_processing_failed, chat_store.ERROR)
                 yield _line(item)
         except Exception:
             logger.exception("app_chat_stream_failed")
+            await chat_limits.limits.refund(reservation)
             store(s.messages.query_processing_failed, chat_store.ERROR)
             yield _line({"type": "error", "message": s.messages.query_processing_failed})
+        finally:
+            trace.end(full, "disconnected", holder.get("result"))
+            if not reservation.settled:
+                # The client left (disconnect or cancel) after the model ran: the question counts.
+                asyncio.ensure_future(chat_limits.limits.commit(reservation, "disconnected"))
 
     stream = StreamingResponse(
         sse_events(),
@@ -384,10 +450,12 @@ async def app_chat_query(
     stream: bool = Query(False, description="SSE stream instead of JSON."),
 ) -> QueryResponse | StreamingResponse:
     """Answer from the guides the caller's tenant may read, current screen first."""
+    _question(body)  # an empty question is refused before it can use quota
+    reservation = await _reservation(scope, request)
     accept = (request.headers.get("accept") or "").lower()
     if stream or accept.startswith("text/event-stream"):
-        return _answer_stream(body, request, pipeline, scope)
-    return await _answer_json(body, request, response, pipeline, scope)
+        return _answer_stream(body, request, pipeline, scope, reservation)
+    return await _answer_json(body, request, response, pipeline, scope, reservation)
 
 
 @router.post("/app-chat/stream", tags=["app-chat"])
@@ -397,7 +465,9 @@ async def app_chat_stream(
     pipeline: RAGPipeline = Depends(get_rag_pipeline),
     scope: CallerScope = Depends(require_scope),
 ) -> StreamingResponse:
-    return _answer_stream(body, request, pipeline, scope)
+    _question(body)
+    reservation = await _reservation(scope, request)
+    return _answer_stream(body, request, pipeline, scope, reservation)
 
 
 @router.post("/app-chat/session/close", tags=["app-chat"], status_code=204)
@@ -437,6 +507,7 @@ async def app_chat_feedback(
         raise HTTPException(status_code=404, detail="This answer can no longer be rated.")
     if status == "unavailable":
         raise HTTPException(status_code=503, detail="Feedback cannot be saved right now.")
+    tracing.feedback(body.message_id, body.rating, body.comment)
     logger.info("app_chat_feedback | tenant=%s rating=%s", scope.tenant, body.rating)
     return {"saved": True, "rating": body.rating}
 
@@ -469,6 +540,49 @@ async def app_chat_feedback_status(tenant: str, message_id: str, body: FeedbackS
     return {"updated": changed, "status": body.status}
 
 
+@router.post("/app-chat/quota/reserve", tags=["app-chat"])
+async def app_chat_quota_reserve(scope: CallerScope = Depends(require_scope)) -> dict:
+    """Called by the gateway before it forwards a question: take one question from the caller's
+    limits (Redis, else MongoDB). 429 when used up, 503 when neither store is reachable."""
+    res = await _reserve(scope)
+    return {"request_id": res.request_id, "usage": res.usage}
+
+
+@router.post("/app-chat/quota/{request_id}/refund", tags=["app-chat"])
+async def app_chat_quota_refund(
+    request_id: str = FastAPIPath(pattern=r"^[0-9a-f]{32}$"),
+    scope: CallerScope = Depends(require_scope),
+) -> dict:
+    """Called by the gateway when the chatbot failed: give the caller's question back (once)."""
+    try:
+        return {"refunded": await chat_limits.limits.refund_by_id(scope, request_id)}
+    except Exception as e:
+        logger.error("chat_quota_refund_failed | %s", e)
+        raise HTTPException(status_code=503, detail={"code": "chat_limits_unavailable"}) from e
+
+
+def _require_limits() -> None:
+    if get_settings().chat_limits.mode == "off" or chat_limits.limits.db is None:
+        raise HTTPException(status_code=503, detail={"code": "chat_limits_off"})
+
+
+@router.get("/app-chat/usage", tags=["app-chat"], dependencies=[Depends(require_service_key)])
+async def app_chat_usage(
+    tenant: str = Query(min_length=1, max_length=100),
+    user_id: str = Query(min_length=1, max_length=200),
+) -> dict:
+    """A user's question limits: live Redis counts, MongoDB quota and history, queue health. Service key only."""
+    _require_limits()
+    return await chat_limits.limits.usage(tenant, user_id)
+
+
+@router.post("/app-chat/usage/reset", tags=["app-chat"], dependencies=[Depends(require_service_key)])
+async def app_chat_usage_reset(body: UsageResetRequest) -> dict:
+    """Clear a user's count for the current day, week, month or all three. Service key only."""
+    _require_limits()
+    return await chat_limits.limits.reset(body.tenant, body.user_id, body.window)
+
+
 @router.get("/knowledge/screen", tags=["knowledge"])
 async def knowledge_screen(
     route: str | None = Query(default=None, max_length=300),
@@ -476,7 +590,11 @@ async def knowledge_screen(
     sport_id: int | None = Query(default=None),
     scope: CallerScope = Depends(require_scope),
 ) -> dict:
-    """Screen title and suggested questions for the widget."""
+    """Screen title and suggested questions for the widget.
+
+    The widget asks as soon as an event page opens, so the model starts loading here.
+    """
+    llm_warmup.warm_up_in_background()
     info = knowledge.screen_info(scope, route, url, app_chat.sport_from_id(sport_id))
     if info is None:
         return {"documented": False, "title": "", "suggested_questions": []}

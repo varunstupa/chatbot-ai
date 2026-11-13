@@ -78,7 +78,7 @@ token and tenant with each question.
 | `parser.GuideMeta` | Validated front matter: `doc_id`, `title`, `routes`, `aliases`, `tenants` (None = all), `exclude_tenants`, `roles`, `overrides`, `suggested_questions` |
 | `parser.parse_guide(text)` | Front matter + body; rejects a guide without `tenants` |
 | `parser.content_hash(meta, body)` | sha256 of chunker version + title + body. Decides re-embedding |
-| `parser.build_chunks(...)` | `##` sections, FAQ pairs as single chunks, deterministic `chunk_id` |
+| `parser.build_chunks(...)` | `##` sections, FAQ pairs as single chunks; a section over `chunk_size` is cut at its `###` subsections first (each piece led by "Title – Section – Subsection"), then by the Markdown splitter; deterministic `chunk_id` |
 | `registry.DocumentRegistry` | Load (reload on file change), `upsert`, `remove`, `allowed(scope)` |
 | `registry.entry_allows(entry, scope)` | Tenant, exclude list and role check. Malformed entry → deny |
 | `index.ChunkIndex` | `replace_document`, `delete_document`, `query(text, doc_ids, k)`, `document_chunks`, `set_route` |

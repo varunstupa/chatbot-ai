@@ -15,6 +15,7 @@ from langchain_core.prompts import (
     MessagesPlaceholder,
     PromptTemplate,
 )
+from langchain_core.runnables import RunnablePassthrough
 from langchain_core.runnables.history import RunnableWithMessageHistory
 
 from app.config.settings import get_settings
@@ -127,12 +128,17 @@ def get_chain_with_history() -> RunnableWithMessageHistory:
             llm = get_llm()
             # RunnableWithMessageHistory updates history after run (incl. stream end).
             _chain_with_history = RunnableWithMessageHistory(
-                prompt | llm,
+                RunnablePassthrough.assign(history=_visible_history) | prompt | llm,
                 get_message_history,
                 input_messages_key="input",
                 history_messages_key="history",
             )
         return _chain_with_history
+
+
+def _visible_history(inputs: dict) -> list:
+    """Earlier turns shown to the model. ``use_history`` False hides them; they are still kept."""
+    return (inputs.get("history") or []) if inputs.get("use_history", True) else []
 
 
 def reset_rag_chain_for_tests() -> None:
@@ -200,13 +206,14 @@ def _rag_invoke_payload(
     q: str,
     *,
     prompt_template: str | None = None,
+    use_history: bool = True,
 ) -> dict[str, Any]:
     s = get_settings()
     tmpl_str = (prompt_template or "").strip() or s.rag.prompt_template
     tmpl = PromptTemplate.from_template(tmpl_str)
     rag_turn = tmpl.format(context=context, question=q)
     sys_msg = (s.llm.system_message or "").strip()
-    payload: dict[str, Any] = {"input": q, "rag_turn": rag_turn}
+    payload: dict[str, Any] = {"input": q, "rag_turn": rag_turn, "use_history": use_history}
     if sys_msg:
         payload["system_message"] = sys_msg
     return payload
@@ -333,6 +340,7 @@ def answer_question(
     prompt_template: str | None = None,
     retriever: Retriever | None = None,
     no_answer_text: str | None = None,
+    use_history: bool = True,
 ) -> tuple[str, list[dict]]:
     if not (session_id or "").strip():
         raise ValueError("session_id must be non-empty")
@@ -354,6 +362,7 @@ def answer_question(
         context,
         q,
         prompt_template=prompt_template,
+        use_history=use_history,
     )
     chain = get_chain_with_history()
     cfg = {"configurable": {"session_id": sid}}
@@ -384,6 +393,7 @@ async def stream_answer(
     prompt_template: str | None = None,
     retriever: Retriever | None = None,
     no_answer_text: str | None = None,
+    use_history: bool = True,
 ) -> AsyncIterator[dict[str, Any]]:
     """Yield SSE payloads; history commits when ``astream`` completes.
 
@@ -419,6 +429,7 @@ async def stream_answer(
         context,
         q,
         prompt_template=prompt_template,
+        use_history=use_history,
     )
     chain = get_chain_with_history()
     cfg = {"configurable": {"session_id": sid}}
@@ -467,6 +478,7 @@ class RAGPipeline:
         prompt_template: str | None = None,
         retriever: Retriever | None = None,
         no_answer_text: str | None = None,
+        use_history: bool = True,
     ) -> tuple[str, list[dict]]:
         return await asyncio.to_thread(
             answer_question,
@@ -476,6 +488,7 @@ class RAGPipeline:
             prompt_template=prompt_template,
             retriever=retriever,
             no_answer_text=no_answer_text,
+            use_history=use_history,
         )
 
     async def stream(
@@ -487,6 +500,7 @@ class RAGPipeline:
         prompt_template: str | None = None,
         retriever: Retriever | None = None,
         no_answer_text: str | None = None,
+        use_history: bool = True,
     ) -> AsyncIterator[dict[str, Any]]:
         async for item in stream_answer(
             question,
@@ -495,5 +509,6 @@ class RAGPipeline:
             prompt_template=prompt_template,
             retriever=retriever,
             no_answer_text=no_answer_text,
+            use_history=use_history,
         ):
             yield item

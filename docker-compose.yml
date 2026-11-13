@@ -3,10 +3,11 @@
 # Containers:
 #   1. ollama        — the LLM server (serves qwen3.5:4b-q4_K_M on :11434)
 #   2. ollama-pull   — one-shot helper that pulls the model into ollama, then exits
-#   3. backend       — FastAPI API + bundled Node/Playwright crawler (:8000)
+#   3. redis         — per-user question-limit counters and usage stream (chat_limits)
+#   4. backend       — FastAPI API + bundled Node/Playwright crawler (:8000)
 #
 # ChromaDB is NOT a container: it runs embedded inside `backend` and persists to the
-# `app-data` volume. So steady state = 2 running containers (ollama + backend).
+# `app-data` volume. So steady state = 3 running containers (ollama + redis + backend).
 #
 # Bring up:   docker compose up -d --build
 # Logs:       docker compose logs -f backend
@@ -51,6 +52,22 @@ services:
     entrypoint: ["/bin/sh", "-c", "ollama pull ${OLLAMA_MODEL:-qwen3.5:4b-q4_K_M}"]
     restart: "no"
 
+  # Question-limit counters. Production uses the gateway's Redis (6.2+) instead; it needs the
+  # same two settings: AOF, so a restart keeps the counts, and noeviction, so the usage stream
+  # is never evicted before it is synced to MongoDB.
+  redis:
+    image: redis:7.4.1-alpine
+    container_name: stupa-redis
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec", "--maxmemory-policy", "noeviction"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
   backend:
     build: .
     image: stupa-chatbot-backend:latest
@@ -60,6 +77,8 @@ services:
         condition: service_healthy
       ollama-pull:
         condition: service_completed_successfully   # model is present before API starts
+      redis:
+        condition: service_healthy
     env_file:
       - path: .env                            # see .env.example for every key.
         required: false                       # Missing .env? Still boots (Jira just reports "not configured").
@@ -72,6 +91,7 @@ services:
       - APP_ENV=production                    # loads app/config/config.production.yaml (ollama URL)
       - SEED_ON_START=1                        # first run: build the vector DBs automatically
       - SEED_CRAWL_DOMAIN=stupasports.ai       # crawl this site into the website corpus (set "" to skip)
+      - REDIS_URL=redis://redis:6379/0         # the redis service above (overrides .env)
     ports:
       # Host port is configurable: set CHATBOT_HOST_PORT=8001 when the API gateway
       # already uses 8000 on this host, and point the gateway's CHATBOT_SERVICE_URL at it.
@@ -85,3 +105,4 @@ services:
 volumes:
   ollama-models:    # pulled LLMs — survives `docker compose down`
   app-data:         # all RAG/ticket/demo persisted state
+  redis-data:       # Redis AOF: question-limit counters survive a restart

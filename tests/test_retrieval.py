@@ -265,6 +265,29 @@ def test_instruction_sections_are_not_indexed():
     assert content_hash(meta, body, skip) != content_hash(meta, body)
 
 
+def test_long_section_is_cut_at_subsections():
+    from app.knowledge.parser import build_chunks, content_hash, parse_guide
+
+    steps = "\n".join(f"{i}. Step {i} of deleting." for i in range(1, 9))
+    text = (
+        "---\ndoc_id: tms.x\ntitle: X page\nroutes: [tms/x]\ntenants: all\n---\n"
+        "## Short\n\nKept whole.\n\n"
+        f"## Categories\n\nIntro text.\n\n### Delete a category\n\n{steps}\n\n### Add a category\n\n" + "Add text. " * 30
+    )
+    meta, body = parse_guide(text)
+    chunks = build_chunks(meta, body, content_hash(meta, body), chunk_size=200, chunk_overlap=0)
+    leads = [c.text.split("\n\n", 1)[0] for c in chunks]
+    assert leads[0] == "X page – Short" and chunks[0].text.endswith("Kept whole.")
+    assert "X page – Categories" in leads
+    # Every piece of a subsection names it, and no piece mixes two subsections.
+    deleting = [c.text for c in chunks if "Step" in c.text]
+    assert deleting and all(t.startswith("X page – Categories – Delete a category") for t in deleting)
+    assert not any("Add text" in t for t in deleting)
+    assert all(c.text.startswith("X page – Categories – Add a category") for c in chunks if "Add text" in c.text)
+    # Pieces of a cut list start at a list item, not in the middle of one.
+    assert all(t.split("\n\n", 1)[1].lstrip()[0].isdigit() for t in deleting)
+
+
 # ---------- question routing ----------
 
 

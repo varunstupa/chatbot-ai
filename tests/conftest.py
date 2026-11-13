@@ -18,6 +18,14 @@ def _no_real_chat_store(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _no_real_traces(monkeypatch):
+    """Tests that start the app must never send traces, even with a key in .env."""
+    from app.services import tracing
+
+    monkeypatch.setattr(tracing, "start", lambda: None)
+
+
+@pytest.fixture(autouse=True)
 def _no_did_you_mean(monkeypatch):
     """"Did you mean" calls the model; tests that need it patch it themselves."""
     from app.services import app_chat
@@ -39,3 +47,19 @@ def _no_query_rewrite(monkeypatch):
     from app.services import query_rewrite
 
     monkeypatch.setattr(query_rewrite, "rewrite", lambda question: None)
+
+
+@pytest.fixture(autouse=True)
+def _limits_off(monkeypatch):
+    """Question limits are off unless a test turns them on (tests/test_chat_limits.py)."""
+    from app.config.settings import get_settings
+
+    monkeypatch.setattr(get_settings().chat_limits, "mode", "off")
+
+
+@pytest.fixture(autouse=True)
+def _no_real_knowledge_documents(monkeypatch):
+    """Tests that start the app must never connect to the MongoDB in .env for uploaded documents."""
+    from app.knowledge import documents
+
+    monkeypatch.setattr(documents, "start", lambda: None)

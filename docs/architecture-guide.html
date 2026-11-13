@@ -258,7 +258,7 @@ sequenceDiagram
 <tr><td>Where are the relevance thresholds?</td><td class="wrap">YAML <code>app_chat.screen_max_distance</code>, <code>max_distance</code>, <code>other_screen_margin</code>; applied in <code>app/services/app_chat.py → retrieve</code></td></tr>
 <tr><td>Where is chat memory?</td><td class="wrap"><code>app/services/chat_memory.py</code> (in-memory, last <code>app_chat.history_messages</code> = 6 messages)</td></tr>
 <tr><td>Where are guides loaded?</td><td class="wrap"><code>app/knowledge/guide_loader.py</code>, called from <code>docker/entrypoint.sh</code> and <code>app/main.py → main()</code></td></tr>
-<tr><td>Where is chunking for guides?</td><td class="wrap"><code>app/knowledge/parser.py → build_chunks</code> (split on <code>##</code> headings, FAQ Q/A pairs kept alone)</td></tr>
+<tr><td>Where is chunking for guides?</td><td class="wrap"><code>app/knowledge/parser.py → build_chunks</code> (split on <code>##</code> headings, FAQ Q/A pairs kept alone, long sections cut at <code>###</code> subsections, then by the Markdown splitter)</td></tr>
 <tr><td>Where are request/response shapes?</td><td class="wrap"><code>app/models/schemas.py</code> (<code>QueryRequest</code>, <code>ScreenContext</code>, <code>QueryResponse</code>)</td></tr>
 <tr><td>Where is the Jira ticket flow?</td><td class="wrap"><code>app/services/ticket_workflow.py → try_process</code> → <code>jira_service.py</code> → <code>ticket_providers/jira_provider.py</code></td></tr>
 <tr><td>Where is logging?</td><td class="wrap"><code>app/utils/logger.py</code>; level/format from YAML <code>logging:</code></td></tr>
@@ -413,7 +413,7 @@ sequenceDiagram
   <li><strong>Load</strong>: on every start <code>guide_loader.load_guides()</code> reads all <code>*.md</code> (except README). Duplicate <code>doc_id</code> is an error.</li>
   <li><strong>Parse</strong>: <code>parser.parse_guide</code> validates front matter; <code>content_hash</code> fingerprints title + body + chunker version.</li>
   <li><strong>Skip or re-embed</strong>: <code>service.ingest_guide</code> skips unchanged content; access-only edits update only the registry.</li>
-  <li><strong>Chunk</strong>: <code>parser.build_chunks</code> splits on <code>##</code> headings, keeps each FAQ <code>**Question?**</code> pair alone, prefixes "Title – Section" so the embedding knows the screen.</li>
+  <li><strong>Chunk</strong>: <code>parser.build_chunks</code> splits on <code>##</code> headings, keeps each FAQ <code>**Question?**</code> pair alone, cuts a long section at its <code>###</code> subsections, prefixes "Title – Section" (and the subsection) so the embedding knows the screen.</li>
   <li><strong>Store</strong>: <code>index.ChunkIndex.replace_document</code> embeds and writes chunks to Chroma; <code>registry.upsert</code> makes the guide readable.</li>
   <li><strong>Prune</strong>: guides whose file was deleted are removed, unless any guide failed to load (a typo cannot take others offline).</li>
 </ol>

@@ -195,6 +195,20 @@ def require_scope(request: Request) -> CallerScope:
     return resolve_scope(request)
 
 
+def require_knowledge_admin(request: Request) -> CallerScope:
+    """FastAPI dependency for the document upload routes: a signed-in caller with an admin role.
+
+    The role comes from the verified identity (signed gateway headers or the token), never
+    from the request body, and is checked here even though the gateway checks it too.
+    """
+    scope = resolve_scope(request)
+    allowed = {r.strip().lower() for r in get_settings().knowledge_manage.admin_roles}
+    role = " ".join(str(scope.role or "").split()).lower()
+    if not role or role not in allowed:
+        raise HTTPException(status_code=403, detail="Only an admin or super admin can manage documents")
+    return scope
+
+
 def require_service_key(request: Request) -> None:
     """FastAPI dependency for ingest/delete/upload. Fails closed when unset."""
     s = get_settings()

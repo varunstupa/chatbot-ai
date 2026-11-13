@@ -147,6 +147,16 @@ curl -X POST "http://127.0.0.1:8000/api/stupa-chat/attachment?session_id=<id>" \
 
 JSON responses include `ticket_flow` and `ticket_workflow`; SSE streams emit `ticket_flow` / `ticket_workflow` events (like `demo_flow`).
 
+## LangSmith traces (admin chat)
+
+Each `/app-chat` question becomes one trace in LangSmith (`app/services/tracing.py`): the question, the retrieved passages with their guide and distance, the rewrite and model calls with prompts and timings, the final answer, the outcome, and the thumbs up/down (feedback key `user_rating`). The trace id is the answer's `message_id`.
+
+1. Create an API key at https://smith.langchain.com (Settings > API Keys).
+2. Set `LANGSMITH_API_KEY` in `.env` and restart. `langsmith.enabled` is `true` in `config.yaml` and `false` in `config.production.yaml`.
+3. Traces appear in the project `langsmith.project`. EU workspaces also change `langsmith.endpoint`.
+
+Without the key or with `enabled: false`, nothing is sent. Questions, guide passages and answers do leave the server when it is on, so check this before enabling production. The user id is not sent; tenant, role and session id are. Only the admin chat is traced: **do not set `LANGSMITH_TRACING`**, which would also send the public chat.
+
 ## Chat store (MongoDB)
 
 Every admin-chat conversation is stored in MongoDB, one document per tenant and session (`app/services/chat_store.py`).
@@ -178,6 +188,35 @@ use stupa_chatbot
 db.chat_sessions.find({ tenant: "staging" }).sort({ last_message_at: -1 })           // a tenant's sessions, newest first
 db.chat_sessions.find({ tenant: "staging", "messages.outcome": "not_found" })         // sessions with unanswered questions
 ```
+
+## Uploaded documents (MongoDB)
+
+An admin or super admin can upload `.md`, `.pdf` and `.docx` files and choose which tenants may read
+each one (`knowledge_manage` in `config.yaml`; same MongoDB server as the chat store). Old
+`.doc` files must be saved as `.docx` first; scanned PDFs without text are refused.
+
+| Collection | Holds |
+|---|---|
+| `knowledge_documents` | One record per document: the text the chunks are built from, who may read it (`all_tenants`, `tenants`, `exclude_tenants`, `roles`), hashes, status, previous version |
+| `knowledge_chunks` | Every chunk with its embedding (for rebuilding the index without re-embedding) |
+| `knowledge_audit` | Who uploaded, changed access or deleted what, and when |
+| `knowledge_files` | The original uploaded file |
+
+Routes (role in `knowledge_manage.admin_roles`, checked in this backend):
+
+```
+GET    /knowledge/manage/documents
+POST   /knowledge/manage/documents                 multipart: file, tenants ("all" or a,b), exclude_tenants, doc_id, title, routes, roles, sports
+PATCH  /knowledge/manage/documents/{doc_id}        {"tenants": [...], "exclude_tenants": [...], "roles": [...]}
+DELETE /knowledge/manage/documents/{doc_id}
+GET    /knowledge/manage/documents/{doc_id}/file   the original file
+```
+
+A new version goes live only after it is chunked and embedded; until then, or if that fails,
+the previous version keeps answering. Access changes apply at once and never re-embed. At
+startup the registry and index are brought in line with MongoDB, and the guide loader never
+removes uploaded documents. If MongoDB is down, chat keeps answering from the last registry
+copy and uploads are refused.
 
 ## Edge cases
 

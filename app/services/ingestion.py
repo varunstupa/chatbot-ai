@@ -41,7 +41,7 @@ def save_upload(filename: str, data: bytes) -> Path:
 def ingest_path(file_path: Path) -> int:
     """Parse file, chunk, and add to the vector store. Returns number of chunks indexed."""
     docs = documents_from_file(file_path)
-    chunks = split_documents(docs)
+    chunks = split_documents(docs, markdown=True)  # MarkItDown turns every upload into Markdown
     add_documents(chunks)
     logger.info(
         "ingestion_complete",

@@ -9,7 +9,8 @@ backend is stopped (the local Chroma store is not safe for two processes):
 Unchanged guides are skipped by content hash; access-only edits update the
 registry without re-embedding. A guide whose file was removed is removed from
 the store, unless any guide failed to load (then nothing is pruned, so a typo
-cannot take a working guide offline).
+cannot take a working guide offline). Documents uploaded from the admin panel are
+never removed here, and a guide file cannot take over an uploaded document's doc_id.
 """
 
 from __future__ import annotations
@@ -20,6 +21,7 @@ from pathlib import Path
 from app.config.settings import get_settings
 from app.knowledge import service
 from app.knowledge.parser import GuideError, parse_guide
+from app.knowledge.registry import is_upload
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -48,6 +50,7 @@ def load_guides(root: Path | None = None) -> LoadReport:
         return report
 
     seen: dict[str, Path] = {}
+    uploads = {doc_id for doc_id, entry in service.list_guides_admin().items() if is_upload(entry)}
     for path in _guide_files(root):
         rel = path.relative_to(root).as_posix()
         try:
@@ -56,6 +59,8 @@ def load_guides(root: Path | None = None) -> LoadReport:
             if doc_id in seen:
                 raise GuideError(f"doc_id '{doc_id}' is also used by {seen[doc_id].relative_to(root).as_posix()}")
             seen[doc_id] = path
+            if doc_id in uploads:
+                raise GuideError(f"doc_id '{doc_id}' belongs to a document uploaded from the admin panel")
             report.loaded.append({"file": rel, **service.ingest_guide(text)})
         except (GuideError, OSError, UnicodeDecodeError) as e:
             report.errors.append(f"{rel}: {e}")
@@ -73,7 +78,7 @@ def load_guides(root: Path | None = None) -> LoadReport:
     elif not seen:
         report.errors.append(f"no guides found in {root}; nothing loaded or removed")
     else:
-        for doc_id in sorted(set(service.list_guides_admin()) - set(seen)):
+        for doc_id in sorted(set(service.list_guides_admin()) - set(seen) - uploads):
             if service.delete_guide(doc_id):
                 report.removed.append(doc_id)
     return report

@@ -11,6 +11,7 @@ Every read function takes a ``CallerScope``; none accepts a raw tenant string.
 from __future__ import annotations
 
 import re
+import threading
 from dataclasses import dataclass, replace
 from pathlib import Path
 from threading import RLock
@@ -27,6 +28,7 @@ from app.knowledge.parser import (
     parse_guide,
 )
 from app.knowledge.registry import (
+    FOLDER,
     DocumentRegistry,
     entry_from_meta,
     entry_matches_sport,
@@ -109,8 +111,8 @@ def reset_for_tests() -> None:
 # ---------- write side (service key only) ----------
 
 
-def ingest_guide(text: str) -> dict[str, Any]:
-    """Insert or update one guide.
+def ingest_guide(text: str, source: str = FOLDER) -> dict[str, Any]:
+    """Insert or update one guide (``source``: the guides folder or an upload).
 
     Access, routes, aliases and suggestions are registry data: changing only
     those never re-embeds. Chunks are rebuilt only when the content hash changes
@@ -148,12 +150,12 @@ def ingest_guide(text: str) -> dict[str, Any]:
                 registry.upsert(
                     meta.doc_id,
                     entry_from_meta(meta, str(previous.get("content_hash") or ""),
-                                    int(previous.get("chunk_count") or 0)),
+                                    int(previous.get("chunk_count") or 0), source),
                 )
             index.replace_document(meta.doc_id, chunks)
             chunk_count = len(chunks)
         # A new document becomes readable only here, after its chunks exist.
-        registry.upsert(meta.doc_id, entry_from_meta(meta, doc_hash, chunk_count))
+        registry.upsert(meta.doc_id, entry_from_meta(meta, doc_hash, chunk_count, source))
         if not unchanged:
             _keyword.clear()
 
@@ -187,6 +189,11 @@ def delete_guide(doc_id: str) -> bool:
         _keyword.clear()
     logger.info("knowledge_deleted | doc_id=%s", key)
     return True
+
+
+def export_document(doc_id: str) -> list[dict[str, Any]]:
+    """A document's chunks with their embeddings (stored in MongoDB for uploaded documents)."""
+    return _index().export_document(doc_id)
 
 
 def list_guides_admin() -> dict[str, dict[str, Any]]:
@@ -535,6 +542,26 @@ def _build_routes() -> None:
 
 def warm_up_routes() -> None:
     _build_routes()
+
+
+def refresh_caches() -> None:
+    """After an upload, replacement or access change: rebuild the question routes in the background.
+
+    The routes are keyed by the total chunk count, which a replacement can leave the same while
+    every chunk id changes, so they are always rebuilt rather than trusted.
+    """
+    global _routes_built_for
+    with _lock:
+        _routes_built_for = None
+
+    def rebuild() -> None:
+        try:
+            warm_up_suggestions()
+            warm_up_routes()
+        except Exception:
+            logger.exception("knowledge_refresh_failed")
+
+    threading.Thread(target=rebuild, name="knowledge_refresh", daemon=True).start()
 
 
 def route_question(

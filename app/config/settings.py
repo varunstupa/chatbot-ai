@@ -329,8 +329,8 @@ class AppChatConfig(BaseModel):
         ],
     )
     chunk_overlap: int = Field(default=150, ge=0)
-    # Earlier messages resent with each question; fewer keeps follow-ups fast.
-    history_messages: int = Field(default=6, ge=0, le=30)
+    # Earlier messages kept per session; the admin chat sends them only with a follow-up question.
+    history_messages: int = Field(default=2, ge=0, le=30)
     no_answer_message: str = "I couldn't find that in the guides available to you."
     # The same message per question language (ISO 639-1); others get no_answer_message.
     no_answer_messages: dict[str, str] = Field(
@@ -487,6 +487,93 @@ class ChatStoreConfig(BaseModel):
     max_buffered_messages: int = Field(default=10000, ge=1)
 
 
+class KnowledgeManageConfig(BaseModel):
+    """Documents uploaded from the admin panel, kept in MongoDB (app/knowledge/manage.py).
+
+    Uses the chat store's MongoDB server (chat_store.mongodb_uri / CHAT_STORE_MONGODB_URI).
+    """
+
+    enabled: bool = False
+    database: str = "stupa_chatbot"
+    # Role names (as the gateway forwards them, compared case-insensitively) allowed to
+    # upload, change access and delete. Checked in this backend, not only in the gateway.
+    admin_roles: list[str] = Field(default_factory=lambda: ["super admin", "admin"])
+    # The original file is stored in one MongoDB document, so it must stay below 16 MB.
+    max_file_mb: float = Field(default=10, gt=0, le=15)
+    # Tenant names an upload may be given. Empty: any well-formed tenant name is accepted.
+    allowed_tenants: list[str] = Field(default_factory=list)
+
+
+class LangSmithConfig(BaseModel):
+    """Traces of the admin-app chat (app/services/tracing.py). Also needs LANGSMITH_API_KEY."""
+
+    enabled: bool = False
+    project: str = "stupa-admin-chat"
+    endpoint: str = "https://api.smith.langchain.com"
+
+
+class WindowLimits(BaseModel):
+    """Questions per user per window; 0 means no limit for that window."""
+
+    daily: int = Field(default=50, ge=0)
+    weekly: int = Field(default=200, ge=0)
+    monthly: int = Field(default=600, ge=0)
+
+
+class WindowLimitsOverride(BaseModel):
+    """An override sets only the windows it names; the others fall through."""
+
+    daily: int | None = Field(default=None, ge=0)
+    weekly: int | None = Field(default=None, ge=0)
+    monthly: int | None = Field(default=None, ge=0)
+
+
+class ChatLimitsConfig(BaseModel):
+    """Per-user daily, weekly and monthly question limits (app/services/chat_limits.py).
+
+    Counters live in Redis (REDIS_URL) and are synced to MongoDB (the chat store's database).
+    Changing these values needs a restart.
+    """
+
+    # off: nothing is counted. observe: counted, never denied. enforce: counted and limited.
+    mode: Literal["off", "observe", "enforce"] = "off"
+    # Day, week (Monday start) and month boundaries are taken in this timezone.
+    timezone: str = "Asia/Kolkata"
+    default: WindowLimits = Field(default_factory=WindowLimits)
+    # Per window, a role override wins over a tenant override, which wins over the default.
+    tenants: dict[str, WindowLimitsOverride] = Field(default_factory=dict)
+    roles: dict[str, WindowLimitsOverride] = Field(default_factory=dict)
+    # Counted (usage stays visible) but never limited.
+    exempt_roles: list[str] = Field(default_factory=list)
+    # How often each pod syncs the Redis usage stream to MongoDB.
+    drain_seconds: float = Field(default=30, gt=0)
+    drain_batch: int = Field(default=500, ge=1)
+    # Circuit breaker: how often a Redis that failed is tried again.
+    redis_retry_seconds: float = Field(default=5, gt=0)
+    # Usage events not acknowledged this long (a crashed pod) are taken over by another pod.
+    claim_idle_seconds: float = Field(default=120, gt=0)
+    # An event that failed to sync this many times moves to the dead-letter stream.
+    max_deliveries: int = Field(default=10, ge=1)
+    # Above this many waiting usage events, warnings are logged (questions are never blocked).
+    stream_warn_length: int = Field(default=100000, ge=1)
+    # MongoDB keeps usage history this long (TTL; deletion runs about once a minute).
+    retention_days: int = Field(default=400, ge=1)
+    # Timeouts for the quota stores, so a dead store is detected quickly.
+    redis_timeout_seconds: float = Field(default=2.0, gt=0)
+    mongo_timeout_seconds: float = Field(default=3.0, gt=0)
+
+    @field_validator("timezone")
+    @classmethod
+    def timezone_exists(cls, v: str) -> str:
+        from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+        try:
+            ZoneInfo(v)
+        except (ZoneInfoNotFoundError, ValueError) as e:
+            raise ValueError(f"chat_limits.timezone {v!r} is not a known timezone") from e
+        return v
+
+
 class LoggingConfig(BaseModel):
     level: str
     json_format: bool
@@ -533,6 +620,9 @@ class Settings(BaseSettings):
     cors: CorsConfig = Field(default_factory=CorsConfig)
     app_chat: AppChatConfig = Field(default_factory=AppChatConfig)
     chat_store: ChatStoreConfig = Field(default_factory=ChatStoreConfig)
+    chat_limits: ChatLimitsConfig = Field(default_factory=ChatLimitsConfig)
+    knowledge_manage: KnowledgeManageConfig = Field(default_factory=KnowledgeManageConfig)
+    langsmith: LangSmithConfig = Field(default_factory=LangSmithConfig)
     llm: LLMConfig
     logging: LoggingConfig
     messages: MessagesConfig
@@ -566,6 +656,18 @@ class Settings(BaseSettings):
     chat_store_mongodb_uri: Optional[SecretStr] = Field(
         default=None,
         validation_alias="CHAT_STORE_MONGODB_URI",
+    )
+
+    # Traces of the admin-app chat go to LangSmith only when this is set and langsmith.enabled.
+    langsmith_api_key: Optional[SecretStr] = Field(
+        default=None,
+        validation_alias="LANGSMITH_API_KEY",
+    )
+
+    # Redis for the question-limit counters and usage stream (e.g. redis://127.0.0.1:6379/0).
+    redis_url: Optional[SecretStr] = Field(
+        default=None,
+        validation_alias="REDIS_URL",
     )
 
     jira_api_token: Optional[SecretStr] = Field(

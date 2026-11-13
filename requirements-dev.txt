@@ -1,2 +1,3 @@
 -r requirements.txt
 pytest
+mongomock  # in-memory MongoDB for the uploaded-document tests

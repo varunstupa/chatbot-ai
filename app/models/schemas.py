@@ -73,6 +73,14 @@ class FeedbackRequest(BaseModel):
     comment: str | None = Field(default=None, max_length=1000)
 
 
+class UsageResetRequest(BaseModel):
+    """Support action: clear a user's question count for one window (or all) of the current period."""
+
+    tenant: str = Field(min_length=1, max_length=100)
+    user_id: str = Field(min_length=1, max_length=200)
+    window: Literal["daily", "weekly", "monthly", "all"]
+
+
 class FeedbackStatusRequest(BaseModel):
     """Review result of a vote: fixed (guide or code changed) or wont_fix."""
 
@@ -163,6 +171,8 @@ class QueryResponse(BaseModel):
     suggestions: list[str] | None = None
     # Admin chat: the id to send back with a thumbs up/down vote on this answer.
     message_id: str | None = None
+    # Admin chat: the caller's question limits and use ({limits, used, resets_at}) when limits are on.
+    usage: dict[str, Any] | None = None
     ticket_workflow: TicketWorkflowResponse | None = None
 
 
