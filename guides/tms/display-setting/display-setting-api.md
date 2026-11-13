@@ -28,6 +28,8 @@ backend_sources:
   - gateway/src/routers/match_router.py (match/v1/update_match_status, match/v1/update_led_settings, match/v1/get_led_settings)
   - gateway/src/routers/ott_router.py (ott/v1/get_led_settings, ott/v1/matches)
   - gateway/src/schema/match_schema.py (UpdateLedConfig)
+  - gateway/src/routers/match_router.py (matches export: _export_detailed_matches_excel, _export_table_summary_excel)
+  - gateway/src/decorators/decorator.py (permission_decorator, Access Denied)
   - tms repository, branch staging: src/router/match_router.py (v1/update_led_settings, v1/get_led_settings)
   - tms repository, branch staging: src/service/match_service.py (update_led_settings, get_led_settings)
 source_files:
@@ -44,7 +46,7 @@ source_files:
 
 The display screens call the **gateway** (`environment.apiUrl`). The gateway forwards the calls to the TMS match service and the OTT service. The match and LED settings routes live in the TMS repository, branch `staging`. The live displays also receive pushed updates on a websocket (`environment.socket_url`).
 
-This guide lists the calls each screen makes and what the backend does with them. The gateway route for `match/v1/matches` was not traced in this guide, so its login and permission rules are not stated here.
+This guide lists the calls each screen makes and what the backend does with them.
 
 ## Calls the Display Setting screen makes
 
@@ -72,6 +74,8 @@ This guide lists the calls each screen makes and what the backend does with them
 ## Matches list (GET match/v1/matches)
 
 - The Live Matches list, the All matches list, the Tables list and the exports all use this route with different parameters.
+- The gateway route needs a login; it has no feature permission check.
+- With `show_videos`, the gateway adds each match's streaming links from the OTT service: one link per table stream, so a match scheduled on two tables has two Rtmp URLs. If the OTT call fails the list is still returned, without links.
 - An empty result shows "No data found" or the sport's no-data text.
 
 ## Venues and days
@@ -81,34 +85,45 @@ This guide lists the calls each screen makes and what the backend does with them
 
 ## Hide/Unhide (PATCH match/v1/update_match_status)
 
-- The gateway first loads the event (400 with the event-not-found message when the event is missing) and the match.
-- When `show_on_table` is true or false, the gateway updates the match's `show_on_table` value and returns the success message "match updated successfully". This branch returns before the publish, live stream and image update branches are checked.
+- The gateway first checks the login and the **Update Stream** feature in edit mode (not Display Settings; administrators always pass). Without it the reply is 403 "Access Denied".
+- It then loads the event and the match (400 with "Event Not Found" when either is missing).
+- When `show_on_table` is true or false, the gateway updates the match's `show_on_table` value and returns 200 with the success message "Match Updated Successfully". This branch returns before the publish, live stream and image update branches are checked.
 - The screen does not read the reply and shows no message.
 
 ## The is_active variant of the same route
 
 - The common service has a second call on the same route that sends the query `is_active`. The gateway handles `is_active` by updating the match's video stream in the OTT service.
-- If the match has no video the gateway returns 404 with the video-not-found message.
+- If the match has no video the gateway returns 404 with "Video Not Found".
 - The method exists in the Display Setting component, but no template button calls it.
 
 ## Read LED settings (GET ott/v1/get_led_settings)
 
 - The OTT route passes `event_id` to the match service LED read. In the gateway code this route has no login decorator, unlike the match route of the same name.
 - The TMS reads the LED_SETTING configuration of the event.
-- A saved configuration returns 200 with the message "LED settings fetched successfully" and the stored data (the layout id).
-- No saved configuration returns 404 with "LED settings not found". The LED live card then uses layout 2.
+- A saved configuration returns 200 with the message "Led Settings Fetched Successfully" and the stored data (the layout id).
+- No saved configuration returns 404 with "Led Settings Not Found". The LED live card then uses layout 2.
 - Server errors return 500 with the error text.
 
 ## Save LED layout (PUT match/v1/update_led_settings)
 
-- The gateway checks the login and the Display Settings feature in edit mode. It then forwards the event id and the body.
+- The gateway checks the login and the Display Settings feature in edit mode (403 "Access Denied" without it; administrators always pass). It then forwards the event id and the body.
+- When the match service cannot be reached the gateway answers 502 "Service Unavailable".
 - The TMS reads the existing LED_SETTING configuration of the event.
   - If one exists, it sets `layout__id` from the body when the body has one, and keeps the other stored values.
   - If none exists, it creates the configuration with `layout__id` from the body.
 - The configuration is stored as the event's LED setting (object type EVENT, the event id as object id).
 - Only the layout id is written. The config type and status in the body are accepted by the gateway, but the TMS keeps only the layout.
-- Success: 200 with "LED setting updated". The screen shows this message in a snackbar and then reads the settings again.
+- Success: 200 with "Led Setting Updated". The screen shows this message in a snackbar and then reads the settings again.
 - Error: 500 with the error text, shown in the error snackbar.
+
+## Export files (GET match/v1/matches with export_excel)
+
+- With the export flag the gateway returns an Excel file instead of the list.
+- Table format (Tables tab): sheet "Table Summary" with the columns Table ID, Match Count, Date, Event ID and Link. The TMS builds one row per table and match day from the matches asked for (the Tables tab export asks for matches in progress); Match Count counts them. Link is `table/:event_id/:table_id` after the organisation's front-end address, which is the score card view of the table, not the overlay.
+- Match format: sheet "Matches", one row per match, or one row per sub match of a team match. Columns: Match ID, Date/Time (day/month/year hours:minutes), Table No., Category, Round, Team, Match, Club, Broadcast Link T1, Broadcast Link T2, Hide/Unhide, match_link, table_link and, for sub matches, sub_match_link.
+- match_link is `stream/match/:event_id/:match_id`, sub_match_link adds the sub match id, and table_link is `stream/table/:event_id/:table_id` (one per table, comma separated). The links start with the organisation's front-end address.
+- With the live flag, a team match only gives rows for sub matches being scored live.
+- Errors: 500 "Failed To Create Excel Export" (also when there is no match), or 500 "Failed To Create Table Summary Excel Export" for the table format.
 
 ## Live updates (websocket)
 
@@ -119,7 +134,8 @@ This guide lists the calls each screen makes and what the backend does with them
 
 ## Permissions
 
-- The gateway checks the Display Settings feature in edit mode for the LED save and the match status change. Without it the gateway refuses the change.
+- The gateway checks the **Display Settings** feature in edit mode for the LED save, and the **Update Stream** feature in edit mode for the match status change (Hide/Unhide). Without it the reply is 403 "Access Denied".
+- The match list and the admin LED settings read need a login only.
 - The public display pages (LED live card, score card, overlay) need no login.
 
 ## Frequently asked questions
@@ -128,10 +144,10 @@ This guide lists the calls each screen makes and what the backend does with them
 
 **Which API loads the venues and the days?** GET event/v1/event_venues for the venues, and GET event/v1/get_event_venue_days for the days of a venue.
 
-**Which API hides a match from the table display?** PATCH match/v1/update_match_status with the query `show_on_table`. The gateway updates the match and returns "match updated successfully".
+**Which API hides a match from the table display?** PATCH match/v1/update_match_status with the query `show_on_table`. It needs the Update Stream edit permission. The gateway updates the match and returns "Match Updated Successfully".
 
-**What does the LED settings read return when nothing is saved?** 404 with "LED settings not found". The LED live card then shows layout 2.
+**What does the LED settings read return when nothing is saved?** 404 with "Led Settings Not Found". The LED live card then shows layout 2.
 
-**Which permission is needed to change the display settings?** Display Settings in edit mode. Without it the gateway refuses the save and the status change.
+**Which permission is needed to change the display settings?** Display Settings in edit mode for the LED layout save, and Update Stream in edit mode for Hide/Unhide. Without it the gateway answers 403 "Access Denied".
 
 **Where do the live updates come from?** A websocket feed; each display page filters the messages it receives.

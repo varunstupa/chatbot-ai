@@ -48,14 +48,12 @@ source_files:
 A list goes through three states: **calculated** (or **edited** after a change) → **validated** → **published**. Publishing makes the list the live one that the public standings and player pages read. A published list is never changed in place; a new calculation creates a new list.
 
 ## Ranking lists
-
 - **Submit for publication** (the Proceed button, the publish route of the ranking router) validates the list. The reply is "submitted for publication" (the message key RANKING_LIST_SUBMITTED_FOR_PUBLICATION; its English text is empty in the translation file, so the screen may show an empty message). Errors: "not found" (404) for a missing list, "validation error" (409) when the list cannot be published, and a generic publication error (500).
 - A validated list is **not** published at once. It waits for a publication run.
-- The **publication run** (the publish task) promotes it. It runs on the schedule of each season and category, and it can be started now with the trigger route ("Publication pipeline triggered" with a task id). The trigger is for one tenant and processes all active seasons and categories at once.
+- The **publication run** (the publish task) promotes it. It runs on the schedule of each season and category (the publication schedule in the ranking settings: daily, weekly or monthly; the server checks every 15 minutes whether a schedule is due), and it can be started now with the trigger route ("Publication pipeline triggered" with a task id). The trigger is for one tenant and processes all active seasons and categories at once.
 - The run holds a lock per tenant for 30 minutes and extends it for each season. If the lock is lost during the run, the run stops so that two runs never publish at the same time.
 
 ## What one publication run does
-
 For each tenant, then each active season:
 
 1. **Global settings snapshot** (once per tenant): the settings draft is published as a snapshot.
@@ -68,43 +66,47 @@ For each tenant, then each active season:
 - The run also has a **scheduled** mode (only the contexts that are due, as the schedule decides) and a **manual** mode (everything, ignoring the schedule).
 
 ## Rating lists
-
 - **Validate**: a calculated or edited rating list becomes validated. Players in the list who have no alternate rating record get one with 0 (and a history row). Only calculated or edited lists can be validated; other states are refused with "Only 'calculated' or 'edited' lists can be validated".
+## Rating lists – publish
 - **Publish** (the manual publish route): only a **validated** list can be published; otherwise the publish is refused ("Cannot publish list ... from status ..."). Publishing:
   1. locks the list row;
   2. rebuilds each player's entries from the list's history;
   3. copies the new rating, the status, the deviation, the volatility, the last match date and the match count to the live rating of each player;
   4. marks the list PUBLISHED with the publication date, and writes an admin audit row;
   5. builds a new leaderboard snapshot.
-- The server replies with the message key RATING_LIST_PUBLISHED; the screen shows its own success text ("Rating List published successfully").
+- The server replies "Rating list {id} has been successfully published." The admin allocation screen does not call this publish step: its **Proceed** only validates the list ("Rating list validated successfully!"; the server's own text is "Rating list has been validated successfully.").
+
+## Rating lists – publication task
 - **Publish all validated** is the batch publish used by the rating publication task. It publishes every validated list of the tenant, oldest first, then builds one leaderboard snapshot for the run. Lists that fail are skipped.
 - The trigger route for rating publication runs the rating publication task for one tenant ("Rating publication task triggered").
+- The rating publication task also runs on the organisation's rating schedule (daily, weekly, monthly, at the end of the event, or manual). The server checks every 15 minutes whether the schedule is due; with "manual" it never runs on its own.
 - A publish that is already done for a list is refused by its status; a list can only be published once from VALIDATED.
 
 ## Restore
-
 - **Restore leaderboard** creates a new published leaderboard list copied from a historical list. It is a temporary hold: the next real publication recomputes the board and may or may not keep the restored order. The reason is required and is stored with the pipeline run.
 - Ranking also has a restore for a historical ranking list and for an audit run.
 
 ## Pipeline runs
-
 - The runs list for a tenant (rating) shows each run with its trigger type (scheduled, manual or post-validation), its status (running, success or failed), the number of lists published and the failure reason when it failed.
 
 ## Permissions
-
 - Validating, publishing, triggering a run and restoring need the ranking or rating feature in edit mode through the gateway. The trigger routes of the ranking-rating service themselves do not check the login (see the Ranking API guide).
 
 ## Frequently asked questions
 
 **Why is my ranking list not live after I clicked Proceed?** Proceed only validates the list. It goes live in the next publication run for its season and category, or after a manual trigger.
 
-**What is the difference between validating and publishing?** Validating marks the list as ready. Publishing makes it the live list. For rating, the publish step is separate and manual; for ranking, the publication run does it.
+**What is the difference between validating and publishing?** Validating marks the list as ready. Publishing makes it the live list. For both ranking and rating the screen only validates; the publication run (on schedule or a manual trigger) publishes.
+
+**Why is my rating list not on the rating board after Proceed?** Proceed only validates it. It is published by the next rating publication run, which follows the organisation's rating schedule; with a manual schedule someone must trigger it.
 
 **How do I publish now?** Trigger the publication pipeline for the tenant (ranking) or the rating publication task (rating) from the admin tools.
 
 **What does the run do first?** It publishes the settings snapshots, then promotes the validated lists oldest first, then applies the deductions on published lists.
 
 **How do I restore an old leaderboard?** Use the restore action on the history screen with a reason. It creates a new published list from the old one.
+
+## Frequently asked questions: Publication – more questions
 **How do I publish a ranking list?** Open the list on the Ranking Management page, click **Publish report**, read the confirmation, then click **Proceed**. This validates the list. The list goes live when the publication run promotes it, on its schedule or after a manual trigger.
 
 **What are the states of a ranking or rating list?** **Calculated** (or **edited** after a change), then **validated**, then **published**. A published list is the live one; it is never changed in place, and a new calculation creates a new list.

@@ -36,44 +36,47 @@ source_files:
 ---
 # Backend logic – knockout stage APIs
 
-Each section gives the gateway step, the TMS checks in order, and the message shown. The gateway checks the login and the permission (Edit on Fixture Access) before it forwards each draft call.
+Each section gives the gateway step, the TMS checks in order, and the message shown. Messages are the English text the gateway returns. A missing permission gives "Access Denied" (403).
 
 ## Draft the knockout fixture (POST fixture/v1/draft_knockout_fixture)
 
 - Needs Edit on Fixture Access.
 - Refused with "Stage Update Not Allowed" (400) when a dependent stage is in progress or completed.
-- Refused with "A redraw is required before creating a draft" (400) when the stage is flagged as needing a redraw. A redraw must be done first.
-- The participants are placed by seed. Seeded players come first, then the others. Byes are placed so that:
-  - with minimise byes, the byes are spread to keep the bracket small;
-  - two byes never share a match, and a bye never meets a bye.
-- The publish setting follows the event: when the event auto publishes fixtures, the stage is published; otherwise the position match publish setting is kept.
+- Refused with "A redraw is required before creating a draft" (400) when the stage is flagged as needing a redraw and the bracket still has open places (benched players, or players without a seed). Generate the fixture again first.
+- The bracket follows the saved stage seeds. Seeded players come first in display seeding order, then the others.
+- With minimise byes, only one round is built from the players present. Otherwise the full bracket is built, with position matches and the maximum rounds from the stage settings.
+- A player drawn against a bye moves on at once. A match of two byes is skipped and the bye moves on.
+- Publishing: when the event publishes fixtures automatically, the stage and its position matches are published; otherwise their current publish settings are kept.
+- Dependent stages whose expected participant count changed are rebuilt.
 - Success: "Knockout Fixtures Created" (200).
 
 ## Knockout fixtures (GET fixture/v1/get_knockout_fixtures)
 
+- Gateway: needs a login.
 - Stage not found: "Stage Not Found" (404).
 - No stage configuration: "Stage Configuration Missing" (400).
 - No groups in the stage: "No Groups Found" (404).
+- The preview is read from the saved seeds; nothing is re-drawn by this call.
 - Success: "Knockout Fixtures Fetched" (200), with the groups and the benched participants.
 - Errors that are not expected return code 500 with the error text.
 
 ## Knockout bracket (GET fixture/v1/get_knockout_matches)
 
-- Gateway: needs the event ID header. The gateway checks the scoring permission of the event and whether the user is a live match scorer.
+- Gateway: needs a login and the event-id header: "event-id header is required" (400), or "event-id header must be a valid integer" (400). The gateway checks the scoring permission of the event and whether the user is a live match scorer, and adds who may score each match.
 - Stage not found: "Stage Not Found" (404). Category missing on the stage: "Event Category Or Category Not Found" (404).
-- A stage that is not a knockout: refused with code 400. The server text for this case is "Shuffle is only available for knockout stages.", which is the wrong text for a fetch. This is reported as a finding.
+- A stage that is not a knockout: "Shuffle is only available for knockout stages." (400). This is the wrong text for a fetch and is reported as a finding.
 - No groups: "No Groups Found" (404). No rounds: "Rounds Not Found" (404).
-- The bracket is built from the rounds. Each round has its matches, the legs of each match, the golden match (when there is one) and the winners of each match. A consolation bracket is built as a separate tree when the stage has one.
+- The bracket is built from the rounds. Each round has its matches, the legs of each match, the golden match (when there is one) and the winners. A consolation bracket is built as a separate tree when the stage has one.
 - Success: "Knockout Matches Fetched" (200).
 
 ## Update a round (POST round/v1/update_round)
 
-- Gateway: needs a login.
+- Gateway: needs a login only.
 - No round found: "Rounds Not Found" (404).
 - Round name longer than 15 characters: "Round Name Invalid" (400).
-- A name already used by another round of the same stage: "Round Name Already Exists" (400).
+- When the stage is sent, a name already used by another round of that stage: "Round Name Already Exists" (400).
 - Success: the updated round is returned. The success text of this call is not traced in this pass.
 
 ## Round names by position (GET round/round_names)
 
-- Returns the names of the rounds for a round or a list of rounds, using the position range of each round.
+- Returns the names of the rounds for a round or a list of rounds, from the number of positions each round covers. A round without a position range has no name.

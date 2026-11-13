@@ -46,12 +46,15 @@ source_files:
   - src/app/modules/tms/schedular/schedular.component.ts
   - src/app/core/services/schedular-service/schedular.service.ts
   - src/app/core/constants/api-constant.ts
+  - src/app/shared/confirm-popup/confirm-popup.constants.ts
+  - src/app/modules/tms/schedular/call-out-scheduler.guard.ts
+  - src/assets/i18n/en.json
 answer_notes: |
   Answering guidance for the TMS assistant:
   1. Identify whether the user is asking about navigation, match placement, auto scheduling, reset/remove, filters, slot visibility, or a validation message.
   2. Use the exact UI labels and messages documented here.
   3. Distinguish the empty-stage message from the missing-day-plan message and from a filter result with no matches.
-  4. Distinguish **Reset** (clears scheduled slots) from **Reset Preferences** (clears filters) and **Remove** (clears the selected slot).
+  4. Distinguish the toolbar **Reset** (opens Reset Preferences, clears scheduled matches by criteria) from **Reset** inside Filter Preferences (clears filters) and **Remove** (clears the selected slot).
   5. For auto-schedule pending matches, explain the specific pending reason returned by the backend; do not guess.
   6. For conflicts or unavailable slots, use the message returned by the server and the Scheduler API guide.
   7. Do not invent the meaning of slot colours; the source lists state labels but does not specify colour mappings.
@@ -70,6 +73,8 @@ Route pattern: `tms/schedular/:event_id/:participant_id/:category_id`.
 ## Where to find it
 
 Open **Schedule** from the sidebar.
+
+For a tournament whose scheduling method is Match Call Out, **Schedule** opens the Match Call Out scheduler instead (see that guide). League events always open this Scheduler.
 
 ## Opening the page and empty states
 
@@ -145,9 +150,9 @@ Hover over a slot to see details such as:
 
 Select a slot by clicking it. **Remove** clears the matches from the selected slot after confirmation.
 
-Confirmation message:
+Confirmation (**Delete Slot?**):
 
-`Are you sure you want to delete this slot?`
+`Are you sure you want to delete this slot? All the changes made will be lost.` with **Yes, Delete** and **Cancel**.
 
 ### Select Tables for team matches
 
@@ -158,7 +163,7 @@ For a team match, use **Select Tables** to choose the number of tables:
 ### Arrange and hide slots
 
 - **Arrange horizontal** and **Arrange vertical** reorder the grid slots.
-- **Hide** hides slots according to the chosen option, such as by time or by table and time.
+- **Hide** hides the selected slots by the chosen option: **Time** (the whole time row), table (the whole table column; the label follows the sport, for example Table or Court) or **Both**.
 - **Unhide** makes hidden slots visible again.
 - Breaks, such as lunch, appear as rows with the break name and time.
 
@@ -183,10 +188,14 @@ The source material identifies these states and tags but does not specify partic
 
 ## Auto Schedule
 
-Select **Auto Schedule** to place matches automatically.
+Select **Auto Schedule** ("Auto-schedule automatically assigns slots to the matches") to place matches automatically.
 
+- Auto Schedule is only available for **league** events. It is greyed out for tournament events and for a date that has no day schedule.
+
+- The server only auto-schedules when venue registration is enabled for the event; otherwise it refuses with "Venue registration is not enabled for this event".
 - If matches are selected, only the selected matches are submitted for scheduling.
-- If no matches are selected, the whole stage is submitted.
+- If no matches are selected, the whole stage is submitted; only its unscheduled matches that already have both participants are included.
+- Each match is placed at the home side's registered venue and date; if that has no room, other registered venues are tried.
 - Matches that cannot be placed are shown as pending for manual scheduling, with a reason.
 - The pending reasons documented by the backend include:
   - `NO_HOME_PARTICIPANT`
@@ -194,64 +203,47 @@ Select **Auto Schedule** to place matches automatically.
   - `VENUE_AVAILABILITY_CANCELLED`
   - `NO_FEASIBLE_DATE`
   - `NO_FEASIBLE_SLOT`
+- A pending match is highlighted in the list with an info icon; hover over it to see the reason (shown with spaces, for example "NO FEASIBLE SLOT").
 - If auto scheduling fails, the server message is shown.
 
 A pending match is not necessarily evidence that the entire auto-schedule operation failed. Check the pending reason for the individual match.
 
-## Reset, Remove, and Undo
+## Scheduler Reset and Reset Preferences
 
-### Reset the scheduler
+**Reset** ("Resets all the slots") opens the **Reset Preferences** popup. Under **Reset based on**, choose which scheduled matches to clear:
+- **Date**
+- **Group** ("Reset matches based on group")
+- **Participant Type**, **Category**, **Stage**, **Round** (add each choice with **Add**; remove it with its cross)
+- **Umpire** (only on the Umpire tab)
+- **ALL**: "Reset all matches"
 
-Select **Reset** to clear the slots for the selected venue. The page asks for confirmation:
+The **Reset** button in the popup stays disabled until at least one choice is made. Matches are cleared for the selected venue.
 
-`Are you sure you want to reset the entire scheduler for the selected venue?`
+With **ALL**, a **Reset?** confirmation asks "Are you sure you want to reset the entire scheduler for the selected venue?" with **Yes, Reset** and **Cancel**.
 
-Confirmation actions:
-- **Yes, Reset**
-- **Cancel**
+## Scheduler Undo and Remove
 
-If nothing is scheduled, the page shows:
+After you confirm a reset, a "Proceessing..." bar with **Undo** appears for about 3 seconds before the reset is actually sent. Clicking **Undo** in that time cancels the reset and shows `Action undone successfully!`. Once the reset has been sent it cannot be undone from this bar.
 
-`No scheduled matches to reset`
+**Remove** (shown when a slot is selected) clears the matches from the selected slots after the **Delete Slot?** confirmation. This is different from **Reset**, which clears matches by the chosen criteria.
 
-### Remove a selected slot
+When matches are removed or reset, player umpires that were assigned automatically are removed from them. Umpires assigned by hand stay linked to the match. Matches handled by Match Call Out are never affected. Placing, removing, resetting and swapping matches need **Edit** permission on **Schedule Match Access**.
 
-**Remove** clears matches from the selected slot after confirmation. This is different from resetting the entire scheduler for the selected venue.
+## Scheduler Filter Preferences
 
-### Undo the last change
+**Filter** ("Filter slots") opens **Filter Preferences** to filter the matches shown in the list and grid.
 
-**Undo** reverts the last change. On success, the page displays:
-
-`Action undone successfully!`
-
-## Filter Preferences
-
-Open **Filter Preferences** to filter the matches shown in the list and grid.
-
-Available filters:
+Available filters ("Filter based on"):
 - Participant Type
 - Category
 - Stage
-- Round
+- Rounds
 - Groups
-- Umpire
+- Umpire (on the Umpire tab)
 
-Use **Add** to add each choice and the cross to remove it.
+Use **Add** to add each choice and the cross to remove it. **Apply** applies the filters; **Reset** in this popup clears them.
 
-### Reset Preferences
-
-**Reset Preferences** clears filters. The available reset options are:
-- Date
-- Group
-- Participant Type
-- Category
-- Stage
-- Round
-- **ALL** (reset all matches)
-
-A checkbox is used to confirm the selected reset option.
-
-Filters change which matches are displayed in the list and grid; they do not change the schedule itself. **Reset Preferences** is therefore different from **Reset**, which clears scheduled slots for the selected venue.
+Filters change which matches are displayed; they do not change the schedule itself. They are different from the toolbar **Reset**, which opens **Reset Preferences** and clears scheduled matches.
 
 ## Messages and troubleshooting
 
@@ -263,11 +255,28 @@ Filters change which matches are displayed in the list and grid; they do not cha
 | `Please schedule a match to have an umpire assigned` | An umpire assignment was attempted before the match had a slot. Schedule the match first. |
 | `Slot not available` | The selected slot cannot accept the match. Choose an available slot or review the scheduling conflict. |
 | `It seems that one of the player is already playing at this time slot.` | A participant has another match at the same time. |
-| `It looks like you haven't scheduled previous rounds. Are you sure you want to proceed with scheduling?` | A later round is being scheduled before an earlier round. Select **Yes** to continue if intended. |
-| `Delete Slot?` | Confirmation before removing a slot; choose **Yes, Delete** or cancel. |
+| `It looks like you haven't scheduled previous rounds. Are you sure you want to proceed with scheduling?` | **Alert!** popup: a later round is being placed before an earlier round. Select **Yes** to continue or **Cancel**. |
+| `Delete Slot?` | Confirmation before removing a slot; choose **Yes, Delete** or **Cancel**. |
+| `No Match Scheduled For this table or all matches already have 2 umpires assigned` | Umpire tab: nothing to assign on that table. |
 | `Delete Umpire?` | Confirmation before removing an umpire; see the Scheduler Umpire guide. |
 
-The server's message is shown when it provides one. Some backend conflict messages may not have English translations and may appear as raw keys; see the Scheduler API guide for backend validation details.
+The server's message is shown when it provides one; see the Scheduler API guide for backend validation details.
+
+## Scheduler conflict popup (Alert!)
+
+When the server refuses a placement or swap because of a conflict (for example a player already playing at that time), an **Alert!** popup shows the server message (or "It seems that one of the player is already playing at this time slot."). Depending on what the server allows, it offers:
+- **Continue ( Partial )**: schedule only the matches that have no conflict.
+- **Continue**: schedule all selected matches anyway, ignoring the rule conflicts.
+- **Cancel**: leave the schedule unchanged.
+
+What the server checks when you place matches:
+- No free slot at all: "There are no available slots to schedule the matches you have selected. All slots are either fully occupied or blocked. ..." This cannot be overridden.
+- Not enough free slots for all selected matches: "It seems that you don't have enough slots to schedule all the matches you have selected. You can proceed with Partial Scheduling ..."
+- A player already has a match in the same or an overlapping slot.
+- Matches from different rounds would share a slot.
+- A later round would start before or at the same time as an earlier round of the same group.
+
+For a single match only **Continue** and **Cancel** are offered. On success the page shows `Match scheduled successfully`.
 
 ## Frequently asked questions
 
@@ -285,11 +294,11 @@ Select the matches to schedule and click **Auto Schedule**. If no matches are se
 
 ### What does Reset do?
 
-It clears scheduled slots for the selected venue after confirmation. **Undo** reverts the last change. **Reset Preferences** only clears the selected filters.
+It opens **Reset Preferences**, where you choose which scheduled matches to clear (by date, group, participant type, category, stage, round, or **ALL**). You can cancel with **Undo** within about 3 seconds.
 
 ### How do I filter matches?
 
-Open **Filter Preferences**, add the desired filters, and remove unwanted filter choices with their cross controls. Use **Reset Preferences** to clear filters.
+Click **Filter**, add the desired filters in **Filter Preferences**, then click **Apply**. **Reset** in that popup clears the filters.
 
 ### Why does the page say no matches have been created yet?
 
@@ -298,6 +307,8 @@ The selected stage has no matches. Select **Go to Fixtures** and create the matc
 ### Why does the page say no daily plans have been created?
 
 The venue has no day plan. Select **Go to Day Planner** and create a plan before scheduling.
+
+## Frequently asked questions – Scheduler (2)
 
 ### How do I hide a time slot?
 
@@ -321,7 +332,9 @@ The selected slot cannot take the match. Choose an available slot or check the s
 
 ### What is the difference between Reset and Reset Preferences?
 
-**Reset** clears the scheduled slots of the selected venue after confirmation. **Reset Preferences** only clears the selected filters; it does not change the schedule.
+The toolbar **Reset** opens **Reset Preferences**, which clears scheduled matches by the criteria you choose. The **Reset** inside **Filter Preferences** only clears the filters; it does not change the schedule.
+
+## Frequently asked questions – Scheduler (3)
 
 ### Why is a match pending after Auto Schedule?
 
@@ -330,6 +343,10 @@ Auto Schedule could not place that match. It stays pending for manual scheduling
 ### Why can't I schedule a later round first?
 
 You can. The Scheduler warns "It looks like you haven't scheduled previous rounds. Are you sure you want to proceed with scheduling?"; select **Yes** to continue.
+
+### Why is Auto Schedule greyed out?
+
+Auto Schedule is only available for league events, and only on a date that has a day schedule.
 
 ## Natural-language and Hinglish query patterns
 

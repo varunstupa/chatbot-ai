@@ -46,9 +46,9 @@ Each section gives the gateway step, the TMS checks in order, and the message sh
 
 ## Group matches (GET group/v1/get_group_matches)
 
-- Gateway: needs the event ID header ("event-id header is required", 400). It checks the scoring permission of the event and whether the user is a live match scorer, so the match list can show the scores the user may change.
+- Gateway: needs a login. The event ID comes from the query or the event-id header and is required only when the organiser details are asked for: "Event Id Required" (400). Then the gateway checks the scoring permission of the event and whether the user is a live match scorer, so the match list can show the scores the user may change.
 - Needs a stage ID: "Stage Id Required" (400).
-- An invalid search request is refused with code 400.
+- An invalid search request is refused with code 400 (no English text yet). Unreadable highlight filters: "Invalid match filters" (400). A stage without groups returns an empty list.
 - Success: "Group Matches Fetched" (200), with the groups, the rounds and the matches.
 
 ## Rounds (GET round/v1/get_rounds)
@@ -75,8 +75,8 @@ Each section gives the gateway step, the TMS checks in order, and the message sh
 ## Rule settings – save (PUT rule_setting/v1/update_rule_settings)
 
 - Gateway: needs Edit on Game Play Settings.
-- Global settings (for the tenant): "Rule Settings Updated" (200). A setting locked at the global level is refused with code 400 and a message that has no English translation yet.
-- Event category settings: saved for the category, with "Rule Settings Updated" (200). A setting locked by the global configuration is refused with code 400 and the same untranslated message.
+- Global settings (for the tenant): saved with "Rule Settings Updated" (200).
+- Event category settings: a completed stage is refused with "Rule Settings Invalid Request" (400). For a stage in progress, turning off or changing settings that apply to all rounds is refused with "This setting is applied to all rounds. You cannot update it once the match status is In Progress or Scored. If you want to change it, please reset the match to apply the new settings." (400); changes to rounds already in play are refused the same way. When a match in the scope is in progress or scored, the rule set itself is kept and only the other settings change. Success: "Rule Settings Updated" (200).
 - Event level settings: saved for the event, with "Rule Settings Updated" (200).
 - A request that matches none of these: "Rule Settings Invalid Request" (400).
 

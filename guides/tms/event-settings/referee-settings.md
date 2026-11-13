@@ -32,6 +32,7 @@ source_files:
   - src/app/core/services/registration-service/registration-service.service.ts
   - src/app/core/services/tournament-config/tournament-config.service.ts
   - src/app/core/utils/permission_directive/permissions.directive.ts
+  - src/app/shared/confirm-popup/confirm-popup.constants.ts
 ---
 # Referee Settings page – user guide
 
@@ -139,9 +140,9 @@ Notes:
 
 ## Tournament: removing and restoring a referee
 
-- **Remove**: click the bin icon in the **Action** column. The question "Are you sure you want to Delete registration of <name>?" appears. Confirm to remove. "Referee deleted successfully" confirms it.
+- **Remove**: click the bin icon in the **Action** column. The question "Are you sure you want to Delete registration of <name>?" appears in a popup titled "Are you sure?". Click **Confirm** to remove, or **Cancel**. "Referee deleted successfully" confirms it.
 - Removing a referee also removes that referee from the matches they were assigned to on that date.
-- **Restore**: click **Deleted** to see removed referees (heading **Deleted Referee**). Click the **+** icon on a row and confirm "Are you sure you want to Add registration of <name>?". "Referee Added Successfully." confirms it.
+- **Restore**: click **Deleted** to see removed referees (heading **Deleted Referee**). Click the **+** icon on a row and click **Confirm** in the "Are you sure?" popup ("Are you sure you want to Add registration of <name>?"). "Referee Added Successfully." confirms it.
 - Click the arrow left of **Deleted Referee** to return to the normal list.
 - Removing and restoring follow the registration rules: outside the registration dates, or with Registration switched off, they fail with "Registration Closed", "Registration Not Started" or "Registration Not Allowed" (except for the main administrator).
 
@@ -164,8 +165,8 @@ Messages when assigning:
 
 ## League: removing referees from a match
 
-- **Per Match Referee = 2**: each assigned referee has a red **x** next to the name ("Remove Referee"). Click it and confirm "Are you sure you want to unassign <name>?" with **Yes, Unassign**. Only that referee is removed.
-- **Bin icon in the Action column**: asks "Are you sure you want to unassign this referee?". It removes **every official assigned to the match**, including umpires assigned on the Umpire Settings step.
+- **Per Match Referee = 2**: each assigned referee has a red **x** next to the name ("Remove Referee"). Click it and confirm "Are you sure you want to unassign <name>?" (popup title "Delete Slot?") with **Yes, Unassign**, or **Cancel**. Only that referee is removed.
+- **Bin icon in the Action column**: asks "Are you sure you want to unassign this referee?" in a popup titled "Delete Slot?"; click **Yes, Unassign**. It removes **every official assigned to the match**, including umpires assigned on the Umpire Settings step.
 - With **Per Match Referee = 1** there is no **x**; use the bin icon.
 - Rows without a referee show `--` in **Bank Details** and **Action**.
 - Removing an assignment needs Edit permission on **Schedule Umpire Access**; without it the action fails with "Access Denied".
@@ -188,7 +189,7 @@ Click **Filter**. A side panel opens:
 
 Click **Apply**. For a Tournament the list shows only the chosen referees. For a League the match table shows the matches of those referees, and only assigned or unassigned matches if chosen.
 
-For a League an **×** appears on the **Filter** button while a filter is active. Click the **×** to clear the filter.
+While a referee filter is active, an **×** ("Clear filter") appears on the **Filter** button, for both Tournament and League. Click the **×** to clear the filter.
 
 ## Viewing a referee's bank details
 
@@ -206,7 +207,9 @@ Use this when the person has no account yet.
 3. Fill in the fields. Fields marked `*` are mandatory. If a linked (parent) user is asked for, choose one. File fields accept "Upload from Device / Drag n Drop".
 4. Click **Submit**.
 
-Messages: "Please fill all required fields", "Please select at least one parent", "Only Alphabets and Spaces Allowed" / "Incorrect Format.", "File Exceed max limit of 5mb." (file too large). After a successful save the server's message is shown and the new user can be picked in **Search Referee**.
+Messages: "Please fill all required fields", "Please select at least one parent", "Only Alphabets and Spaces Allowed" / "Incorrect Format.".
+
+File fields: only the file types set up for that field are accepted ("Only files with extensions allowed: <list>"). The file must be between 20 KB and 5 MB, otherwise "File Exceed max limit of 5mb." appears. An uploaded file shows "Uploaded Successfully" and can be replaced with **Reupload**. After a successful save the server's message is shown and the new user can be picked in **Search Referee**.
 
 ## Referee Settings page: other messages
 
@@ -218,6 +221,7 @@ Messages: "Please fill all required fields", "Please select at least one parent"
 - "Failed to assign referee" – no referee was chosen, or the server refused without a message.
 - "Unauthorized Access" – your session expired. Sign in again.
 - "Some Error Occured" – the list could not be loaded. Reload the page.
+- "Something went wrong" – the server refused an action without giving a reason. Try again.
 
 ## Frequently asked questions about the Referee Settings page
 
@@ -233,7 +237,11 @@ Messages: "Please fill all required fields", "Please select at least one parent"
 
 **Why do I get "Registration Closed" when adding or deleting a referee?** The registration end date has passed. Move it in **Settings**, or ask the main administrator.
 
+## Frequently asked questions about the Referee Settings page (continued)
+
 **Why do I get "Registration Not Allowed For Role"?** The user's role is not in **Eligible Role**.
+
+**How do I clear the referee filter?** Click the **×** on the **Filter** button.
 
 **Why are the Settings, Add and Filter buttons greyed out?** Your role needs Edit permission on **Referee Registration Settings**.
 

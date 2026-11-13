@@ -75,16 +75,20 @@ The Leaderboard screen calls the **gateway**. The gateway forwards the team and 
 
 - The stage team table and the player table read the leadership points of the category. Each leadership record holds the match, the participant or team, the points, the winner flag, the tag and the match type.
 - The team table is grouped by team participant with the best group rank across the groups. With a stage the rank is the group rank in that stage. Without a stage the rank is worked out from the total points of all groups.
-- The player table adds up the points per participant. Players with equal total points share a position.
+- The player table adds up the points per participant. Players with equal total points share a position, and the next total takes the next number (1, 1, 2). Positions are given before the search, so a searched player keeps the overall position.
 - When no match type filter is given, the squad of every team in the fixture is added at zero, so a player with no points still appears.
 - Both routes page by page. The page number starts at 1, and the record offset is worked out from it.
+- Player table: an unknown event category gives "Event Category Not Found" (404).
 
 ## Final standing (ALL)
 
-- The server takes the group stage rounds of the category. If there are none, it returns success with the "no rounds found" message and an empty list, plus the comparison method.
+- An unknown event category: "Event Category Not Found For Event And Category" (404); an unknown category: "Category Not Found" (404).
+- The server takes the rounds of the group (round robin) stages of the category. Knockout stages and sample (draft) fixtures are left out. With no such rounds it returns success with "No Rounds Found For Event", an empty list and the comparison method, so a knockout-only category has an empty final standing.
 - Otherwise it loads the matches of those rounds, with sub matches for team categories and with the golden matches.
+- Every participant drawn into the fixture is listed from the moment the fixture is generated, with zero records until they play.
 - The rows are ordered by best rank, then by name. The search filters team names, and also team rows that have a player with a matching name.
 - The search runs before paging, so the total count is the count after the search. Each page is the offset of (page - 1) times the limit.
+- The gateway accepts a limit of 1 to 1000 rows (100 by default) and an offset (page number, 1 by default). The server refuses a page number below 1.
 - The reply carries the participants, the total count, the golden-available flag (true when any team has golden matches won) and the comparison method.
 
 ## How the final standing is ranked
@@ -92,27 +96,30 @@ The Leaderboard screen calls the **gateway**. The gateway forwards the team and 
 - The participants are first grouped into buckets by total group points, highest first. Each bucket takes the next rank, and the next bucket starts after the bucket's size (1, 1, 3 and so on).
 - **Head-to-Head**: the teams in a bucket are ordered by the enabled criteria, using the records between the tied teams. Teams still level are then compared on their overall records with the same criteria.
 - **Compare with All**: there are no buckets. Each team is compared with the whole field using its overall record. Teams the criteria cannot separate share a rank.
-- Points are not used as a tie-break inside a bucket; they only form the buckets.
+- Points are not used as a tie-break inside a bucket; they only form the buckets. With Compare with All, Points counts only when it is ticked.
+- With no criterion ticked, the board is ranked on points alone.
 - Criteria are applied in their saved order. Match, Sub Match, Game and Score use the won count, the won/loss ratio or the win-loss difference, as chosen. Game counts sets won and Score counts points won.
 
 ## Winner logic storage
 
 - The winner logic is stored per event and category, and the rule is saved under the "LEADERBOARD_WINNER_LOGIC" configuration.
-- **Save** writes the criteria and the comparison method. Only the values sent are written; the rest of the stored data is kept.
-- **Read** fills in any missing part from the default ladder: Points (won), Match (won/loss), Sub Match (off, with won/loss), Game (won/loss) and Score (won/loss). The comparison method comes from the event type when it is not set: leagues use Compare with All, other events Head-to-Head.
-- A migration froze the older categories to Head-to-Head when they had group results, so their standing does not change.
+- **Save** writes the criteria and the comparison method. Only the values sent are written; the rest of the stored data is kept. Success: "Leaderboard Winner Logic Updated Successfully" (the screen does not show it).
+- **Read**, when nothing is saved for the category: all five criteria on, with Win/Loss Ratio for tournaments and Win-Loss (difference) for leagues (event types L and BL). The comparison method comes from the event type when it is not set: leagues use Compare with All, other events Head-to-Head.
+- A saved row whose criteria are empty ranks on points alone. A saved row with no criteria entry at all gets the older ladder: Points (won), Match, Game and Score (won/loss), Sub Match off.
+- A migration froze older league categories that already had group results to Head-to-Head, so their published standing does not change. An organiser can switch them to Compare with All.
 
 ## Permissions and errors
 
 - Reading needs a login, but no feature permission: the leadership points, the final standing and the winner logic read use the login check only. The groups route checks the token itself and returns 401 without it. Group matches and the bracket use the login check only.
 - Saving the winner logic needs Display Settings in edit mode.
-- A missing category returns 404; a server error returns 500 with its text.
+- A missing category returns 404 (see the messages above); a server error returns 500 with its text.
 - Standings with no rows return 200 with an empty list, so the table shows "Leaderboard data is not available".
 
 ## Things the screen sends or shows that are worth knowing
 
-- The save request for the winner logic always sends the status value "string".
-- The default criteria in the screen start with Sub Match on. The server default ladder starts with Sub Match off. The screen shows the saved values once they load.
+- The save request for the winner logic always sends the status value "string". It needs the event and the category in the address.
+- The screen shows no message after the save, whether it succeeds or fails.
+- The default criteria in the screen start with every criterion on, the same as the server's default for a category with nothing saved. The screen shows the saved values once they load.
 - The only write from this screen is **Update** in the Winner Logic sidebar. The recalculate, publish, swap and generate-standing calls exist in the component, but no control on this page calls them.
 
 ## Frequently asked questions
@@ -123,9 +130,9 @@ The Leaderboard screen calls the **gateway**. The gateway forwards the team and 
 
 **How is the final standing worked out?** From the group stage matches of the category, ranked by points and then by the winner logic criteria in order.
 
-**What does the leaderboard return with no rounds?** Success with the "no rounds found" message and an empty list.
+**What does the leaderboard return with no rounds?** Success with "No Rounds Found For Event" and an empty list. This is also the answer for a knockout-only category or a sample fixture.
 
-**How are equal points ranked?** Equal totals share a position; ties are broken by the enabled winner logic criteria for the final standing.
+**How are equal points ranked?** On the player table equal totals share a position (1, 1, 2). On the final standing ties are broken by the enabled winner logic criteria; teams they cannot separate share a rank.
 
 **Why do squad players show with zero points?** The squad of every fixture team is added at zero when no match type filter is given.
 

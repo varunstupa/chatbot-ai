@@ -19,7 +19,7 @@ suggested_questions:
   - How do I change the order of sponsor logos?
   - Does unpublishing delete the sponsor logos?
 backend_sources:
-  - gateway/src/routers/events_router.py (update_documents, update_sponsors; Event Access permission)
+  - gateway/src/routers/events_router.py (update_documents, update_sponsors, reorder_items; Event Access permission)
   - tms/src/crud/events_crud.py (update_documents, update_sponsors)
 source_files:
   - src/app/modules/tms/event-documents-sponsors/event-documents-sponsors.component.ts
@@ -29,7 +29,7 @@ source_files:
 
 This guide describes the **Documents & Sponsors** step of an event in the Stupa Event Management System (admin panel). Here the organiser uploads event documents and sponsor and partner logos, and publishes them to OTT (the public event viewing app).
 
-## Where to find it
+## Documents & Sponsors page: where to find it
 
 Open **Event** from the sidebar, then click **Documents & Sponsors** in the row of setup steps at the top of the page.
 
@@ -45,35 +45,37 @@ Open **Event** from the sidebar, then click **Documents & Sponsors** in the row 
 
 ## Documents tab: uploading and managing documents
 
-- **Upload Documents**: click **Choose file** or drag and drop files. Supported formats: **PDF, DOCX**, maximum **10 MB** per file.
+- **Upload Documents**: click **Choose file** or drag and drop files. Supported formats: **PDF, DOCX**, maximum **10 MB** per file. Older Word **.doc** files are also accepted. You can select several files at once.
 - The files are saved after upload: "Document Saved Successfully".
 - **Uploaded Documents** lists them ("No documents uploaded yet." when empty).
 - Drag a document to change the order: "Order updated successfully".
 - Per document:
-  - **View Document** opens it in a new tab ("Popup blocked. Please allow popups for this site." means the browser blocked it).
-  - Rename it in **Uploaded Files**: change **File Name** and click **Save**.
+  - **View Document** opens it in a new browser tab in an online document viewer ("Popup blocked. Please allow popups for this site." means the browser blocked it; "File URL not available" means the file has no stored link).
+  - Rename: click the pencil icon next to a document name. The **Uploaded Files** popup lists **all** uploaded documents, each with a **File Name** box (it cannot be left empty). Change the names and click **Save**; the × closes the popup without saving.
   - **Delete** asks "Delete Document" – "Are you sure you want to delete the document ?". Confirm to delete: "Documents Deleted successfully".
 
 ## Sponsor and Partners tabs: uploading logos
 
 - **Upload Sponsors Logo** / **Upload Partners Logo**: click **Choose file** or drag and drop. Supported: **JPEG, PNG**, maximum **2 MB** per file.
-- Logos are saved after upload: "Logos saved successfully".
-- **Uploaded Logo** shows them. Drag to change the order shown on OTT ("Order updated successfully").
+- Logos are saved after upload: "Logos saved successfully". New logos are placed at the start of the list, before the existing ones. While the tab is published, newly uploaded logos are published straight away.
+- **Uploaded Logo** shows them as a grid. Drag a logo by its handle onto another logo's place to change the order shown on OTT: the two logos swap places ("Order updated successfully").
 - Click the × on a logo to delete it. It asks "Delete Sponsor Logo" / "Delete Partner Logo" – "Are you sure you want to delete the sponsor/partner logo ?". Confirm: "Logo Deleted successfully".
 
-## Publishing to OTT
+## Documents & Sponsors page: publishing to OTT
 
 - Each tab has a **Publish** toggle (shown when the tab has items).
 - Switching it on publishes **all items of that tab**: "Document Published Successfully", "Sponsor Published Successfully", "Partner Published Successfully".
-- Switching it off unpublishes all items of that tab: "Document Unpublished Successfully", "Sponsors Unpublished Successfully", "Partner Unpublished Successfully". **Unpublishing does not delete the files or logos**; they stay in the list and can be published again.
+- Switching it off unpublishes all items of that tab: "Document Unpublished Successfully", "Sponsors Unpublished Successfully", "Partner Unpublished Successfully". **Unpublishing does not delete the files or logos**: the server only changes their published state and keeps them all, so they stay in the list and can be published again.
 - Documents, sponsors and partners are published separately.
 
-## Upload errors and what they mean
+## Documents & Sponsors page: upload errors and what they mean
 
 - `"<file name>" is not allowed.` – wrong file type (documents: PDF or DOCX; logos: JPEG or PNG).
 - `"<file name>" exceeds max size limit.` – the file is too large (documents 10 MB, logos 2 MB).
 - When one file in a multi-file upload has one of these errors, **none** of the files is uploaded. Remove that file and upload again.
 - "One of the files failed to upload." / "File upload failed" – try again.
+- "Failed to save documents" / "Failed to save logos" – the save, rename, delete or publish did not go through; try again.
+- "Failed to update order" – the new order was not saved. "Failed to load files" – the list could not be loaded; reopen the tab.
 - "Please select a valid event before uploading files" – open the page from an event.
 - Saving needs **Edit** permission on **Event Access**; otherwise "Access Denied".
 
@@ -90,5 +92,7 @@ Open **Event** from the sidebar, then click **Documents & Sponsors** in the row 
 **Can I publish only one sponsor?** No. Publish applies to all logos of the tab.
 
 **How do I rename a document?** Open the document's rename option in **Uploaded Files**, change **File Name**, click **Save**.
+
+**Can I upload several files at once?** Yes. Select or drop several files; all are checked first, and if one is the wrong type or too large, none is uploaded.
 
 **Why is my 4 MB logo refused?** Logos are limited to 2 MB ("exceeds max size limit"). Documents may be up to 10 MB.

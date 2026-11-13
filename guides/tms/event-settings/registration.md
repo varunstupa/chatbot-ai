@@ -41,12 +41,14 @@ source_files:
   - src/app/modules/tms/registration-settings/entry-restriction-sidebar/entry-restriction-sidebar.component.html
   - src/app/modules/tms/registration-settings/delegation-sidebar/delegation-sidebar.component.ts
   - src/app/modules/tms/registration-settings/delegation-sidebar/delegation-sidebar.component.html
+  - src/app/modules/tms/registration-settings/fee-change-confirm-dialog/fee-change-confirm-dialog.component.ts
+  - src/app/modules/tms/registration-settings/fee-change-confirm-dialog/fee-change-confirm-dialog.component.html
 ---
 # Registration settings page – user guide
 
 This guide describes the **Registration** step of an event in the Stupa Event Management System (admin panel). On this page the organiser decides, for each category (class) of the event, who can register, when, at what fee and under which restrictions. It also explains how each setting is applied when someone registers.
 
-## Where to find it
+## Registration page: where to find it
 
 Open **Event** from the sidebar, then click **Registration** in the row of setup steps at the top of the page.
 
@@ -98,7 +100,7 @@ A card shows "On" or "Off" for togglees and "--" or an empty value when nothing 
 - While it is off, nobody can register for that category, even inside the registration dates. People see the category as not eligible with the reason "Registration is not active for this category".
 - The toggle affects only the selected category. Other categories keep their own state.
 
-## Applying a setting to other categories ("Apply to all classes")
+## Registration page: applying a setting to other categories ("Apply to all classes")
 
 Every side panel has **Apply to all classes** at the bottom left (the fee panel calls it **Apply to All Class**).
 
@@ -162,6 +164,23 @@ Panel text: "Mention the day and time the registration should be open. This will
 - The card shows Currency and Fee. "--" means no fee has been set.
 - For Doubles and Mixed Doubles the fee is for the pair; each player is shown half of it when registering.
 - Click **Save** to store. The message "Registration Setting Create" confirms the save.
+- If you changed the fee and the event's payment method is offline, a confirmation appears first (see "Fee & Refund Information card: Change Category Fee confirmation").
+
+## Fee & Refund Information card: Change Category Fee confirmation
+
+When you click **Save** with a **new** fee and the event's payment method (Payment & Invoice step) is offline, the **Change Category Fee** popup opens: "Are you sure you want to change the registration fee for <category>?"
+
+- It shows **Current fee:** and **New fee:** with the currency.
+- **Fee Change Summary**:
+  - "Applies to new registrations in <category> from now on".
+  - "<number> existing entries keep the price they registered at; their orders are flagged Needs attention" (left out if the number could not be loaded).
+  - "The other selected categories get the same fee (Apply to All Class is on)" or "Other categories are not changed (Apply to All Class is off)".
+- **Payment Method :** Offline.
+- **Proceed** saves the fee. **Cancel** saves nothing and you can click **Save** again.
+
+The popup is not shown for online payment events, when the fee is unchanged, or when only refund options were changed; those save straight away.
+
+What "Needs attention" means: an order is flagged when its payment mode is offline (cash), no invoice has been generated for it yet, and it contains an entry in a category whose fee was changed after the order was made. Generating the invoice removes the flag. Online orders are never flagged.
 
 ## Fee & Refund Information card: refund rules
 
@@ -263,9 +282,9 @@ Bifurcation splits a team's players into groups with a fixed number of each.
 
 The **Multiple Entry** toggle (top right, shown when a specific participant type is chosen) decides whether one player can be entered in more than one category of that participant type. It applies to the whole event, not to one category.
 
-- **Singles**: turning it on opens a dialog: "You have enabled multiple registrations in different categories for the tournament. Please choose the number of categories for which you want to accept multiple registrations." Choose **2**, **3** or **all**, then **Save**. **Cancel** turns the toggle back off.
+- **Singles**: the chosen limit (2, 3 or all) is shown next to the toggle. Turning it on opens a dialog: "You have enabled multiple registrations in different categories for the tournament. Please choose the number of categories for which you want to accept multiple registrations." Choose **2**, **3** or **all**, then **Save**. **Cancel** turns the toggle back off.
 - **Teams, Doubles, Mixed Doubles**: the toggle saves immediately.
-- With it off, a player who is already registered in one category of that type cannot be registered in another: "Participant cannot be registered in multiple categories when multi-entry is disabled".
+- With it off, a player who is already registered in one category of that type cannot be registered in another: "Participant cannot be registered in multiple categories when multi-entry is disabled" (for pairs and teams: "Player '<name>' cannot be registered in multiple categories when multi-entry is disabled").
 - With it on for Singles and a limit of 2 or 3, registering a player in more categories than the limit is refused with a message naming the player and the allowed number.
 - Success message: "Participant Restriction Setting Updated Successfully".
 - If the change cannot be saved the page always shows "Some Error Occured", whatever the cause. The usual causes are a missing "Edit Registration Settings" permission or an expired session.
@@ -275,7 +294,7 @@ The **Multiple Entry** toggle (top right, shown when a specific participant type
 Entry Restriction limits how many entries each role (and optionally each user) can make in a category.
 
 1. Click **Edit** on the card and turn on **Enable entry restriction**.
-2. The roles listed are the roles ticked in **Allow Registrations**. Click the arrow on a role.
+2. Under "Set Maximum Limit per Player:" ("per Team:" for Teams categories), the roles listed are the roles ticked in **Allow Registrations**. Click the arrow on a role; the panel title changes to **Add Exceptions**.
 3. **Default Value** – the maximum entries for every user of that role, from 0 to 99. A new role starts at 1 (2 for Mixed Doubles).
 4. **Exceptions** – below the default, search for a specific user and give that user a different limit.
 5. Use **Apply to all classes** to choose other categories, then **Update**. **Go back** returns to the role list.
@@ -301,7 +320,7 @@ Rules and messages:
 - Click **Update**. Success message: "Settings updated successfully". Failure: "Error updating settings".
 - The card shows the Entry Format, Enable Loan Player (Yes/No) and the Shared Membership Fee.
 
-## Enable Delegation button and Delegation Setting panel
+## Registration page: Enable Delegation button and Delegation Setting panel
 
 The **Enable Delegation** button at the top opens the **Delegation Setting** panel. Delegation applies to the whole event.
 
@@ -311,11 +330,13 @@ The **Enable Delegation** button at the top opens the **Delegation Setting** pan
   - **All Players / Other Role Users** – "Expands accessibility. Senders can select from the delegation list AND search/add any user from the entire system directory directly on the Registration, Accommodation, and Travel screens."
 - Click **Update** (it shows "Updating..." while saving). On success the panel closes without a message.
 - Saving delegation needs Edit permission on "Event Access", which is a different permission from the one for the registration cards. Without it the save fails with "Access Denied".
-- If the save fails, the toggle turns back off and the error is shown:
-  - "Delegation Show Users Required" – delegation was enabled without one of the two options chosen.
-  - "No Event Found" – the event was deleted.
-  - "Something went wrong" – the server gave no reason; try again.
-- "Unable to load delegation state" means the current setting could not be read; reopen the panel.
+## Registration page: Delegation Setting panel errors
+
+If the save fails, the toggle turns back off and the error is shown:
+- "Delegation Show Users Required" – delegation was enabled without one of the two options chosen.
+- "No Event Found" – the event was deleted.
+- "Something went wrong" – the server gave no reason; try again.
+- "Unable to load delegation state" appears when the event's details could not be loaded on opening the Registration page. The Delegation Setting panel then cannot show the saved state, and the latest Withdraw Before date is not limited. Reload the page.
 - The first time delegation is enabled without choosing, the restrictive option (Delegation Players) is used.
 
 ## Registration page: success messages for each action
@@ -350,7 +371,7 @@ Opening the page, or choosing another category, loads data in this order:
 
 1. The event's participant types and categories. If the event has none: "No participant types found for this event." and "No records found". If the request fails: "Some Error Occured".
 2. The registration settings of the selected category. If the category is not part of the event any more: "Category registration settings not found". Reload the page; if it stays, add the category again on the Details step.
-3. The roles of your organisation (for the Verifier dropdowns), the roles that may register (for Allow Registrations), and the event's Start Date (for the latest Withdraw Before date). If one of these fails there is no message: the dropdown or list is simply empty, or any Withdraw Before date can be picked. Reload the page.
+3. The roles of your organisation (for the Verifier dropdowns), the roles that may register (for Allow Registrations), and the event's details (its Start Date for the latest Withdraw Before date, and the saved delegation setting). If the roles fail to load there is no message: the dropdown or list is simply empty. If the event's details fail, "Unable to load delegation state" is shown and any Withdraw Before date can be picked. Reload the page.
 4. The users of a role, when you pick a role as verifier. If the list is empty, that role has no active users.
 
 A loading animation covers the page while settings load. If your session has expired you are sent to the sign-in page.
@@ -372,7 +393,7 @@ A loading animation covers the page while settings load. If your session has exp
 - A permission can be limited to a period. Outside that period the same action fails with "Access Denied".
 - Users with Live Match Centre access to the event are also allowed to change these settings.
 
-## How registration settings are checked when someone registers
+## Registration page: how settings are checked when someone registers
 
 When a player or entity opens the event to register, each category is marked eligible or not eligible. A category is **not eligible** when any of these is true, and the reason is shown:
 
@@ -403,6 +424,8 @@ At the moment of registering the server also applies: the registration dates aga
 **How do I let a player enter more than one category?** Choose the participant type in the dropdown and turn on Multiple Entry. For Singles choose 2, 3 or all categories.
 
 **How do I copy settings to other categories?** In the panel, open Apply to all classes, tick the categories and click Update. Ticking "Apply to all classes" itself copies to every category of the event.
+
+**Why does a popup appear when I change the fee?** For offline payment events, changing a category's fee asks for confirmation in **Change Category Fee**. Existing entries keep the price they paid; their orders are flagged Needs attention. Click **Proceed** to save.
 
 **Can I use decimals in the fee?** No. The fee is saved as a whole number.
 

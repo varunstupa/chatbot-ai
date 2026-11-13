@@ -40,13 +40,16 @@ suggested_questions:
   - How do I undo deleting a plan?
   - How can I fit more matches into one day?
 backend_sources:
+  - gateway/src/locales/en/LC_MESSAGES/messages.po (PLANNER_* messages)
   - gateway/src/routers/planner_router.py (create/update_event_venue_planner_settings, create/update_event_venue_interval, reset_event_venue_changes)
   - tms/src/service/planner.py (create_event_venue_planner, update planner, reset_event_venue_changes)
 source_files:
   - src/app/modules/tms/day-planner/day-planner.component.ts
   - src/app/modules/tms/day-planner/day-planner.component.html
+  - src/app/modules/tms/day-planner/venue-name.validator.ts
   - src/app/core/services/day-planner/day-planner.service.ts
   - src/app/modules/admin/venue-management/venue-management-tms/venue-management-tms.component.html
+  - src/assets/i18n/en.json
 answer_notes: |
   Guidance for the assistant:
   - Understand the user's intent rather than requiring the exact wording shown in the interface.
@@ -66,13 +69,13 @@ answer_notes: |
 
   Intent: planner is locked or buttons do nothing: First check whether Enable Venue Registration is switched on in Venue Management. When it is enabled, Day Planner controls are disabled. If the issue is saving rather than controls not responding, check the user's permissions and whether the session has expired.
 
-  Intent: reset or restore planning: Explain that Reset Planning clears the plan for the selected venue and removes matches already scheduled into its slots. Those matches must be scheduled again. The source documentation does not specify an Undo option for Reset Planning; do not promise that reset can be undone. If a single plan or break needs changing, suggest editing that item instead.
+  Intent: reset or restore planning: Explain that Reset Planning deletes all plans and breaks of the selected venue on all its dates, and that the server refuses it while any match is scheduled in that venue's slots. There is no Undo for Reset Planning; do not promise that reset can be undone. If a single plan or break needs changing, suggest editing that item instead.
 
   Intent: deleted a plan or break by mistake: Tell the user to click Undo within about five seconds after deletion. Do not confuse this short Undo action with Reset Planning, for which no Undo option is documented.
 
-  Intent: add venue dates: Use Venue → Add venue, enter a venue name and time zone, choose dates within the event's Start Date and End Date, click Apply, then Save or Update. For a League with no dates, explain that venue and corresponding dates must be added first.
+  Intent: add venue dates: Open the Choose Venue dropdown → Add venue (or the edit icon next to a venue), enter a venue name and time zone, choose dates within the event's Start Date and End Date, click Apply, then Save or Update. For a League with no dates, explain that venue and corresponding dates must be added first.
 
-  Intent: scheduled matches are affected by date changes: Explain that confirming the reset removes affected scheduled matches. If matches have already been played on a date, the date change is refused and the played date cannot be removed.
+  Intent: scheduled matches are affected by date changes: Explain that confirming the event-date reset removes affected scheduled matches. If matches on a date are in progress or already scored, the date change is refused. Venue dates with scheduled matches cannot be removed in the Add venue panel.
 
   Intent: access denied or sign-in issue: For Access Denied, explain the relevant permission: Add Time Slot for plans or Add Interval for breaks. For Unauthorized Access, ask the user to sign in again and retry.
 
@@ -86,108 +89,98 @@ answer_notes: |
   - “I can't save.” → “What exact message appears: Access Denied, Unauthorized Access, or a validation message?”
 
   Do not ask for the event ID unless checking live event data or a support workflow actually requires it.
+
+  Source-of-truth and escalation rules:
+  - This document describes documented Day Planner behaviour. It does not confirm the current state of a particular event or venue.
+  - Organisation setup may affect whether the Day Planner step is available.
+  - Do not promise that Reset Planning can be undone; only the short Undo after deleting an individual plan or break exists.
+  - If a user reports a permission error, direct them to an administrator to check the relevant permission.
+  - If the issue depends on live schedule data or is not covered here, explain what needs to be checked in TMS or by support.
 ---
 
 # Day Planner page — Organiser Guide and Troubleshooting
 
-## Purpose of this guide
+## Day Planner page: purpose and where to find it
 
-The **Day Planner** is where an organiser decides when matches can be played at each venue on each day. You can set the playing hours, how long each match should take, which tables are available, and when breaks happen.
+The **Day Planner** is where an organiser decides when matches can be played at each venue on each day. You set the playing hours, how long each match should take, which tables are available, and when breaks happen.
 
-These settings create **time slots**. The Scheduler then uses those slots to place matches into the timetable.
-
-This guide is intended for organisers who may describe a problem in everyday English, Hindi or Hinglish and may not know the exact name of a setting.
-
-## Where to find Day Planner
+These settings create **time slots**. The Scheduler then uses those slots to place matches into the timetable. Use **Open Scheduler** to place matches into the generated slots. Planning, scheduling matches and venue registration are related but separate actions.
 
 1. Open **Event** from the sidebar.
 2. Select **Day Planner** in the row of event setup steps at the top.
 
-- **Route:** `/tms/event-settings/day-planner/<event_id>`
-- Example: `/tms/event-settings/day-planner/1358`
+- **Route:** `/tms/event-settings/day-planner/<event_id>`, for example `/tms/event-settings/day-planner/1358`.
 - The Day Planner step is shown only for organisations that use it.
-- Page heading: **Day Planner**
-- Page description: “Manage time and intervals of the matches that you scheduled”.
+- Page heading: **Day Planner**. Page description: "Manage time and intervals of the matches that you scheduled".
+- For tournaments, a **Method** button chooses how matches are scheduled: **Manual Scheduling** (drag and drop, described in this guide) or **Auto Match Call Out** (see the Day Planner Match Call Out guide). Leagues always use Manual Scheduling. The plans, intervals and Reset Planning described here are only shown with Manual Scheduling.
 
-Use this page to define playing hours, match duration, available tables and breaks. Use **Open Scheduler** to place matches into the generated slots.
-
-## How the page is organised
-
-### Choose a venue and day
+## Day Planner page: choosing a venue and a day
 
 - **Choose Venue** selects which venue you want to plan. Each venue has its own days and plan.
 - The selected venue's days appear as **Day 1**, **Day 2**, and so on, with dates. They are grouped by month.
 - Use the month and year dropdowns to move between dates.
 - Click a day to plan it.
 
-For a League, the page may say “Select Venue & dates for the event” and “Add days from add date button”. If no dates have been added, it may show: “No dates added. Click on the 'Venue' button to add Venue and corresponding dates”.
+For a League, the page may say "Select Venue & dates for the event" and "Add days from add date button". If no dates have been added, it shows: "No dates added. Open the 'Choose Venue' dropdown and click 'Add venue' to add a venue and its dates".
 
-### Add a venue and dates
+**Plan Settings** stays greyed out until the venue has at least one date.
 
-Click **Venue** to open the **Add venue** side panel.
+## Day Planner page: Add venue panel (venues and dates)
+
+Open the **Choose Venue** dropdown and click **Add venue** at the bottom of the list, or click the edit icon next to a venue, to open the **Add venue** side panel. Both are greyed out while venue registration is on.
 
 1. Click **Add venue** to add a row.
-2. Enter a **Venue Name** of no more than 20 characters.
-3. Choose a **Time Zone**.
+2. Enter a **Venue Name**. It is required; there is no character limit.
+3. Choose a **Time Zone**. If you leave it empty, "Central European Time (GMT+1)" is used.
 4. Add the venue's **Dates**. The calendar only allows dates between the event's Start Date and End Date.
 5. Click **Apply** in the date calendar.
 6. Click **Save** or **Update**.
 
 Messages:
-- “Venue name cannot exceed 20 characters” — shorten the venue name.
-- “Please fill venue name” — a venue name is missing.
-- “Dates Updated Successfully.” — the dates were saved.
+- "Please fill venue name" — a venue name is missing (or only spaces).
+- "Plan Created Successfully" — the venues were saved.
+- "Dates Updated Successfully." — the event dates were saved.
+- Any other message comes from the server.
 
 Venues and courts/tables can also be managed on the **Venue Management** step.
 
-## Create a daily plan
+## Day Planner page: creating a daily plan (Plan Settings)
 
-Select a venue, click the day you want to plan, and then click **Plan Settings**. If no plan exists for that day, the button may be **Start Planning**, and the page may say “No fields created yet.” The side panel is called **Add New Event** for a new plan or **Edit Event** when changing an existing plan.
+Select a venue, click the day you want to plan, and then click **Plan Settings**. If no plan exists for that day, the page says "No fields created yet." and shows **Start Planning**. The side panel is called **Add New Event** for a new plan or **Edit Event** when changing an existing plan. The panel shows the day, date, venue and its time zone.
 
-The panel shows the day, date, venue and its time zone.
+Fill in:
 
-### Set the playing hours and tables
+- **Day Duration — Start Time and End Time:** the hours during which matches can be played. If End Time is earlier than Start Time, the server refuses with "Invalid Date Range" (new plan) or "Start time cannot be greater than end time" (editing).
+- **Single match duration (min):** minutes reserved for one match, **10–300**.
+- **Total number of tables:** **1–300**.
+- **Select playing tables:** click the table numbers you want to use, or **Select all**. At least one table must be selected.
 
-Fill in these fields:
+All fields are required. Click **Save** for a new plan or **Update** for an existing plan. When editing a plan, **Total Slots** shows how many time slots it generates.
 
-- **Day Duration — Start Time and End Time:** the hours during which matches can be played. End Time must be later than Start Time. Otherwise, the server may show “Invalid Date Range”.
-- **Single match duration (min):** how many minutes to reserve for one match. Allowed range: **10–300 minutes**.
-- **Total number of tables:** the number of tables in the plan. Allowed range: **1–300**.
-- **Select playing tables:** click the table numbers you want to use, or click **Select all**. At least one table must be selected.
+## Day Planner page: plan messages and overlapping plans
 
-Click **Save** for a new plan or **Update** for an existing plan.
+- "Event Created Successfully" — the new plan was saved.
+- "Event updated successfully" — the plan was updated.
+- "Please fill all mandatory fields." — a required field is missing.
+- "Please select a date for the event." — choose a day/date.
+- "Please select at least one table." — select a table under Select playing tables.
+- "Value must be at least 10." / "Value must not exceed 300." — match duration out of range.
+- "Value must be at least 1." / "Value must not exceed 300." — total number of tables out of range.
+- "Invalid Date Range" (new plan) / "Start time cannot be greater than end time" (editing) — End Time is earlier than Start Time.
 
-Possible messages:
-- “Event Created Successfully” — the new plan was saved.
-- “Event updated successfully” — the plan was updated.
-- “Please fill all mandatory fields.” — one or more required fields are missing.
-- “Please select a date for the event.” — choose a day/date.
-- “Please select at least one table.” — select at least one table under Select playing tables.
-- “Value must be at least 10.” / “Value must not exceed 300.” — match duration is outside the allowed range.
-- “Value must be at least 1.” / “Value must not exceed 300.” — the total number of tables is outside the allowed range.
-- “Invalid Date Range” — End Time must be after Start Time.
+A day can have several plans, such as morning and afternoon plans or plans using different tables. A plan's time range may overlap at most **3 other plans** on the same day; plans that only touch (one ends when the next starts) do not count. Beyond that the server refuses with "Cannot create setting: Maximum of 3 overlapping settings allowed" (when adding) or "Cannot update planner: Maximum of 3 overlapping settings allowed" (when editing the times or date). Change the time range or edit an existing plan.
 
-When editing a plan, **Total Slots** shows how many time slots it generates.
+## Day Planner page: how time slots and match capacity work
 
-A day can have multiple plans, such as morning and afternoon plans or plans using different tables. No more than **3 plans may overlap in time**. If the limit is exceeded, the system shows: “Cannot create setting: Maximum of 3 overlapping settings allowed”. Change the time range or edit an existing plan.
+A **time slot** is a time window equal to the **Single match duration**. Slots start at the Start Time and follow each other every Single match duration. A slot that would touch a break at all is skipped; the following slots keep the same rhythm (they do not restart at the end of the break). Time at the end of the day that is shorter than one match duration is not used.
 
-## How time slots and match capacity work
+Each slot contains the tables available during that time, typically one match per available table. When plans overlap, a table already used by another plan is not counted again.
 
-A **time slot** is a time window equal to the **Single match duration** setting. The Day Duration is divided into consecutive slots, excluding time covered by breaks.
+The text near the top of the page, such as "With the current entries, … matches will take place in a single day", estimates how many matches the current settings can accommodate. Each plan card under **Current Events** shows the time range, tables, match duration and slots generated. Click a card to see total tables, match duration, slots generated and playing tables.
 
-Each slot contains the tables available during that time. More than one match can take place in the same slot when multiple tables are available—typically one match per available table.
+**Approximate match capacity = number of usable time slots × number of available tables per slot.** Actual capacity depends on the configured times, breaks, table availability and overlapping plans.
 
-When plans overlap, a table already used by another plan is not counted again.
-
-The text near the top of the page, such as “With the current entries, … matches will take place in a single day”, estimates how many matches the current settings can accommodate. The plan card under **Current Events** shows the time range, tables, match duration and slots generated. Click a card to see total tables, match duration, slots generated and playing tables.
-
-A useful rough estimate is:
-
-**Approximate match capacity = number of usable time slots × number of available tables per slot.**
-
-Actual capacity depends on the configured times, breaks, table availability and overlapping plans.
-
-### How to fit more matches into a day
+## Day Planner page: fitting more matches into a day
 
 Depending on the venue and event requirements, you can:
 1. Extend the Day Duration by starting earlier or finishing later.
@@ -195,339 +188,169 @@ Depending on the venue and event requirements, you can:
 3. Shorten Single match duration if that is appropriate for the competition.
 4. Review breaks and overlapping plans.
 
-Do not suggest removing necessary breaks or shortening match duration without considering the organiser's actual requirements.
+Do not remove necessary breaks or shorten match duration without considering the competition's actual requirements.
 
-### Important when editing a plan
+## Day Planner page: editing a plan that already has scheduled matches
 
-- Editing a plan keeps slots that still fit within the new times, so matches scheduled in those slots stay scheduled.
-- Changing **Single match duration** regenerates all slots for that plan. Check the Scheduler afterward because the slot structure may have changed.
+- Changing the times keeps every slot that still fits the new times, so matches in those slots stay scheduled.
+- Changing **Single match duration** rebuilds all slots of that plan. This is only allowed while **no match is scheduled** in that plan. Otherwise the server refuses: "Cannot update planner: matches are scheduled, cannot change match duration".
+- If new times would drop or shift a slot that holds a match: "Updating the planner timing will affect already scheduled matches. Please reschedule or remove the affected matches first."
+- Unselecting a table that has a scheduled match: "Cannot remove tables: matches are scheduled on the tables being removed".
+- Adding or changing a break over a slot with a match: "Cannot modify intervals: would affect slots with existing matches".
+- Deleting a plan whose slots hold matches is also refused (the message shown is the match-duration one above).
 
-## Add a break or interval
+Remove those matches from their slots in the Scheduler first, or keep the current values.
 
-Use **Interval** to open the **Add New Interval** side panel. Its description is “Create intervals/breaks to be kept between the matches during a day”.
+## Day Planner page: adding a break (Interval panel)
+
+Click **Interval** to open the **Add New Interval** side panel ("Create intervals/breaks to be kept between the matches during a day"). When editing a break it is called **Edit Interval**.
 
 1. Click **Add new** to add a break row.
 2. Choose a **Break name**, such as Breakfast, Lunch, Snacks, Dinner, Break, Water Break or Prize Distribution.
 3. Set **start** and **end** times in `HH:mm` format.
 4. Click **Save** for a new break or **Update** to edit an existing break.
 
-Limits and behaviour:
-- You can add up to **5 breaks at once**. If exceeded, the message is “You can add only 5 intervals”.
-- A break name can contain at most 20 characters. Otherwise, the system may show “Break name cannot exceed 20 characters”.
-- No matches are placed during a break.
-- Breaks appear as named cards under **Current Events**.
+Rules and messages:
+- Break name, start and end are all required; otherwise "Please fill all mandatory fields."
+- Up to **5 breaks at once**: "You can add only 5 intervals".
+- Breaks on the same day may not overlap each other: "Event interval already exists".
+- A break whose start is later than its end: "Start time cannot be greater than end time".
+- A break name can have at most 20 characters: "Break name cannot exceed 20 characters".
+- "Plan Created Successfully" (new break) or "Plan Updated Successfully" (edited break) confirms the save.
+- No matches are placed during a break. Breaks appear as named cards under **Current Events**.
 
-### Example: add a lunch break
+Example, lunch break: select the venue and day, click **Interval** → **Add new**, choose **Lunch**, enter the times and click **Save**.
 
-1. Select the correct venue and day.
-2. Click **Interval**.
-3. Click **Add new**.
-4. Choose **Lunch** as the Break name.
-5. Enter the lunch start and end times in `HH:mm` format.
-6. Click **Save**.
-
-Make sure the break times match the day and venue plan you intend to use.
-
-## Edit or delete a plan or break
+## Day Planner page: editing or deleting a plan or break
 
 Each card under **Current Events** has an edit icon and a delete icon.
 
 - **Edit:** opens the side panel with the saved values.
-- **Delete plan:** asks “Delete Event?”
-- **Delete break:** asks “Delete Interval?”
+- **Delete plan:** asks "Delete Event?"
+- **Delete break:** asks "Delete Interval?"
 
 The confirmation warns that the changes will be lost. Click **Yes, Delete** to proceed.
 
-After deleting, “You successfully deleted a cell!” appears with an **Undo** button for about **5 seconds**. Click **Undo** within that time to restore the item. The message “Action undone successfully!” confirms the undo. If you do not undo it, the deletion is saved.
+After deleting, "You successfully deleted a cell!" appears with an **Undo** button for about **5 seconds**. Click **Undo** within that time to restore the item; "Action undone successfully!" confirms it. If you do not undo it, the deletion is saved.
 
-If you delete something by mistake, use Undo immediately. The documented Undo window is approximately five seconds.
+## Day Planner page: Reset Planning — read before confirming
 
-## Reset Planning — read before confirming
+**Reset Planning** deletes all plans and all breaks of the selected venue, on **every** date of that venue, not only the selected day. The system asks:
 
-**Reset Planning** clears the plan for the selected venue.
-
-When clicked, the system asks:
-
-“Are you sure you want to reset the planner? If you do so it will have a direct impact on the scheduler and the match you have scheduled will be removed.”
+"Are you sure you want to reset the planner? If you do so it will have a direct impact on the scheduler and the match you have scheduled will be removed."
 
 If you confirm with **Yes, Reset**:
+- If any match is still scheduled in that venue's slots, the server refuses: "Cannot reset event venue changes: matches exist in event venue planner". Nothing is deleted. Remove the matches from their slots in the Scheduler first, then reset again.
+- Otherwise all plans and breaks of the venue are deleted and "Planner Reset Successfully" confirms it.
 
-- The planner is reset for the selected venue.
-- Matches already scheduled into that venue's slots are removed from the schedule.
-- Those matches must be scheduled again.
+No Undo is offered for Reset Planning. To change one plan or one break, edit that item instead.
 
-“Planner Reset Successfully” confirms the reset.
+## Day Planner page: changing venue dates when matches are scheduled
 
-**Important:** Reset Planning is not just a visual refresh. It affects the Scheduler and removes matches already scheduled into the slots. If the user only wants to change one plan or one break, suggest editing that item instead of resetting the entire venue plan.
+**Event dates (Apply in the date calendar):**
+- If a match on a removed date is in progress or already scored, the change is refused: "Dates with matches in progress or already scored cannot be removed", followed by the dates.
+- If a venue would lose a day, or officials registered for that day would lose it, the popup "Changing these dates will reset the schedule" lists the days removed and the registrations that will be withdrawn. **Yes, reset** removes the matches scheduled on those days from the schedule and deletes the plans and breaks of those days.
 
-## Changing venue dates when matches are scheduled
+**Venue dates (Save in the Add venue panel):** a date with matches scheduled at that venue cannot be removed: "Cannot remove dates with scheduled matches". Remove the matches from their slots first. Removing a date without matches also deletes that date's plans and breaks.
 
-If a venue's dates are changed and matches are already scheduled on dates being removed, the system warns that the schedule must be reset. Confirming with **Yes, reset** removes those scheduled matches from the schedule.
+## Day Planner page: why the controls may not work
 
-If matches on the dates have already been played, the change is refused and the system names the played dates.
-
-Before recommending a venue-date change:
-1. Check whether matches are scheduled on the dates being removed.
-2. Explain that confirming the reset removes affected scheduled matches.
-3. If matches have already been played on those dates, keep the dates; they cannot be removed.
-
-## Why Day Planner controls may not work
-
-If **Enable Venue Registration** is switched on for the event in the **Venue Management** step, the Day Planner cannot be changed. In this state, these controls do nothing:
+If **Enable Venue Registration** is switched on for the event in the **Venue Management** step, the Day Planner cannot be changed. These controls are greyed out and do nothing:
 
 - Reset Planning
-- Venue
+- **Add venue** and the venue edit icons in the **Choose Venue** dropdown
 - Interval
 - Plan Settings
 - Start Planning
-- Edit/delete icons
+- Edit/delete icons on the cards
 
-To plan again, turn off venue registration on the Venue Management step, if that is appropriate for the event's setup.
+To plan again, turn off venue registration on the Venue Management step, if that suits the event's setup. **Plan Settings** is also greyed out while the selected venue has no dates.
 
-Do not tell the user that the buttons are broken without checking this setting first.
-
-## Permissions and sign-in errors
+## Day Planner page: permissions and sign-in errors
 
 - Saving a plan requires **Edit** permission on **Add Time Slot**.
-- Saving a break requires **Edit** permission on **Add Interval**.
+- Saving or deleting a break requires **Edit** permission on **Add Interval**.
+- Reset Planning only needs you to be signed in; it has no separate permission.
 - Without the required permission, saving fails with **Access Denied**. Ask an administrator to review access.
 - **Unauthorized Access** can mean the sign-in session expired. Sign in again and retry.
 
-## Common errors and how to fix them
+## Day Planner page: common errors and fixes (plans)
 
-### “Invalid Date Range”
+- **"Invalid Date Range"** — the plan's End Time is not later than its Start Time. Choose a later End Time.
+- **"Please fill all mandatory fields."** — review Day Duration, match duration, table count and playing tables; fill the missing values and save again.
+- **"Please select a date for the event."** — return to the day list and select the date to plan.
+- **"Please select at least one table."** — under Select playing tables, select table numbers or click Select all.
+- **"Value must be at least 10." / "Value must not exceed 300."** — enter a match duration between 10 and 300 minutes.
+- **"Value must be at least 1." / "Value must not exceed 300."** — enter 1 to 300 tables, and select at least one playing table.
+- **"Cannot create setting: Maximum of 3 overlapping settings allowed"** — three plans already overlap that time range. Change the times or edit an existing plan.
 
-**Meaning:** The plan's End Time is not later than its Start Time.
+## Day Planner page: common errors and fixes (breaks, venues, access)
 
-**Fix:** Choose an End Time that is after the Start Time.
+- **"You can add only 5 intervals"** — add no more than five break rows at once.
+- **"Break name cannot exceed 20 characters"** — use a break name of up to 20 characters.
+- **"Please fill venue name"** — enter a venue name; there is no character limit.
+- **"Access Denied"** — ask an administrator to check Edit permission on Add Time Slot (plans) or Add Interval (breaks).
+- **"Unauthorized Access"** — the session may have expired. Sign in again and retry.
 
-### “Please fill all mandatory fields.”
+## Day Planner page: how users describe common problems
 
-**Meaning:** A required field in the plan has not been completed.
+These are alternate phrasings of documented Day Planner tasks, not extra features.
 
-**Fix:** Review Day Duration, match duration, table count, playing tables and the selected date. Fill the missing values and save again.
+- Plan a day / playing hours: "Where do I set match timings?", "Tournament ka schedule time kaise set karun?", "How do I set morning and afternoon sessions?", "Where do I configure the tables for a day?"
+- Add a break: "How do I add lunch time?", "Lunch break kaise add karun?", "I need a tea or water break between matches.", "How can I stop matches during prize distribution?"
+- Match capacity: "Can 50 matches fit into this day?", "Ek din mein kitne matches ho sakte hain?", "Why does it say only 20 matches can happen today?"
+- Planner locked: "I cannot edit my plan.", "Day Planner ke buttons kaam nahi kar rahe.", "Why does Reset Planning do nothing?"
+- Reset or restore: "Reset karne se matches delete honge?", "Can I undo a reset?", "My scheduled matches disappeared after reset."
+- Deleted by mistake: "Break delete ho gaya, can I restore it?", "Where is the undo option?"
+- Venue dates: "No dates are showing.", "Venue ki dates add nahi ho rahi.", "Matches already ho chuke hain; can I remove that date?"
+- Access: "Access Denied aa raha hai.", "I can edit the screen but cannot save."
 
-### “Please select a date for the event.”
+## Frequently asked questions about the Day Planner page (planning, part 1)
 
-**Meaning:** No day/date has been selected for the plan.
+**How do I plan the playing times for a day?** Choose the venue, click the day, select **Plan Settings** (or **Start Planning** if no plan exists), fill Day Duration, Single match duration and the table settings, select the playing tables, then **Save**.
 
-**Fix:** Return to the day list and select the date you want to plan.
+**How do I add a lunch break?** Click **Interval**, select **Add new**, choose **Lunch**, enter the start and end times in `HH:mm`, and click **Save**.
 
-### “Please select at least one table.”
+**How many breaks can I add?** Up to five break rows at once.
 
-**Meaning:** No table is selected for play.
+**What is the allowed match duration?** Between 10 and 300 minutes.
 
-**Fix:** Under Select playing tables, select one or more table numbers or click Select all.
+**How many tables can I use?** Between 1 and 300. At least one playing table must be selected.
 
-### “Value must be at least 10.” / “Value must not exceed 300.”
+**Why can I not add more overlapping plans?** A plan may overlap at most three other plans on the same day. Change the times or edit an existing plan.
 
-**Meaning:** Single match duration is outside the allowed range.
+**How many matches fit in a day?** Roughly the number of usable time slots × the tables available per slot. A slot is one **Single match duration**; breaks are not counted. The text at the top of the page gives the estimate.
 
-**Fix:** Enter a duration between 10 and 300 minutes.
+**How can I fit more matches into one day?** Shorten **Single match duration** (10 to 300 minutes), use more tables, shorten breaks or lengthen the day duration.
 
-### “Value must be at least 1.” / “Value must not exceed 300.”
+**Where do I put matches into the slots?** Click **Open Scheduler**. The Day Planner creates the slots; the Scheduler places matches into them.
 
-**Meaning:** Total number of tables is outside the allowed range.
+## Frequently asked questions about the Day Planner page (planning, part 2)
 
-**Fix:** Enter a number from 1 to 300, and select at least one playing table.
+**How do I add a venue and dates?** Open the **Choose Venue** dropdown, click **Add venue**, enter the **Venue Name**, choose the **Time Zone**, pick dates between the event's Start Date and End Date, click **Apply** and then **Save**.
 
-### “Cannot create setting: Maximum of 3 overlapping settings allowed”
+## Frequently asked questions about the Day Planner page (problems, part 1)
 
-**Meaning:** Three plans already overlap with the time range you are trying to add.
+**Why can I not change anything on the Day Planner?** **Enable Venue Registration** is on for the event in the **Venue Management** step. While it is on, the Day Planner controls do nothing. Turn it off there to plan again.
 
-**Fix:** Change the new plan's start/end times or edit an existing plan so that no more than three plans overlap.
+**Why are my planner buttons not working?** The same cause: while **Enable Venue Registration** is on in the **Venue Management** step, the Day Planner controls are greyed out and do nothing. If the controls work but saving shows an error, check your permissions or sign in again.
 
-### “You can add only 5 intervals”
+**Why is Plan Settings greyed out?** The selected venue has no dates yet, or venue registration is on.
 
-**Meaning:** More than five breaks were added in one attempt.
+**What does Reset Planning do?** It deletes all plans and breaks of the selected venue on all its dates. It is refused while any match is still scheduled in that venue's slots ("Cannot reset event venue changes: matches exist in event venue planner"). It cannot be undone.
 
-**Fix:** Add no more than five break rows at once.
+**How do I undo deleting a plan or break?** Click **Undo** in the message shown for about 5 seconds after deleting. "Action undone successfully!" confirms it. After that the deletion is saved.
 
-### “Break name cannot exceed 20 characters”
+**Why are scheduled matches disappearing?** Matches are removed from the schedule when event dates are changed and you confirm **Yes, reset** in "Changing these dates will reset the schedule". Dates with matches in progress or already scored cannot be removed. Reset Planning does not remove matches; it is refused while matches are scheduled.
 
-**Meaning:** The break name is too long.
+## Frequently asked questions about the Day Planner page (problems, part 2)
 
-**Fix:** Use a shorter break name, up to 20 characters.
+**Why can I not pick a date in the venue calendar?** Only dates within the event's Start Date and End Date can be selected.
 
-### “Please fill venue name” / “Venue name cannot exceed 20 characters”
+**Why can I not change the match duration?** Matches are already scheduled in that plan's slots ("Cannot update planner: matches are scheduled, cannot change match duration"). Remove them from the slots in the Scheduler first; then the change rebuilds the plan's slots.
 
-**Meaning:** A venue name is missing or longer than the allowed length.
+**Why can I not delete a plan?** Its slots still hold scheduled matches, so the server refuses (showing the match-duration message). Remove the matches from those slots first.
 
-**Fix:** Enter a venue name with 1–20 characters.
+## Frequently asked questions about the Day Planner page (problems, part 3)
 
-### “Access Denied”
-
-**Meaning:** The user does not have the permission required to save the plan or break.
-
-**Fix:** Ask an administrator to check Edit permission on Add Time Slot or Add Interval, depending on what the user is saving.
-
-### “Unauthorized Access”
-
-**Meaning:** The user's session may have expired.
-
-**Fix:** Sign in again and retry.
-
-## Natural-language question patterns
-
-The following are examples of how users may describe documented Day Planner problems. These are alternate phrasings, not additional product capabilities.
-
-### Intent: plan a day or set playing hours
-
-Possible user questions:
-- “How do I plan the playing times for a day?”
-- “Where do I set match timings?”
-- “Tournament ka schedule time kaise set karun?”
-- “I need to decide when matches start and finish.”
-- “How do I set morning and afternoon sessions?”
-- “Where do I configure the tables for a day?”
-
-### Intent: add a break
-
-Possible user questions:
-- “How do I add lunch time?”
-- “Matches should stop for lunch.”
-- “Lunch break kaise add karun?”
-- “I need a tea or water break between matches.”
-- “How can I stop matches during prize distribution?”
-
-### Intent: calculate match capacity
-
-Possible user questions:
-- “How many matches can we play in one day?”
-- “How can I fit more matches into the timetable?”
-- “Can 50 matches fit into this day?”
-- “Ek din mein kitne matches ho sakte hain?”
-- “Why does it say only 20 matches can happen today?”
-
-### Intent: planner is locked or buttons do nothing
-
-Possible user questions:
-- “I cannot edit my plan.”
-- “Day Planner ke buttons kaam nahi kar rahe.”
-- “Why does Reset Planning do nothing?”
-- “I can't add a venue or a break.”
-- “The edit and delete icons don't work.”
-
-### Intent: reset or restore planning
-
-Possible user questions:
-- “What happens if I reset planning?”
-- “Reset karne se matches delete honge?”
-- “I want to start the timetable again.”
-- “Can I undo a reset?”
-- “My scheduled matches disappeared after reset.”
-
-### Intent: deleted a plan or break by mistake
-
-Possible user questions:
-- “I deleted my plan accidentally.”
-- “Break delete ho gaya, can I restore it?”
-- “Where is the undo option?”
-
-### Intent: add venue dates
-
-Possible user questions:
-- “No dates are showing.”
-- “How do I add dates to a venue?”
-- “I cannot select a date in the calendar.”
-- “Venue ki dates add nahi ho rahi.”
-
-### Intent: scheduled matches are affected by date changes
-
-Possible user questions:
-- “If I remove a date, what happens to the matches?”
-- “Why is the system asking to reset the schedule?”
-- “Matches already ho chuke hain; can I remove that date?”
-- “My venue date change is rejected.”
-
-### Intent: access denied or sign-in issue
-
-Possible user questions:
-- “I can't save my plan.”
-- “Access Denied aa raha hai.”
-- “Why does it say Unauthorized Access?”
-- “I can edit the screen but cannot save.”
-
-## Frequently asked questions
-
-### How do I plan the playing times for a day?
-
-Choose the venue, click the day, select Plan Settings (or Start Planning if no plan exists), fill Day Duration, Single match duration and table settings, select the playing tables, then Save.
-
-### How do I add a lunch break?
-
-Click Interval, select Add new, choose Lunch, enter the start and end times in `HH:mm`, and click Save.
-
-### How many breaks can I add?
-
-Up to five break rows can be added at once.
-
-### What is the allowed match duration?
-
-Between 10 and 300 minutes.
-
-### How many tables can I use?
-
-The total number of tables can be between 1 and 300. At least one playing table must be selected.
-
-### Why can I not add more overlapping plans?
-
-A maximum of three plans may overlap in time. Change the times or edit an existing plan.
-
-### What does Reset Planning do?
-
-It clears the plan for the selected venue and removes matches already scheduled into its slots. Those matches must be scheduled again.
-
-### I deleted a plan by mistake. Can I undo it?
-
-Click Undo within about five seconds after deleting it.
-
-### Why are all buttons on Day Planner doing nothing?
-
-Check whether Enable Venue Registration is enabled on the Venue Management step. When it is on, the Day Planner controls listed in this guide do not work.
-
-### Why can I not pick a date in the venue calendar?
-
-Only dates within the event's Start Date and End Date can be selected.
-
-### Where do I put matches into the slots?
-
-Click Open Scheduler. Day Planner creates the available slots; the Scheduler is where matches are placed into them.
-
-### How many matches fit in a day?
-
-Roughly the number of usable time slots × the number of tables available per slot. A slot is one **Single match duration**; breaks are not counted. The text at the top of the page estimates how many matches the current settings fit in a day.
-
-### Why can I not change anything on the Day Planner?
-
-**Enable Venue Registration** is on for the event in the **Venue Management** step. While it is on, the Day Planner cannot be changed. Turn it off there to plan again.
-
-### Why are my planner buttons not working?
-
-Check whether **Enable Venue Registration** is on in the **Venue Management** step. While it is on, the Day Planner controls do nothing.
-
-### How do I add a venue and dates?
-
-Click **Venue** to open the **Add venue** panel, click **Add venue**, enter the **Venue Name** (up to 20 characters), choose the **Time Zone**, pick the dates (only dates between the event's Start Date and End Date), click **Apply** and then **Save**.
-
-### Why are scheduled matches disappearing?
-
-Scheduled matches are removed when the planner of a venue is reset (**Reset Planning** → **Yes, Reset**) or when venue dates with scheduled matches are removed (**Yes, reset**). Those matches must be scheduled again. Days with played matches cannot be removed.
-
-### How do I undo deleting a plan?
-
-Click **Undo** in the message that appears after deleting; it is shown for about 5 seconds. "Action undone successfully!" confirms it. After that the deletion is saved.
-
-### How can I fit more matches into one day?
-
-A day fits roughly the number of usable time slots × the tables available per slot. To fit more, make **Single match duration** shorter (10 to 300 minutes), use more tables, shorten breaks or lengthen the day duration.
-
-## Source-of-truth and escalation rules
-
-- This document describes documented Day Planner behaviour. It does not confirm the current state of a particular event or venue.
-- Do not claim to have inspected the current plan, schedule, permissions, dates or selected tables unless live application data is available.
-- Organisation setup may affect whether the Day Planner step is available.
-- Do not promise that Reset Planning can be undone; only the short Undo action after deleting an individual plan or break is documented.
-- Do not claim an exact match capacity unless the required plan values are known.
-- If a user reports a permission error, direct them to an administrator to check the relevant permission.
-- If the user's issue depends on live schedule data or is not covered here, explain what needs to be checked in TMS or by support.
+**Why do I get "Access Denied" when saving?** Your role needs Edit permission on **Add Time Slot** (plans) or **Add Interval** (breaks).

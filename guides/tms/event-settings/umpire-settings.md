@@ -31,6 +31,7 @@ source_files:
   - src/app/core/services/registration-service/registration-service.service.ts
   - src/app/core/services/tournament-config/tournament-config.service.ts
   - src/app/core/utils/permission_directive/permissions.directive.ts
+  - src/app/shared/confirm-popup/confirm-popup.constants.ts
 ---
 # Umpire Settings page – user guide
 
@@ -143,9 +144,9 @@ Notes:
 
 ## Tournament: removing and restoring an umpire
 
-- **Remove**: click the bin icon in the **Action** column. The question "Are you sure you want to Delete registration of <name>?" appears. Confirm to remove. "Umpire deleted successfully." confirms it.
+- **Remove**: click the bin icon in the **Action** column. The question "Are you sure you want to Delete registration of <name>?" appears in a popup titled "Are you sure?". Click **Confirm** to remove, or **Cancel**. "Umpire deleted successfully." confirms it.
 - Removing an umpire also removes that umpire from the matches they were assigned to on that date.
-- **Restore**: click **Deleted** to see removed umpires (heading **Deleted Umpire**). Click the **+** icon on a row and confirm "Are you sure you want to Add registration of <name>?". "Umpire added successfully." confirms it.
+- **Restore**: click **Deleted** to see removed umpires (heading **Deleted Umpire**). Click the **+** icon on a row and click **Confirm** in the "Are you sure?" popup ("Are you sure you want to Add registration of <name>?"). "Umpire added successfully." confirms it.
 - Click the arrow left of **Deleted Umpire** to return to the normal list.
 - Removing and restoring follow the registration rules: outside the registration dates, or with Registration switched off, they fail with "Registration Closed", "Registration Not Started" or "Registration Not Allowed" (except for the main administrator).
 
@@ -165,11 +166,12 @@ Messages when assigning:
 - "Event official has overlapping assignments" – the umpire already has a match at the same time.
 - "Assignment would exceed per_match_limit for one or more matches" – the match already has the number of umpires set in **Per Match Umpire**.
 - "No assignable event official found for user on this match" – the person has no active umpire registration for this event.
+- "Failed to assign umpire" – no umpire was chosen, or the server refused without a message.
 
 ## League: removing umpires from a match
 
-- **Per Match Umpire = 2**: each assigned umpire has a red **x** next to the name ("Remove Umpire"). Click it and confirm "Are you sure you want to unassign <name>?" with **Yes, Unassign**. Only that umpire is removed.
-- **Bin icon in the Action column**: asks "Are you sure you want to unassign this umpire?". It removes **every official assigned to the match**, including referees assigned on the Referee Settings step.
+- **Per Match Umpire = 2**: each assigned umpire has a red **x** next to the name ("Remove Umpire"). Click it and confirm "Are you sure you want to unassign <name>?" (popup title "Delete Slot?") with **Yes, Unassign**, or **Cancel**. Only that umpire is removed.
+- **Bin icon in the Action column**: asks "Are you sure you want to unassign this umpire?" in a popup titled "Delete Slot?"; click **Yes, Unassign**. It removes **every official assigned to the match**, including referees assigned on the Referee Settings step.
 - With **Per Match Umpire = 1** there is no **x**; use the bin icon.
 - Rows without an umpire show `--` in **Bank Details** and **Action**.
 - Removing an assignment needs Edit permission on **Schedule Umpire Access**; without it the action fails with "Access Denied".
@@ -192,7 +194,7 @@ Click **Filter**. A side panel opens:
 
 Click **Apply**. For a Tournament the list shows only the chosen umpires. For a League the match table shows the matches of those umpires, and only assigned or unassigned matches if chosen.
 
-For a League an **×** appears on the **Filter** button while a filter is active. Click the **×** to clear the filter.
+For a League an **×** ("Clear filters") appears on the **Filter** button while a filter is active. Click the **×** to clear the filter.
 
 ## Viewing an umpire's bank details
 
@@ -210,7 +212,9 @@ Use this when the person has no account yet.
 3. Fill in the fields. Fields marked `*` are mandatory. If a linked (parent) user is asked for, choose one.
 4. Click **Submit**.
 
-Messages: "Please fill all required fields" (a mandatory field is empty), "Please select at least one parent" (no parent chosen), "Only Alphabets and Spaces Allowed" / "Incorrect Format." (a field has the wrong format). After a successful save the server's message is shown and the new user can be picked in **Search Umpire**.
+Messages: "Please fill all required fields" (a mandatory field is empty), "Please select at least one parent" (no parent chosen), "Only Alphabets and Spaces Allowed" / "Incorrect Format." (a field has the wrong format).
+
+File fields: only the file types set up for that field are accepted ("Only files with extensions allowed: <list>"). The file must be between 20 KB and 5 MB, otherwise "File Exceed max limit of 5mb." appears. An uploaded file shows "Uploaded Successfully" and can be replaced with **Reupload**. After a successful save the server's message is shown and the new user can be picked in **Search Umpire**.
 
 ## Umpire Settings page: other messages
 
@@ -221,6 +225,7 @@ Messages: "Please fill all required fields" (a mandatory field is empty), "Pleas
 - "Official Already Registered" – the umpire is already registered for that day or match.
 - "Unauthorized Access" – your session expired. Sign in again.
 - "Some Error Occured" – the list could not be loaded. Reload the page.
+- "Something went wrong" – the server refused an action without giving a reason. Try again.
 
 ## Frequently asked questions about the Umpire Settings page
 
@@ -235,6 +240,8 @@ Messages: "Please fill all required fields" (a mandatory field is empty), "Pleas
 **Why does my umpire not appear in the list?** The list only shows accepted umpires. With verifiers set, the registration waits for approval on the Event Umpire Request page.
 
 **Why do I get "Registration Closed" when adding or deleting an umpire?** The registration end date has passed. Move it in **Settings**, or ask the main administrator.
+
+## Frequently asked questions about the Umpire Settings page (continued)
 
 **Why do I get "Registration Not Allowed For Role"?** The user's role is not in **Eligible Role**.
 

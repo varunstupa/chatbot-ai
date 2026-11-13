@@ -8,6 +8,7 @@ aliases:
   - led live card
   - live card
   - led display
+  - led screen
   - led output screen
   - led layout display
   - display live card
@@ -95,6 +96,8 @@ The **LED live card** is the page the LED boards show. It lists the matches in p
 **Which layout does it show when none is saved?** Layout 2, which has four cards.
 
 **How many matches fit on one screen?** Nine for layout 1, six for layout 3, twelve for layout 5 and four for layouts 2 and 4. More matches rotate in batches every 20 seconds.
+
+**How many matches does the LED screen show?** It depends on the saved layout: nine for layout 1, six for layout 3, twelve for layout 5 and four for layouts 2 and 4 (layout 2 when none is saved). More matches rotate in batches every 20 seconds.
 
 **Why does a card show a dash for the table?** The match is not yet on a table, so no table number is known.
 

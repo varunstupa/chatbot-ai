@@ -2,6 +2,9 @@
 doc_id: tms.display-setting.stream-overlay
 title: Stream overlay – the on-screen match graphic for a live stream, by match, sub match or table, with scores, cards, timeouts and the golden match label
 routes:
+  - stream/match/:event_id/:match_id/:sub_match_id
+  - stream/match/:event_id/:match_id
+  - stream/table/:event_id/:table_id
   - tms/stream/match/:event_id/:match_id/:sub_match_id
   - tms/stream/match/:event_id/:match_id
   - tms/stream/table/:event_id/:table_id
@@ -9,17 +12,22 @@ aliases:
   - stream overlay
   - overlay
   - live overlay
-  - broadcast overlay
   - streaming overlay
   - stream match overlay
   - stream table overlay
   - golden match overlay
   - ttfi overlay
+  - led overlay
+  - overlay link
+  - generate overlay link
+  - match_link
+  - table_link
 tenants: all
 exclude_tenants: []
 overrides: null
 suggested_questions:
   - What is the stream overlay?
+  - Where do I get the overlay link?
   - Which URL gives the overlay of one match?
   - Which URL gives the overlay of a table?
   - Which URL gives the overlay of one sub match?
@@ -46,6 +54,14 @@ The **stream overlay** is the match graphic a broadcaster puts over a live video
 - `/stream/match/:event_id/:match_id` shows one match.
 - `/stream/table/:event_id/:table_id` shows whatever match is in progress on that table, and follows it as matches change.
 - The event id comes from the address.
+
+## Where to get the overlay link
+
+- On the **Display Setting** screen, click **Export**. The Excel file (matches.xlsx) has the overlay links in three columns: **match_link** (`/stream/match/:event_id/:match_id`), **table_link** (`/stream/table/:event_id/:table_id`) and, for team matches, **sub_match_link** (`/stream/match/:event_id/:match_id/:sub_match_id`).
+- The overlay links are only in the export Excel file. The **Broadcast link** on the Live Matches and Tables tabs does not open the overlay: it opens the score card view (`/match/...` or `/table/...`) in a new tab.
+- For Padel (sport id 2) the **Broadcast link** opens the **umpire view** (`/umpire-view/...`). The Excel links are always the `/stream/...` overlay links.
+- The LED layouts in **LED Settings** do not affect the overlay; they are for the big LED board (**LED Output**).
+- The overlay shows data only while the match is live, that is while it is scored on the mobile scoring app.
 
 ## What the overlay shows
 
@@ -94,13 +110,15 @@ The **stream overlay** is the match graphic a broadcaster puts over a live video
 
 **What is the stream overlay?** A match graphic for a live video, with the score, names, round and cards, updated while the match is played.
 
+**Where do I get the overlay link?** Click **Export** on the Display Setting screen. The Excel file has the links in the **match_link**, **table_link** and **sub_match_link** columns. The **Broadcast link** opens the score card view, not the overlay. The overlay fills in once the match is scored live on the mobile app.
+
 **Which URL gives the overlay of one match?** `/stream/match/:event_id/:match_id`. Add the sub match id for one sub match of a team match.
 
 **Which URL gives the overlay of a table?** `/stream/table/:event_id/:table_id`. It follows the match in progress on that table.
 
 **What does Golden mean on the overlay?** The match is a golden match of the event, and its header shows the Golden label.
 
-**Why does the overlay show nothing?** No match is in progress for that event, match or table. On the TTFI tenant the overlay draws nothing until a match is in progress.
+**Why does the overlay show nothing?** No match is in progress for that event, match or table. The overlay gets its data only while the match is scored live on the mobile scoring app. On the TTFI tenant the overlay draws nothing until a match is in progress.
 
 **What happens when a match finishes?** On a match or table address the match is removed. On a match address the overlay is cleared and stays empty.
 

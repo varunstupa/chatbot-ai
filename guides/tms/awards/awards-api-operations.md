@@ -28,7 +28,7 @@ suggested_questions:
   - Which permission is needed to publish or reset the standings?
 backend_sources:
   - gateway/src/routers/standings_router.py (publish, reset, cumulative_swap, manual_standing, swap, cumulative_generate)
-  - gateway/src/routers/award_router.py (awards/v1 publish, publish-all, standings read)
+  - gateway/src/routers/awards_router.py (awards/v1 publish, publish-all, standings read)
   - gateway/src/routers/ott_router.py (ott/v1/awards/standings)
   - tms/src/router/standings_router.py
   - tms/src/router/award_router.py (event/published-standings)
@@ -66,14 +66,14 @@ Each section gives the gateway step, the checks in order, and the message. The s
 
 - Body: swaps, each with an event participant ID and a new position.
 - Every participant ID must belong to the category: otherwise "Event Participant Not Found" (404).
-- The positions of the listed participants are exchanged.
+- Each listed participant gets the new position sent for it. The server does not check that positions stay unique.
 - Success: "Cumulative Standings Updated" (200).
 
 ## Manual standing (PUT standings/v1/manual_standing)
 
 - Body: standings, each with an event participant ID and a standing of at least 1. The schema refuses a standing below 1 and a participant listed twice.
 - Every participant must belong to the category: otherwise "Event Participant Not Found" (404).
-- The listed participants get the given cumulative standings. Other participants are not moved by this call.
+- The listed participants get the given cumulative standings. Other participants are not moved by this call, and the server does not check for a position that is already taken, so two participants can end up on the same position.
 - Success: "Manual Standings Updated" (200).
 - The change is overwritten by the next automatic recalculation after a finalized score (see below).
 
@@ -82,6 +82,7 @@ Each section gives the gateway step, the checks in order, and the message. The s
 - Body: swaps with stage participant IDs and new positions.
 - A participant not found in the stage: "Stage Participant Not Found" (404).
 - Participants from more than one group: "Swap Not Allowed" (400).
+- The new positions are written as the stage standing itself, so a cumulative standing generated afterwards uses the swapped positions.
 - Success: "Standings Updated" (200).
 
 ## Automatic recalculation after a finalized score
@@ -92,7 +93,8 @@ Each section gives the gateway step, the checks in order, and the message. The s
   2. Each completed stage is regenerated from its results, and its standing is published automatically.
   3. For a predefined fixture where every stage is complete: the cumulative priority is checked (and repaired when the stages changed), the cumulative standing is generated and published.
 - A stage that cannot be generated (for example no rule settings) is logged and skipped; the other stages still regenerate.
-- Effect: manual cumulative positions and cumulative swaps are cleared by the next finalized score. Manual stage swaps are not guaranteed to survive a regeneration; check them after each score.
+- Some older scoring paths (for example legacy Padel and some team scoring) use a variant: the same clearing and stage regeneration, then the cumulative standing is rebuilt from the saved stage priority for any fixture, and nothing is published automatically.
+- Effect: manual cumulative positions, cumulative swaps and stage swaps are all cleared by the next finalized score, because the clearing empties the stage standings before they are rebuilt from the results.
 
 ## Ranking of award players (tie-breakers)
 
@@ -103,6 +105,11 @@ Each section gives the gateway step, the checks in order, and the message. The s
   - WIN_RATIO – matches won divided by matches played (zero when none were played);
   - WIN_LOSS – matches won minus matches lost.
 - A player with no record in the category gets zero for that tie-breaker, so is neither helped nor penalised.
+- Players still equal after every tie-breaker are put in a fixed internal order (by their user number). Positions are numbered 1, 2, 3 … and are never shared.
+
+## Deleting an award with a published standing
+
+- Deleting an event award removes the award only. Its generated standing is kept, and the published award list and published standing reads do not check whether the award still exists, so a deleted award that was published can still be shown publicly. Un-publish the award before deleting it.
 
 ## Published award list and standings (OTT: GET ott/v1/awards/standings, TMS GET awards/v1/event/published-standings)
 
@@ -125,6 +132,10 @@ Each section gives the gateway step, the checks in order, and the message. The s
 
 - The export of the standings uses the fixtures export job on the worker (the gateway route worker/export/fixtures). The worker code is not in the repos, so the file rules are not described here.
 
+## Deleting a stage with a standing
+
+- When a completed stage is deleted, its stage standing is cleared, it is removed from the cumulative stage priority (the remaining stages are renumbered), the final positions of the category are cleared, and the cumulative standing is generated again and, when that succeeds, published.
+
 ## Calls not traced in this pass
 
-- The publish-all and the event standings publish routes for awards are described in the awards API guide. The worker export contents and the cumulative priority repair details are not traced beyond the description above.
+- The publish-all and the event standings publish routes for awards are described in the awards API guide. The worker export contents are not traced.

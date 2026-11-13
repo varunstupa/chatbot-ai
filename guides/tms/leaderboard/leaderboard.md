@@ -36,6 +36,8 @@ source_files:
   - src/app/modules/tms/leaderboard/leaderboard.component.html
   - src/app/modules/tms/leaderboard/leaderboard-winner-logic-defaults.ts
   - src/app/modules/tms/tms.module.ts
+  - src/app/shared/no-event-selected/no-event-selected.component.ts
+  - src/app/modules/tms/event-org-sidebar/event-org-sidebar.component.ts
 ---
 # Leaderboard screen
 
@@ -47,20 +49,21 @@ The address's participant segment is replaced by the team type (2) when the page
 
 ## Where to find it
 
-Open **Leaderboard** from the sidebar. It shows only when your organisation has the leaderboard turned on for the event type.
+Open **Leaderboard** from the sidebar. It shows only when your organisation has the leaderboard turned on for the event type (tournaments and leagues are turned on separately).
 
 ## Layout
 
-- **Category row**: the categories of the event as tabs. A category with sub categories shows its children in a second row. Use the arrows at each end to scroll.
+- **Participant type** dropdown: fixed to the team type and greyed out; it cannot be changed.
+- **Category row**: the team categories of the event as tabs. A category with sub categories shows their number in brackets, for example "Men ( 3 )", and its children appear in a second row headed **Sub Division**. Use the arrows at each end to scroll.
 - **Stage row**: the stages of the chosen category, labelled **S1**, **S2** and so on with the stage name. The first option, **ALL**, shows the final standing of the whole category.
 - **Tab selector**: **Team Leaderboard** and **Player Leaderboard**.
-- **Search** box and the **Winner logic** button (the button with the recalculate icon) on the top row.
+- **Search** box and the **Winner Logic** button on the top row. The Winner Logic button is shown only when **ALL** is selected. The search box is hidden on the Team tab of a knockout stage.
 - The content below depends on the tab, the stage and the format of the stage (see the team and player guides).
 
 ## Choosing a stage
 
 - Clicking a stage tab loads its participants, its matches and its groups or bracket.
-- Clicking **ALL** shows the final standing of the category, built from the group matches of all stages.
+- Clicking **ALL** shows the final standing of the category, built from the matches of all group (round robin) stages. Knockout stages and sample fixtures are not counted. Every team drawn into the fixture is listed from fixture generation, with zero records until it plays.
 - A knockout stage (format 2) shows the bracket instead of a standings table.
 - The address is updated with the chosen category and stage, so a reload opens the same view.
 
@@ -71,21 +74,21 @@ Open **Leaderboard** from the sidebar. It shows only when your organisation has 
 
 ## Paging
 
-- The team and player tables are paged. The page sizes offered are 10, 20, 30, 40, 50 and 100.
+- The team table of **ALL** and the player table are paged. The page sizes offered are 10, 20, 30, 40, 50 and 100. The team table of a single stage is not paged.
 - A page change reloads the rows of that page from the server.
 
 ## Empty and loading states
 
-- **No event selected**: the page shows the no-event state and makes no calls.
-- **No category**: the page shows the no-category state (add categories to the event first).
+- **No event selected**: the page shows "No record found", "Create Event to begin with Leaderboard." and a **Go to Event** button, and makes no calls.
+- **No category**: the page shows "Add Categories in this event to begin with Leaderboard." This also appears when the event has only singles or doubles categories, because only team categories are listed.
 - **"Leaderboard data is not available"** is shown under the team, player, stage and compare tables when they have no rows. The group list shows "No record found" when it is empty.
 - The no-event state title is "No record found" (the shared empty-state text).
 - While data loads, a loader is shown over the page.
 
 ## Messages
 
-- Snackbars for an error use the server's own message when it has one; otherwise "Something went wrong" is shown as a toast.
-- Winner logic: a successful save closes the sidebar and reloads the standings.
+- Loading the team members or the team's matches shows the server's message as an error toast, or "Something went wrong" when there is none.
+- Winner logic: a successful save closes the sidebar and reloads the standings, without a message (the server's "Leaderboard Winner Logic Updated Successfully" is not shown). A failed save shows no message and leaves the sidebar open.
 
 ## Permissions
 
@@ -102,10 +105,16 @@ Open **Leaderboard** from the sidebar. It shows only when your organisation has 
 
 **How do I choose a category and a stage?** Click the category tab, then the stage tab. Use the arrows to scroll when there are many.
 
-**Why does the Leaderboard show no data?** Check that the event is selected, the category has rounds and results, and the stage has participants. Without group matches the final standing is empty.
+**Why does the Leaderboard show no data?** Check that the event is selected, the category has rounds and results, and the stage has participants. The final standing (**ALL**) counts only group stages of a confirmed fixture, so it is empty for a knockout-only category or a sample fixture.
 
 **Which categories appear?** Only team categories. Singles and doubles categories are not listed on this page.
 
 **How do I search?** Type a team or player name in the Search box; the list updates after a short pause.
 
 **Which categories appear on the Leaderboard?** Only team categories. Singles and doubles categories are not listed on the Leaderboard.
+
+## Frequently asked questions (continued)
+
+**Why can I not change the participant type?** The Leaderboard works for team categories only, so the dropdown is fixed to Team.
+
+**Where is the Winner Logic button?** Select **ALL** in the stage row; the button appears next to the search box.

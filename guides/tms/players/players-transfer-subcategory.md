@@ -29,6 +29,7 @@ source_files:
   - src/app/modules/tms/players/players.component.ts
   - src/app/modules/tms/players/participant-category-action-dialog/participant-category-action-dialog.component.ts
   - src/app/shared/division-creation/division-creation.component.html
+  - src/app/modules/tms/players/players.component.html
 ---
 # Players page – transfer, recreate, merge and sub categories
 
@@ -38,12 +39,12 @@ This guide explains how to move participants between categories on the **Players
 
 - **Transfer** – moves the ticked participants to another category. They leave the current category. The previous category fee is refunded and a new fee applies in the new category.
 - **Recreate** – "Player will remain in the current category and also be added to the selected category." You can pick several target categories. No refund is processed for the current category.
-- **Merge** – moves all participants of the current category to another category; the current category is then removed.
+- **Merge** – moves all participants of the current category to another category (the server receives only the two categories, not the ticked players); the current category is then removed. A category whose draw already has matches cannot be merged.
 - Participants can only go to a category of the same type: "Participants can only be transferred, merged, or recreated into a category of the same type (Singles to Singles, Doubles to Doubles, Team to Team)."
 
 ## How to transfer or recreate participants
 
-1. Tick the participants and click **Transfer** or **Recreate** (for **Merge** no ticking is needed).
+1. Tick the participants; the selection bar shows **Transfer**, **Recreate** and **Merge**. **Merge** needs at least 2 ticked participants ("Select at least 2 players"), although it still moves the whole category. With nothing ticked these buttons only show "Select players first".
 2. In the side panel choose whether the target is a **Category** or a **Sub Category**.
 3. Choose the **Payment Mode**: **Cash** or **Online** (Online only when the event takes online payment).
 4. Choose the target category (and sub category). "Please select a Category first to see Sub Category options"; "No Sub Categories available for the selected Category".
@@ -61,15 +62,18 @@ Click **Proceed** to continue or **Cancel**. Moving between sub categories of th
 ## Transfer messages
 
 - "Participants Moved Successfully", "Participants Duplicated Successfully", "Categories Merged Successfully".
-- "Transfer accepted" – the transfer is being processed in the background; the list updates shortly.
-- "Participant Already Exists In Category" – a participant is already registered in the target category.
+- "Transfer accepted" – the transfer is being processed in the background; the list updates shortly. This is the usual answer when a payment mode is chosen.
+- "Sibling-subcategory move completed" – a move between two sub categories of the same category, done at once without a new order or refund.
+- "Participant Already Exists In Category" – a participant is already registered in the target category (for Recreate: in any of the chosen targets). Nothing is moved.
+- "Cannot merge source event_category … match rows exist (bracket already drawn)." – the current category already has a draw with matches; it cannot be merged.
+- "No active participants found for the given ids" – the ticked participants were deleted or moved meanwhile.
 - "Please select participants to move" – nothing is ticked.
 - "Select participants of the same type. Singles cannot be moved together with Doubles or Team entries."
 
 ## Creating sub categories
 
 1. Select the category and click **Sub Category** (**Sub Division** in leagues).
-2. The panel shows the category and **Total Registered Participants**. Enter **No. of Sub Category** and **Max Participants Per Sub Category**.
+2. The panel **Add Sub Category** (**Add Sub Division** in leagues) shows the category and **Total Registered Participants**. Enter **No. of Sub Category** and **Max Participants Per Sub Category** (both required). The second box stays greyed out with "Please enter Number of Sub Categories first" until the first is filled.
 3. Choose the **Bifurcation Criteria**: **Random**, **Ranking/Rating** or **Points**.
 4. Check the **Bifurcation Calculation**. "Distribution Error" means the numbers do not fit; **Optimal Solution** suggests numbers that do. You can change the participants per sub category.
 5. Tick "To proceed further, please check the box to confirm this bifurcation."
@@ -81,9 +85,9 @@ Click **Proceed** to continue or **Cancel**. Moving between sub categories of th
 
 ## When the Sub Category button is available
 
-- **Sub Category** becomes active only after the category's registration has ended and only when the category has no sub categories yet. Hover over it to see why ("Create sub-division for this category" when it is available): "Sub-division creation will be available in N day(s)" (or hours, minutes), "Cannot create sub-division: This category already has sub-categories", "Sub-division creation is not available for this category".
-- Once sub categories exist the button opens them for editing (names, abbreviation, colour; the numbers can no longer be changed).
-- **Reset Sub Category** (next to the category title) deletes all sub categories of the category. "Cannot Delete Category, Fixtures Already Generated" means a sub category already has a draw; it cannot be removed.
+- **Sub Category** is greyed out until all of these are true: a category is selected, the category has a registration end date, that date and time have passed, and the category has no sub categories yet. A category without a registration end date can never be split here. Hovering shows only the button name, not the reason.
+- Once sub categories exist (also while a sub category tab is selected), the button is replaced by an edit **Sub Category** button (pencil icon). It opens the panel **Update Sub Category** (**Update Sub Division** in leagues) for names, abbreviation and colour; the numbers can no longer be changed.
+- **Reset Sub Category** (next to the category title) deletes all sub categories of the category; their players go back to the main category. Registered players do not block it, only stages: "Please delete all stages before resetting subcategories." means a sub category has a stage (even a draft draw). Delete those stages first.
 
 ## Frequently asked questions about transfer and sub categories
 
@@ -91,7 +95,7 @@ Click **Proceed** to continue or **Cancel**. Moving between sub categories of th
 
 **What is the difference between Transfer and Recreate?** Transfer moves the player out of the current category (with refund); Recreate keeps them in the current category and adds them to another one (no refund).
 
-**How do I merge two categories?** Select the category to merge from, click **Merge**, choose the target category and **Proceed**.
+**How do I merge two categories?** Select the category to merge from, tick at least 2 participants, click **Merge**, choose the target category and **Proceed**. All participants of the category are moved, not only the ticked ones.
 
 **Is the fee refunded when I transfer a player?** Yes, the previous category fee is refunded and a new order is created for the new category.
 
@@ -99,6 +103,6 @@ Click **Proceed** to continue or **Cancel**. Moving between sub categories of th
 
 **How do I split a category into sub categories?** **Sub Category** → numbers, criteria, confirm, names → **Add**.
 
-**Why is the Sub Category button greyed out?** Registration of the category has not ended yet, or it already has sub categories.
+**Why is the Sub Category button greyed out?** No category is selected, the category has no registration end date, its registration end date has not passed yet, or it already has sub categories (then an edit **Sub Category** button is shown instead).
 
 **How do I remove sub categories?** Click **Reset Sub Category**.

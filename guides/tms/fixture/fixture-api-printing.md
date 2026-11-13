@@ -33,41 +33,50 @@ source_files:
 ---
 # Backend logic – printing APIs
 
-Each section gives the gateway step, the TMS checks in order, and the message shown. The gateway checks the login and the permission (Print Settings, Edit) before it forwards the changes to the queue or the print status.
+Each section gives the gateway step, the TMS checks in order, and the message shown. The gateway checks the login and the permission (Print Settings, Edit) before it forwards the changes to the queue or the print status. A read call without a valid login is refused with "Unauthorized Access" (401).
 
 ## Print queue: read (GET print/v1/get_print_queue)
 
 - Gateway: needs a login.
-- TMS: returns the matches waiting in the queue, filtered by category and search text, with a limit and the total count.
-- A search with no matches returns an empty list with code 200.
-- An empty queue returns an empty list with code 200.
-- Errors return code 500 with the error text.
+- TMS: returns the queued matches that are not printed yet, newest first, filtered by category and search text, with a limit and the total count.
+- Left out: matches with a BYE (also when the BYE came after queuing), team sub matches, and matches whose stage, group or round was deleted (for example after a new draw).
+- The search matches the category name or short name, a player name, the match ID or the match number.
+- A search with no matches, or an empty queue, returns an empty list with code 200. Errors return code 500 with the error text.
 
 ## Print queue: add or remove matches (PUT print/v1/update_queue_status)
 
-- Gateway: needs Print Settings and Edit.
+- Gateway: needs Print Settings and Edit (administrators always pass; 403 "Access Denied" otherwise).
 - TMS: the matches are added to the queue when the queue flag is true, and removed when it is false.
-- Success: "Print Queue Updated" (200) with the IDs of the matches that changed.
-- Errors return code 500 with the error text.
+- Adding keeps only matches with at least two real players (no BYE, no missing player). The others are skipped with no error. Removing works for any match.
+- Success: "Print Queue Updated" (200) with the IDs of the matches that changed. Errors return code 500 with the error text.
 
 ## Print status (PUT print/v1/update_print_status)
 
 - Gateway: needs Print Settings and Edit.
-- TMS: marks the matches as printed, for a single match or a whole day.
+- TMS: marks the listed matches as printed, but only those with at least two real players. A normal print also takes them out of the print queue. A day-wise print sets only the day-wise mark and leaves the queue as it is.
+- The fixtures page (popup and print queue) always sends a normal print. A printed match is no longer offered in the match print popup.
 - Success: "Print Status Updated" (200). Errors return code 500 with the error text.
 
 ## Print settings (GET print/v1/get_print_settings)
 
 - Gateway: needs a login.
-- No event configuration: "No Event Found" (404).
+- No print settings saved for the event: "No Event Found" (404). A new event has none until they are first saved.
 - A named configuration that is not in the event print settings: "Configuration '{config}' not found in event print settings" (404).
 - Success returns the print settings (or only the named part), with code 200.
 
 ## Print alert settings (GET print/v1/get_print_alert_settings)
 
 - Gateway: needs a login.
-- Returns the global alert settings when there is no event setting, otherwise the event setting. The alert settings include the number of seconds after which the match print popup closes by itself.
-- Errors return code 500 with the error text.
+- Returns the event's saved alert settings. An event with nothing saved gets the built-in values (alerts disabled, sound on, auto-dismiss after 30 seconds); it does not fall back to the global setting.
+- A new event gets a copy of the global setting when it is created. Later global changes do not reach it.
+- When the alert mode is set to disabled for the event, the admin app hides **Ready for Print**, the print queue and the print popups.
+- If the settings cannot be read, the admin app keeps the popup open with no sound and no auto-dismiss. Errors return code 500 with the error text.
+
+## Print alert settings: change or reset (PUT print/v1/update_print_alert_settings, PUT print/v1/reset_print_alert_settings)
+
+- Gateway: needs Print Settings and Edit.
+- Change saves the sent settings for the event (or as the global setting): "Print Alert Settings Updated" (200).
+- Reset copies the current global setting into the event (the built-in values when none is saved): "Print Alert Settings Reset to Global Defaults" (200).
 
 ## Match data for printing (GET match/v1/matches)
 

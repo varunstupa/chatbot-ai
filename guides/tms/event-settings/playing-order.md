@@ -152,7 +152,7 @@ When you click **Update** or **Reset**, the server's message appears at the bott
 - A sign-in lasts a limited time. After it ends, saving fails with "Unauthorized Access" and you must sign in again.
 - Creating or publishing formats in Playing Order Configuration needs the separate **"Playing order Configuration"** permission.
 
-## Frequently asked questions about the Playing Order page
+## Frequently asked questions about the Playing Order page (part 1)
 
 **How do I set the playing order for a team category?** Click the category's tab, click the radio button of a format, then click **Update**.
 
@@ -173,6 +173,8 @@ When you click **Update** or **Reset**, the server's message appears at the bott
 **Why did Reset clear all my categories?** **Apply Same format to all Classes** was ticked.
 
 **Why is Reset greyed out?** No format is selected for the category.
+
+## Frequently asked questions about the Playing Order page (part 2)
 
 **I chose players in the Set dropdowns but they are gone after reload.** The dropdowns in the format preview are not saved. Lineups are entered per match.
 

@@ -44,12 +44,13 @@ source_files:
   - src/app/core/services/ranking-rating/point-allocation/ranking-management.service.ts
   - src/app/core/services/ranking-rating/award-and-standing/award-and-standing.service.ts
   - src/app/core/constants/api-constant.ts
+  - src/app/core/utils/points-compute-error.util.ts
 ---
 # Backend logic – Ranking and Rating APIs
 
 The ranking, rating, combined and award-standing calls from the admin screens go through the **gateway**, which checks the login and the feature permission and then forwards the call to the **ranking-rating service** (set by the `RANKING_RATING_SERVICE_URL` setting of the gateway).
 
-The ranking-rating service is a separate FastAPI application in the **tms repository, branch `rnr_staging`**. It is not the same code as the TMS application on the `staging` branch. Its routers are mounted under `/v1/rankings`, `/v2/rankings`, `/v1/ratings`, `/config`, `/categories`, `/tournaments`, `/v1/elo-ratings`, `/v1/combined`, `/v1/world-rankings`, `/category_settings`, `/v1/leaderboard`, `/v1/rounding-config` and `/section`. The engines, plugins and publication runs are described in the ranking engine and publication guides.
+The ranking-rating service is a separate FastAPI application in the **tms repository, branch `rnr_staging`**. It is not the same code as the TMS application on the `staging` branch. Its routers are mounted under `/v1/rankings`, `/v2/rankings`, `/v1/ratings`, `/config`, `/categories`, `/tournaments`, `/v1/elo-ratings`, `/v1/combined`, `/v1/world-rankings`, `/category_settings`, `/v1/leaderboard`, `/v1/leaderboard-preview` (upcoming leaderboard preview), `/v1/match-inventory`, `/v1/ratings/config` (special results), `/v1/rounding-config` and `/section`. The engines, plugins and publication runs are described in the ranking engine and publication guides.
 
 ## Login and permissions
 
@@ -59,10 +60,11 @@ The ranking-rating service is a separate FastAPI application in the **tms reposi
 ## The landing list (GET section/v1/by-event)
 
 - Served by the same service (section router, mounted under `/section`). The Ranking Management page uses it.
-- The event is linked to its season. An event without a season link gives an empty list.
+- The event is linked to its season. An event without a season link is refused with "Event Must Be Linked To Season" (400); the page then shows an empty list.
 - The list is the event's categories that belong to the season. Filters: category names, category levels and status. Status "inactive" also matches categories whose configuration status is not set.
 - Each row has the category level, the participant type, the configuration type and status, and the number of participants. Sub categories are listed under their parent.
 - Paging: the response has the total number of pages and the rows per page (10 by default).
+- Each row's configuration type and status are stored on the event category. A separate update route sets them ("Config type and status updated successfully"; "Event Category Not Found" (404) when the event has no such category).
 
 ## Gateway routes by area
 
@@ -81,7 +83,9 @@ The ranking-rating service is a separate FastAPI application in the **tms reposi
 
 ## Behaviour on errors
 
-- The ranking compute gate returns "category not in ranking system" (400) when the category has no ranking configuration, and also when an unexpected error happens while the gate is checked.
+- The ranking compute gate returns "Category Not In Ranking System" (400) when the category has no ranking configuration for the season, and also when an unexpected error happens while the gate is checked. Sub divisions use their parent category's configuration.
+- When the gateway setting for the verified-event check is on, the ranking, rating and combined compute routes of the gateway refuse events that are not accepted: 400 with "Event verification is pending or has been revoked. Ranking calculation is unavailable." If the check itself cannot reach the service, the calculation is allowed.
+- When a calculation for the same season, category and events is already being dispatched, compute returns 409 with the key CALCULATION_ALREADY_IN_PROGRESS (its English text is empty, so the screen may show an empty message).
 - Publish, trigger and validation routes return a message key that the gateway translates. The English text of a message can be empty or missing in the translation file; in that case the screen shows the raw key or an empty message.
 
 ## Where the publish steps are

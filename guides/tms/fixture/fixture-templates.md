@@ -41,10 +41,7 @@ A **fixture template** creates all the stages of a draw in one step, for example
 - While the list loads, **Loading templates...** is shown.
 - The templates are hidden for organisations with the option that hides them (the section is then not shown at all).
 - Each template shows its name, its stages (for example "Group Stage" and "Knockout Stage") and its description.
-- The format descriptions used in the stage choice:
-  - Round Robin – "A competition format where each participant plays every other participant once in a round, regardless of win or loss."
-  - Knockout – "Knockout is a single elimination round where the losing participant is immediately eliminated from the competition."
-  - **Hide stage selection** closes the list of stages; **Close dialog** closes the whole panel.
+- Click a template card to expand it; click it again to collapse it. While one template is expanded, the stage names on the other cards are shortened to their first letter.
 - Under the description a template can show three labels when the organiser has set them: the suitable duration, the competition type and the tournament type.
 
 ## Create fixtures from a template
@@ -53,17 +50,18 @@ A **fixture template** creates all the stages of a draw in one step, for example
 2. Choose the **fixture type** in the panel **Select fixture type**:
    - **Genuine** – "Once your participants are finalised, use the genuine option to create the fixtures."
    - **Sample** – "If participants aren't finalized, use the sample fixture. Update it with the real participants later."
-3. The choice creates all the stages of the template at once. The page then opens the first stage of the new draw.
+3. Clicking **Genuine** or **Sample** immediately creates all the stages of the template; there is no separate confirm button. The page then opens the first stage of the new draw.
 4. Click the close button of the panel to close it without creating anything.
 
 ## Create your own (custom fixture)
 
-1. Click **Custom Fixture** – "Any fixture format": "Select Knockout or Group Stage and configure settings manually at each step."
-2. **STEP 1**: choose **Genuine** or **Sample** (same meaning as above).
+1. Under **Create your Own**, click **Custom Fixture** – "Any fixture format": "Select Knockout or Group Stage and configure settings manually at each step."
+2. **STEP 1 – Select fixture type**: choose **Genuine** or **Sample** (same meaning as above). STEP 2 appears only after a fixture type is chosen.
 3. **STEP 2 – Select stage to start with**:
-   - **Knockout Stage** – "Single-elimination; losing one match eliminates."
-   - **Group Stage** – "Groups then knockout; teams play within groups." Then choose **Round Robin** or **Double Round Robin**. Once one is chosen, the other is greyed out.
+   - **Knockout Stage** – "Single-elimination; losing one match eliminates". Clicking it creates the knockout stage at once.
+   - **Group Stage** – "Groups then knockout; teams play within groups". Clicking it shows **Round Robin** and **Double Round Robin**; choosing one creates the group stage at once.
 4. The stage then opens in the configuration wizard (see the group and knockout guides).
+5. The close icon of STEP 2 (**Hide stage selection**) hides STEP 2 and clears the fixture type; the close icon of STEP 1 collapses the custom card.
 
 ## Predefined templates: group formats
 
@@ -85,23 +83,24 @@ There are six predefined templates: Group Playoff, Group Play-Off + Consolation,
 
 ## Messages
 
-- Success: the server's message, for example "Fixture template created successfully". When the server sends none: "Fixture created from template." The page then shows the new stage.
+- Success: the server's message, for example "Fixture template created successfully". When the server sends none: "Fixture created from template." The template panel closes, the page address changes to the new stage and the stage cards appear.
 - Failure: the server's message; if none: "Failed to create fixture from template."
 - Server checks when a template is created:
   - the event category does not exist → "Event Category Not Found";
   - the category is not a sub category when the template needs one → "Create Stages Only For Sub Categories";
-  - the category already has stages → "Stages Already Exist For Event Category" (**this text has no English translation yet**, so the screen may show an empty message; report it to the administrator).
+  - the category already has stages → "Stages already exist for this event category. Delete existing stages before creating from a template.";
+  - a stage of the template has a configuration the server cannot read → "Invalid configuration for stage '…': …".
 
 ## Delete the stages of a template
 
-- Deleting a template removes all its stages of the category (the stages are marked deleted, not lost from the database).
+- Deleting a template removes all its stages of the category, last stage first (the stages are marked deleted, not lost from the database). Their standings are deleted and the cumulative standings rebuilt.
 - Success: "Fixture template deleted successfully".
 - "No Stages Found" when the category has no stages; "Event Category Not Found" when the category does not exist.
 - A knockout stage's delete icon is hidden when it belongs to a template (see the stages guide).
 
 ## Permissions
 
-- Creating or deleting a template needs **Edit** on **Edit Stage**. Without it the server answers "Access Denied".
+- Creating from a template needs **Edit** on both **Edit Stage** and **Fixture Access**; deleting needs **Edit** on **Edit Stage**. Without it the server answers "Access Denied".
 
 ## Frequently asked questions about fixture templates
 
@@ -113,7 +112,7 @@ There are six predefined templates: Group Playoff, Group Play-Off + Consolation,
 
 **Why are the templates not shown?** The organisation has hidden them. Use **Custom Fixture** instead.
 
-**Why did creating a fixture from a template fail?** Read the message. "Stages Already Exist" means the category already has stages; delete them or open the existing draw.
+**Why did creating a fixture from a template fail?** Read the message. "Stages already exist for this event category" means the category already has stages; delete them or open the existing draw.
 
 ## Frequently asked questions about predefined templates
 

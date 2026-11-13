@@ -53,7 +53,6 @@ source_files:
 This guide explains the calculation behind the Ranking and Rating pages. The engines run in the ranking-rating service (see the Ranking API guide). Two families of calculation exist: **rating** (Elo, a number that moves with every result) and **ranking** (points added up from the results, then ordered).
 
 ## Elo rating for one match
-
 - A new player starts at a rating of 1500 unless a seed rating is set. The rating deviation and volatility default to 350 and 0.06.
 - The expected score of a player is `1 / (1 + 10^((opponent - player) / 400))`. The difference between the two ratings is limited to ±800 before this is used.
 - The change of a player is `K × (actual score − expected score)`. The actual score is 1 for a win, 0.5 for a draw and 0 for a loss.
@@ -62,12 +61,10 @@ This guide explains the calculation behind the Ranking and Rating pages. The eng
 - Changes are rounded to two decimals. A player's new rating is the rating at the start plus the sum of the changes in the run. Each match also stores the running rating after that match.
 
 ## Provisional and special matches
-
 - The change of each side is passed through the provisional policy, which looks at whether the opponent is temporary or eligible. A special outcome (for example a walkover) that already has a change uses that change instead of the Elo formula.
 - Every match of a batch uses the ratings from before the batch, so the order of the matches inside a batch does not change the result.
 
 ## Plugin phases
-
 The rating plugins run in this order:
 
 1. PRE_CALC plugins (before the engine).
@@ -77,13 +74,11 @@ The rating plugins run in this order:
 The bonus points of a match are added after the MULTIPLIER phase, so the tournament weight is applied to them.
 
 ## Match outcome bonus points (league points)
-
 - A rule per outcome: **Win**, **Lost** (a loss), **Tie** (a draw) and **Participant** (given for playing, whatever the result).
 - For a match that is not an unfinished special outcome the outcome points are added. An unfinished special outcome gets only the Participant points.
 - The points are stored as a league-points component of the player, weighted by the tournament weight.
 
 ## Rating batch (how a rating run is organised)
-
 - The run starts from the latest official rating list (the seed) and a draft list for the event.
 - The requested matches are fetched. For a league event the run uses the matches it is given. For a team category only singles sub-matches that have a winner are rated. Held matches and matches already in a list are left out unless a recalculation is forced.
 - The matches are grouped by season, category, event and stage. Each group is one batch with its own settings.
@@ -92,14 +87,12 @@ The bonus points of a match are added after the MULTIPLIER phase, so the tournam
 - A batch that raises an error is logged and skipped, and the run continues with the other batches.
 
 ## Normalization
-
 - Normalization is an end-of-season adjustment. Players are grouped by gender and placed in rating classes from the class boundaries.
 - If a class has more players than its target count, the players with the lowest original ratings move to the next lower class. The lowest class is not limited, because there is no lower class to move players to. The cascade runs from the top class down.
 - Inside each final class, ratings are stretched linearly onto the class band: the lowest rating maps to the band minimum and the highest to the band maximum. A class where everyone has the same rating gets the middle of its band.
 - Each change is stored as a normalization adjustment on the player.
 
 ## Ranking points
-
 - The ranking engine has three variants: singles, doubles and teams. All three use the same steps.
 1. **Initialise** each player.
 2. **Prepare the matches**: each match gives a result (win, loss or draw) to each side; a match with no winner is recorded as a draw. The opponent's rank, membership and world rank, the games won, head-to-head wins, walkover and forfeit flags and the last match date are stored.
@@ -107,7 +100,6 @@ The bonus points of a match are added after the MULTIPLIER phase, so the tournam
 4. **Finalise**: the total of each player is the sum of the point components plus any U21 transfer points, rounded with the rounding rule of the category (nearest, 0 decimals if no rule is set).
 
 ## Eligibility, protection and rank assignment
-
 - A player who is not eligible for ranking gets no rank. Ineligible players are listed last, by points.
 - A protected player (a ranking freeze with a start and end date) is ranked after all unprotected eligible players, in name order.
 - Unprotected eligible players are sorted by total points, highest first.
@@ -124,6 +116,7 @@ The bonus points of a match are added after the MULTIPLIER phase, so the tournam
 
 **When is a rating normalized?** At the end of the season. Players are grouped by gender and placed in rating classes; inside each class the ratings are stretched onto that class's band.
 
+## Frequently asked questions: Ranking and rating calculation – more questions
 **How are ranking points added up?** Points are added up from the results; the match outcome points (**Win**, **Lost**, **Tie** and **Participant**) are weighted by the tournament weight. Eligible players are then sorted by total points, highest first.
 
 **How are players with the same points ranked?** Without a tie-breaker, players with the same points share a rank and the next rank skips the tied places (1, 1, 3). With a tie-breaker, they are ordered by its criteria and each gets a different rank (1, 2, 3).

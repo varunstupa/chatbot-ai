@@ -47,6 +47,9 @@ source_files:
   - src/app/modules/tms/fixture-configuration/fixture-popups/custom-logic/custom-logic.component.html
   - src/app/modules/tms/fixture-configuration/preference-preview-dialog/preference-preview-dialog.component.html
   - src/app/modules/tms/fixture-configuration/elite-exclude-participants-dialog/elite-exclude-participants-dialog.component.html
+  - src/app/modules/tms/fixture-configuration/fixture-popups/players-selected/players-selected.component.html
+  - src/app/modules/tms/fixture-configuration/fixture-popups/previous-stage-players/previous-stage-players.component.html
+  - src/app/modules/tms/fixture-configuration/fixture-popups/excluded-stage2-players/excluded-stage2-players.component.html
 ---
 # Group stage popups
 
@@ -56,72 +59,79 @@ These popups open from the group draft and the group wizard. Each one has a clos
 
 - Title: **Participant Selection For** (the group name).
 - **Search participants** filters the list by name.
-- The list shows **Member Association** and the player's details. Tick the players you want.
+- Opened with the **+** icon of an expanded group in the draft. It lists the benched players.
+- Columns: **Flag**, **Back No.** (singles), **Participant**, **Member Association** and **Participant Club** (when the category uses them) and **Points**. Tick the players you want; each ticked row shows "Selection order N", the order in which they are placed.
 - The count line shows "{count} Selected".
 - **Add** places the selected players in the group. It is greyed out until at least one player is ticked.
 - Bulk selection can be blocked for some players; a blocked tick cannot be changed.
 
-## View benched participants
+## Benched participants popup
 
-- Shows the **benched** players: those not placed in any group yet.
-- Columns include **Seeding** and **Member Association**.
-- Search with **Search participants**. Benched players are placed through the participant selection popup.
+- Title **Benched participants**. Opened with **Benched participants** in the draft groups card. It shows the players not placed in any group yet; it is view only.
+- Columns: **Flag**, **Back No.** (singles), **License ID** (not for teams), **Seeding**, **Participant**, **Member Association**, **Club** and **Points**.
+- Search with **Search participants**. To place benched players, use the **+** icon of a group.
 
-## Players selected
+## Selected Participant popup
 
-- Shows the players chosen for the stage in tabs (one tab per group or list). **Search** filters them; **Cancel Search** clears the search.
+- Title **Selected Participant**, with **Total Participants**. Shows the players chosen for the stage in tabs. Columns: **Seeding** (when display seeding is on), **Club**, **Member Association**, **Points**.
+- **Search** filters them; **Cancel Search** clears the search.
 
-## Previous stage players
+## Previous stage players popup
 
-- Lists the players who qualify from the previous stage. Tick the players to add to the current stage, then confirm with the button at the foot of the dialog.
+- Choose the stage under **Select Stage**; the **Players** list shows **Participant name** and **Participants Points** ("No records found" when empty).
+- Tick the players to add to the current stage, then click **Add to Stage**.
 
-## Excluded players for stage 2
+## Stage Winners players popup (stage 2)
 
-- Lists the players of the stage with **Search** to filter.
-- Tick players to exclude them from the next stage, then confirm with the button at the foot of the dialog. A view-only mode blocks changes.
+- Title **Stage Winners**. Lists the players of the stage (**Seeding** when display seeding is on, **Participant name**, **Club**) with **Search** to filter.
+- Tick players, then click **Add to Stage**. In view-only mode the ticks cannot be changed.
 - The seed column shows "-" when a player has no seed.
 
 ## Elite and excluded players (participant selection dialog)
 
 - Title: **Participant Selection**. Two tabs: **Elite Participant** and **Exclude participant**.
-- Each tab lists the players with **Seeding**, **Club**, **Member Association** and **Points**, and a **Search** box.
+- Each tab lists the players with **Seeding** (when display seeding is on), **Club**, **Member Association** and **Points**, and a **Search** box (**Cancel Search** clears it).
 - Tick a player to make them elite (top-ranked, designated by you) or to exclude them from the stage. A disabled tick cannot be changed.
-- **Total Participants** shows the count.
+- **Total Participants** shows the count. **Save** keeps the choice; **Close** closes without saving.
 
-## Swap player (in a group)
+## Swap player popup (in a group)
 
-- Title: swap a participant with another one. **Search participants** filters the list.
-- Choose one player (radio); the columns show **Member Association** and the **BYE** placeholder.
-- **Swap** exchanges the two players. It is greyed out until one player is chosen.
+- Opened with the swap icon of a player in the draft groups. Title **Select A Participant To Swap**, with **Swapping With** and the player you started from. **Search participants** filters the list.
+- Columns: **Flag**, **Back no.** (singles), **Group**, **Group Position**, **Participant**, **Member Association**, **Club**, **Points**. An empty slot shows **BYE**.
+- Choose one player (radio). **Swap** exchanges the two players. It is greyed out until one player is chosen.
+- Swap is not offered for team categories, nor once every match of the stage is completed.
 
-## Rename group
+## Rename group popup
 
+- Opened with the pencil icon of an expanded group. Title **Rename Round**.
 - Asks: "What would you like to rename "Group …" to?" with **New Name** (at most **3** characters).
-- **Save** renames the group in the draft; the close icon cancels.
+- **Update** renames the group in the draft; **Close** cancels.
 
-## Preference Preview
+## Preference Preview popup
 
 - Title: **Preference Preview**. Shows how the groups will be built before saving: **Selected Participants**, **Total Participants**, **Group Creation Configuration** (**No. Of Groups**, the group sizes), **Separation Criteria**, **Playing Format**, and the scoring note "Point Based - Highest Point Team" where it applies.
-- **Close** closes the preview.
+- **No. Of Groups** shows each group size as "N of M". **Playing Format** appears only when a playing format applies.
+- Opened with **Preference** in the final groups bar. It is read only. **Close** closes the preview.
 
-## Round-robin logic popups (circular, Berger, custom)
+## Group stage round-robin logic popups (circular, Berger, custom)
 
-- **Circular logic**, **Berger logic** and **Custom Logic** show the match order of each group in tabs, one tab per group. Each tab lists the matches in order.
-- **Circular logic**: a button saves the order of the matches (**Set Matches Order**), and another regenerates the list.
-- **Berger logic**: the tabs show the match order of each group.
-- **Custom Logic**: choose a template with **Select a template** (**Default** is the standard one). Each match row is labelled "Match {number}" with its two participants; **Save** keeps the custom order.
+- Opened with **View** or **Edit** under **Logic Selection** in the group wizard. Each shows the match order per group in tabs; each row is a **Match** with two **Participant** places.
+- **Circular Logic**: with **Edit** you can change the two participants of each match from the lists. **Reset** rebuilds the default order; **Save** keeps your order. Opened with **View**, it is read only and has **Done**.
+- **Berger Logics**: read only; **Done** closes it.
+- **Custom Logic**: shows **Group Size** and, when templates exist, **Select Template** ("Select a template"; the standard one is tagged **Default**). **Save** keeps the choice.
+- **Close** closes any of them.
 
-## Customize Fixtures (seed filters)
+## Customize Fixtures popup (seed filters)
 
-- Title: **Customize Fixtures**. Tick the seeds (or **Select all** with the header tick) to include in the fixture.
-- **Save** (set customise) applies the selection.
+- Title: **Customize Fixtures**. "Wish to organize the Participants in Unplaced list? Select rounds other than Unplaced list that you wish to include." and "We would like to know for which round would you like to customize?"
+- Tick the rounds (or **Select All**), then click **Next** to continue to the customise screen.
 
-## Messages
+## Group stage popups: messages
 
 - Add players to a group: the server's message is shown; if the group cannot take them, the group size rules apply (see the group wizard guide).
 - Swap: "Please select a valid participant to swap." when no valid player is chosen.
 
-## Permissions
+## Group stage popups: permissions
 
 - Changing groups, swapping and renaming needs **Edit** on **Fixture Access**. Without it the server answers "Access Denied".
 
@@ -131,16 +141,16 @@ These popups open from the group draft and the group wizard. Each one has a clos
 
 **How do I see the benched participants?** Open **View benched participants**; those are the players not yet placed in a group.
 
-**How do I swap two participants in groups?** Open **Swap**, choose the second player, then **Swap**.
+**How do I swap two participants in groups?** Click the swap icon next to a player in the draft groups, choose the second player, then **Swap**.
 
-**How do I rename a group?** Use the rename action, type a new name of up to 3 characters, then **Save**.
+**How do I rename a group?** Expand the group, click its pencil icon, type a new name of up to 3 characters, then **Update**.
 
 **What does the Preference Preview show?** How the groups will be built, before anything is saved.
 
 **How do I mark a player as elite or excluded?** Open the elite and excluded dialog, choose the tab, and tick the player.
 
-**What is circular, Berger or custom logic?** The order in which the matches of each group are played. Circular and Berger are fixed orders; custom lets you choose a template.
+**What is circular, Berger or custom logic?** The order in which the matches of each group are played. Berger is a fixed order; Circular can be edited; Custom uses templates set up by the admin for the group size.
 
-**How do I customize the fixtures?** Open **Customize Fixtures**, tick the seeds to include, and save.
+**How do I customize the fixtures?** Open **Customize Fixtures**, tick the rounds to include, and click **Next**.
 
 **How do I assign players to groups?** Open **Participant Selection** for the group, tick the players (**Search participants** filters the list), then click **Add** to place them in the group. Use **Swap** to move a player to another group.

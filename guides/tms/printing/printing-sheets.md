@@ -46,7 +46,6 @@ source_files:
 This guide describes what each printed sheet contains. The screen and its controls are in the Printing guide. The sheets are printed from the page in the browser. Their content comes from the match, the participant, the playing order and the print settings (see the Printing API guide).
 
 ## Layout by participant type
-
 The participant type of the category decides the sheet:
 
 - **Singles (type 1)** – one player on each side. The player's back number, name, Member Association and Club are printed next to the score boxes.
@@ -56,7 +55,6 @@ The participant type of the category decides the sheet:
 Team categories print the toss sheet and the detailed result; singles, doubles and mixed do not.
 
 ## Day Wise Score Sheet
-
 - One sheet per match, with the printed heading of the venue, the date and the round.
 - The score boxes are grouped by game (set). The header letters **S**, **T**, **Y** and the year headers **1 YR** and **2 YR** are printed as they are shown in the sheet (the sheet uses them as its field headings).
 - A **Back No.** column and an **Umpire(s)** field are printed.
@@ -66,13 +64,11 @@ Team categories print the toss sheet and the detailed result; singles, doubles a
 - The Badminton sheet is different (see the Badminton printing guide).
 
 ## Score Sheet (single match or list)
-
 - The same score sheet layout as the day-wise sheet, for the matches chosen in the list.
 - The **Group** and **Round** headings are printed from the match. Knockout matches show the round name (for example the position match name).
-- **Print Without Score** leaves the score boxes empty.
+- **Without Scores** (chosen in the **Print Sheet?** dialog) leaves the score boxes empty; **With Scores** fills them from the system.
 
 ## Team sheets
-
 - **Team A** and **Team B** headings. The players of each team with their back numbers, and their **1 YR** and **2 YR** columns.
 - **Match Result** and **Team Result**: the score of each game of the team match, the sets won by each side, and the team match score.
 - **Golden** rows: the golden match of a team tie is printed as its own row when it exists.
@@ -80,48 +76,41 @@ Team categories print the toss sheet and the detailed result; singles, doubles a
 - A sub-match is printed for each playing table of the team match (see the sub-match helper of the printing screen).
 
 ## Toss Sheet (team only)
-
 - Printed for team categories. It lists the playing order of the team match: the players of each team for each game, and the line-up.
-- **Print Toss Sheet** prints the sheet of the first chosen match only.
-- **Print All Toss Sheet** prints one toss sheet for each day match of the list (this is the day-wise version).
+- **Print Toss Sheet** (Score Sheet mode) prints the sheet of the first ticked match only. With no match ticked it shows "Please Select Match".
+- **Print All Toss Sheet** (Day Wise Score Sheet mode) prints one toss sheet for every team match of the chosen day, ticked or not. It is greyed out when the day has no team match.
+- Toss sheets go straight to the browser print window; the **Print Sheet?** dialog is not shown.
 - The toss sheet needs a playing order; without one the playing order fields are empty.
 
 ## Print Detailed Result (team only)
-
-- The detailed result of a team match: each game with its players and scores, and the team totals. It is offered for team categories in the Fixtures view.
+- The detailed result of a team match: each game with its players and scores, and the team totals. It is offered for team categories in the Fixtures view of a group stage, in the **All matches** and **All Rounds** views (not in **All groups**).
 
 ## Fixtures (group and knockout)
-
-- **Group**: the group matches as a list or as a matrix. **Print Group-wise** prints one group per set of pages; the group heading is printed on each page.
+- **Group**: the group matches as a list or as a matrix. In the Fixtures mode, **Print** prints the groups, one group per set of pages, with the group heading on each page. (**Print Group-wise** is the Score Sheet mode button that prints the score sheets group by group.)
 - **Knockout**: the knockout tree, with its rounds as columns and the matches linked. The tree is printed as one section. The **Knockout Matches** tab prints the main tree; the **Position Matches** tab prints the position tree (for the matches that decide the places).
 - Venue heading: the venue name is printed on the schedule and the tree when a venue is selected.
 
 ## Schedule
-
 - The tables as columns and the time slots as rows, with the slot legend: **Unoccupied**, **Occupied**, **Selected**, **Blocked**.
 - Each slot shows the match (round tag: **S** for stage, **K** for knockout, **G** for group, **R** for round) and the participants with **VS**.
 - Tables are printed in blocks across the page; the table numbers continue from one block to the next.
 - The schedule is printed from the slot data of the venue; a venue with no slots prints "No Record Found".
 
 ## Back Numbers
-
 - A list of the participants with **S.No**, **Participant name**, **Participant No.** (the back number), **Seeding**, **Member Association**, **Club** and **Federation/Unaffiliated/Passport**.
 - **Print list** prints the list on screen; **Print back no** prints all back numbers of the event.
 - Pages of 10, 20, 30, 40, 50 or 100 rows, chosen by the page size.
 
 ## Players List
-
-- **Category Wise** – columns: **S.No**, **License ID**, **Player Name**, **Elite**, **Member Association**, **Seed**, **Points**, **DOB**, **Club**, **Total Players** and **Registration Entry Date** (the date the player registered).
-- **Entity Wise** – columns: **Parent Entity** (the Member Association or the Club, depending on the tab), **Gender** and the date of birth.
-- Search filters the rows by name. **Print Players List** prints the list.
+- **Category Wise** – columns: **S.No**, **License ID**, **Player Name**, **Member Association**, **Seeding**, **Points**, **DOB**, **Club**, **Total Players** and **Registration Entry Date** (the date the player registered). Elite players carry an **Elite** badge next to the name.
+- **Entity Wise** – columns: **S.No**, **License ID**, **Player Name**, **Parent Entity** (the Member Association or the Club, depending on the tab), **Gender** and **DOB**. It lists all players of the event, not one category.
+- Search filters the rows by name. **Preview** shows the list, and **Print** prints it.
 
 ## Logos
-
 - Each sheet can show up to six logos (**Logo 1** to **Logo 6**) at the top, when the print settings enable logos for the participant type.
 - Back number logos are set in the print settings (see the Printing API guide).
 
-## Frequently asked questions
-
+## Frequently asked questions: Printed sheets
 **What is on a day wise score sheet?** The match heading, the venue and round, the participants with their back numbers, the score boxes by game, the umpires and the back number field.
 
 **How many sheets fit on a page?** One, or up to six, as chosen in the print dialog.
@@ -136,6 +125,9 @@ Team categories print the toss sheet and the detailed result; singles, doubles a
 
 **What does Print Detailed Result show?** The detailed result of a team match: each game with its players and scores, and the team totals. It is offered for team categories.
 
+## Frequently asked questions: Printed sheets (part 2)
 **What is printed on the back number list?** **S.No**, **Participant name**, **Participant No.** (the back number), **Seeding**, **Member Association**, **Club** and **Federation/Unaffiliated/Passport**. **Print list** prints the list on screen; **Print back no** prints all back numbers of the event.
 
-**How are the players printed in Category Wise and Entity Wise views?** **Category Wise** lists **S.No**, **License ID**, **Player Name**, **Elite**, **Member Association**, **Seed**, **Points**, **DOB**, **Club**, **Total Players** and **Registration Entry Date**. **Entity Wise** groups the players by **Parent Entity** (member association or club) with gender and date of birth.
+**How are the players printed in Category Wise and Entity Wise views?** **Category Wise** lists **S.No**, **License ID**, **Player Name**, **Member Association**, **Seeding**, **Points**, **DOB**, **Club**, **Total Players** and **Registration Entry Date** (elite players carry an **Elite** badge). **Entity Wise** lists all players of the event by **Parent Entity** (member association or club) with **Gender** and **DOB**.
+
+**Why does Print Toss Sheet say "Please Select Match"?** No match is ticked. Tick the team match first; only the first ticked match is printed.

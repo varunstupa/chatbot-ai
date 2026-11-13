@@ -42,7 +42,7 @@ source_files:
 
 The **Team Leaderboard** tab (the default tab) ranks the teams of the chosen category. What it shows depends on the stage tab:
 
-- **ALL** (final standing): one table of the whole category, ranked from all group stages.
+- **ALL** (final standing): one table of the whole category, ranked from the matches of all group (round robin) stages with the **Winner Logic**. Every team drawn into the fixture is listed from fixture generation, with zero records until it plays. Knockout stages and sample fixtures are not counted, so a knockout-only category has an empty table.
 - **A stage** (S1, S2 ...): the standings of that stage, with the group, match and round views under it.
 - **A knockout stage**: no table; the bracket is shown instead.
 
@@ -52,28 +52,32 @@ The **Team Leaderboard** tab (the default tab) ranks the teams of the chosen cat
 - **TM** – total matches. **W**, **T** and **L** – won, tied and lost matches.
 - **G** – golden matches. The column is shown only when the category has them.
 - **SM** – sub match record (won-lost of the team's sub matches). **Set** – set record. **Pts** – points.
-- Each row has two icons at the end: the **edit** icon opens **View Details** for the team, and the **stats** icon opens the team's matches (see below).
+- Each column header has a tooltip: TM "Total Matches", W "Won", T "Tied", L "Lost", G "Golden Match", SM "Sub Match W/L", Set "Set W/L".
+- Each row has two icons at the end: the **edit** icon opens **View Details** for the team, and the **stats** icon opens the team stats view (see below).
 - "Leaderboard data is not available" appears when the table has no rows.
 
 ## View Details (team sidebar)
 
 - The sidebar opens from the edit icon and is titled **View Details**.
-- The stats grid shows **Total Matches**, **Win**, **Lost**, **Tie**, **Matches W/L**, **Game W/L**, **Balls**, **Club**, **Points** and **Golden Points**.
-- **Total Members (n)** with the members, their participant type and their country (the headers are Members, Participant Type and Country).
-- Close with the **X** at the top.
+- The team name is shown at the top. The stats grid shows **Total Matches**, **Win**, **Lost**, **Tie**, **Matches W/L**, **Game W/L** (sets), **Balls** (points won-lost), **Club** (always "--" here), **Points** and **Golden Points** (golden matches won).
+- **Total Members (n)** with the headers **Members**, **Participant Type** (shown as "Single"), **Club** and **Country**.
+- The sidebar is read-only. Close it with the **X** at the top.
 
-## Compare with Other Teams and Match Details
+## Team stats view, Compare with Other Teams and Match Details
 
-- Under the table, **Compare with Other Teams** lists the matches of the selected team against the others (the matches where both sides are participants).
+- The stats icon replaces the table with the team stats view. **Back** returns to the standings.
+- The top table lists the team's players: **Player Name**, **Participant Type**, **M.A.** or **Club**, **Country**, the S and D W/L columns (as on the Player Leaderboard) and **Points**.
+- **Compare with Other Teams** lists the team's matches against the others with the columns **S No.**, **Team A**, **Team B**, **Date & Time** ("--" when not scheduled), **Venue**, **Score** (sets won) and **Match Guide**.
 - Each row has **Match Details**, which opens a dialog with the team match: the two teams, each sub match with its players, the sets won and the points of each set. A missing player name shows the placeholder "Player 1" (or "Player 1A" for the second pair).
 - "Leaderboard data is not available" appears when no comparison rows exist.
 
 ## Group and match views (not the knockout stage)
 
-- Three toggles appear for a stage that is not a knockout:
+- Toggles appear for a stage that is not a knockout (**All Rounds** only for league events):
   - **All groups** – one panel for each group. Opening a panel shows its teams with the columns **Flag**, **Back No.** (single events), **License ID** (other types), **Participant name**, **M.A.** or **Club**, **Match W/L**, **Sub Match W/L** (team events), **Game W/L**, **Score W/L**, **Points**, **Position** and **Qualifier**.
   - **All matches** – the group matches, with the sets and points of each match.
-  - **All Rounds** – the matches grouped by round.
+  - **All Rounds** (league events only) – the matches grouped by round.
+  - Each group panel header shows the group name and its number of participants. An empty list shows "No record found".
 - The search box filters these groups and matches by team or player name.
 - The group and round tables are read-only here. The page sets the checkbox and action columns off, so there are no score-edit, swap or move-round icons. A golden match has a golden icon, and a forfeited player is marked.
 - Column headers follow the flags the page sets: group-wise views show **Organisers**, round-wise views show **Table** and **Game Score**; a license ID column appears for non-team categories.
@@ -91,7 +95,7 @@ The **Team Leaderboard** tab (the default tab) ranks the teams of the chosen cat
 
 ## Permissions
 
-- Reading the team tables needs the login. Opening the winner logic sidebar and saving it need the Display Settings permission in edit mode.
+- Reading the team tables and opening the winner logic sidebar need only the login. Saving the winner logic needs the Display Settings permission in edit mode.
 
 ## Frequently asked questions
 
@@ -101,7 +105,9 @@ The **Team Leaderboard** tab (the default tab) ranks the teams of the chosen cat
 
 **What does the G column mean?** The golden-match record. It is shown only when the category has golden matches.
 
-**How do I see a team's details?** Click the edit icon on its row to open View Details, or the stats icon for its matches.
+**How do I see a team's details?** Click the edit icon on its row to open View Details, or the stats icon for its players and matches.
+
+**Why is there no All Rounds toggle?** It is shown only for league events.
 
 **What does Compare with Other Teams show?** The team's matches against other teams, with a Match Details button for each.
 
@@ -109,4 +115,4 @@ The **Team Leaderboard** tab (the default tab) ranks the teams of the chosen cat
 
 **Why is there no team table on a knockout stage?** A knockout stage shows the bracket instead of standings.
 
-**How do I see the matches of a team?** Under the table, **Compare with Other Teams** lists the selected team's matches against the others. Click **Match Details** on a row to see each sub match with its players, sets and points.
+**How do I see the matches of a team?** Click the team's stats icon. **Compare with Other Teams** lists its matches against the others. Click **Match Details** on a row to see each sub match with its players, sets and points.

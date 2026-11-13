@@ -62,7 +62,7 @@ Open **Players** from the sidebar.
 - **Gender** and **DOB** (singles), **Total Player** (teams), **Registration Entry Date**, **Action** (the ⋮ menu).
 - Doubles rows show both players with their licence IDs, back numbers and dates of birth. Mixed doubles show the male and the female player.
 - An **Elite** badge next to a doubles player marks an elite participant; elite entries are counted separately when the draw stages are set up.
-- In the Queue, Deleted and Back No. lists, the player type column shows **Federation-Registered Player**, **Unaffiliated Player** or **Passport-Eligible Player** (league lists: **Federation/Unaffiliated/Passport**).
+- In the Queue and Back No. lists, the player type column shows **Federation-Registered Player**, **Unaffiliated Player** or **Passport-Eligible Player** (league lists: **Federation/Unaffiliated/Passport**).
 - "--" means the value is missing.
 
 ## Who appears in the player list
@@ -76,17 +76,18 @@ The list shows only entries that are **accepted** (verified), **paid**, active, 
 
 ## Searching, sorting and paging the player list
 
-- Type in **Search** to find participants by name.
+- Type in **Search** to find participants by name. Leading spaces are ignored.
+- When the organisation has parent roles (for example club or member association), a **Search by** dropdown sits in the search box: **Player** (**Team** in team categories) or one of the parent roles, to search by that organisation instead. The **Singles** tab of pair and team categories has the same dropdown.
 - Click the **Player Name** (or **Team Name**) heading or the **Seed** heading to sort ascending or descending.
 - Use the paginator at the bottom to change page or rows per page.
 - "No record found" means nothing matches the category, filter or search.
 
 ## Row menu (⋮) on the Players page (tournaments)
 
-In tournaments, click ⋮ in the **Action** column of a participant:
+In tournaments, click ⋮ in the **Action** column of a participant. The menu is titled **Player actions**, **Pair actions** or **Team actions**:
 - **Edit** – pairs and teams: change the players of the entry. Singles: only temporary players (added without an account) can be edited here.
 - **Forfeit** / **Undo Forfeit** – withdraw the participant from upcoming matches or restore them.
-- **Delete** / **Delete & Refund** – remove the participant (see the queue and delete guide).
+- **Delete** ("no refund") / **Delete & Refund** – remove the participant after a confirmation (see the queue and delete guide).
 
 Forfeited participants show a red mark instead of the checkbox and "(forfeited)" after the name.
 
@@ -95,7 +96,7 @@ Forfeited participants show a red mark instead of the checkbox and "(forfeited)"
 League events have no ⋮ menu. The **Action** column of each row shows these icons instead:
 - **Player Details** – the team's roster: players, Active/Reserve, rank values, player images, loan players.
 - **Team Details** – the team's profile: name, organisations, contact, members, venues, team image and logo.
-- **Delete** and **Delete & Refund** – remove the entry.
+- **Delete** and **Delete & Refund** – remove the entry at once, without the confirmation used in tournaments.
 - **Forfeit** (the "F" icon) – forfeit the entry or, when forfeited, **Undo Forfeit**.
 
 See "Players page – pairs and teams" for both panels.
@@ -110,26 +111,31 @@ See "Players page – pairs and teams" for both panels.
 
 ## Players page: what the server does for each button
 
-- List and badges: `register/v1/get_event_participants`, `get_participant_counts`.
-- **Add**: `register/v1/register_event_participants` (teams first `team/v1/create_team`); **Edit**: `register/v1/update_event_participant`; temporary players: `user/v1/create_temporary_user_role`.
-- **Delete**, **Add to Queue**, queue **Add to List**, **Forfeit**: `register/v1/update_event_participant_status`; self-registered entries: `withdraw_self_registered_player`.
-- **Unpaid Players → Add to List**: `register/v1/mark_participants_paid`. **Team-up**: `register/v1/create_team_up`.
-- **Back No.**: `backnumbers/v1/auto_assign`, `manual_assign`, `reset`. Seeding: `register/v1/auto_seeding`, `update_seeding`, `reset_seeding`, `bulk_seeding`; **Sync Points** / **Sync**: `sync_ranking_points_to_participants`, `sync_event_seeding_metrics_to_participants`.
-- **Settings**, **Sub Category**, **Reset Sub Category**: `event/v1/create_event_categories`. **Self**: `configure_category_registration_settings`.
-- **Import**: `import_export/v1/import_player`. **Export**: `worker/export/participants`.
+- The list and the tab badges are loaded from the server for the selected category.
+- **Add** registers the chosen players (a team is created first); **Edit** saves the changed entry; **Add Temporary Player** creates the player's account first.
+- **Delete**, **Add to Queue**, the queue's **Add to List** and **Forfeit** change the participant's status. A singles player who registered themselves is withdrawn instead.
+- **Unpaid Players → Add to List** marks the players as paid. **Team-up** creates the pair or team from single entries.
+- **Back No.**, **Auto Seed**, **Seeding**, **Sync Points** and **Sync** assign, reset or refresh back numbers, seeds and points on the server.
+- **Settings**, **Sub Category** and **Reset Sub Category** save the category; the **Self** toggle saves the category's registration settings.
+- **Import** uploads the Excel file; **Export** queues an export job.
 
-## Players page: toolbar buttons
+## Players page: toolbar with nothing ticked
 
-With a category selected the toolbar shows:
+With no participant ticked the toolbar shows **Search** (with a **Search by** dropdown, see below) and these buttons:
 - **Sync Points**, **Auto Seed** – seeding (see the seeding guide). A green tick on **Auto Seed** means the category is already seeded.
-- **Unpaid Players** – players registered but not yet paid.
-- **Sub Category** / **Sub Division** – split the category.
-- **Add** – add players, pairs or teams. **Queue** – the queue list, with its count.
-- **Settings** – entity, rank type and seeding settings of the category.
-- **Export** and the import (upload) icon.
-- After ticking participants: **Transfer**, **Recreate**, **Add to Queue**, **Delete**, **Delete & Refund**. **Merge** needs no ticking. With nothing ticked, **Deleted** opens the deleted list.
-- **Recreate** is hidden when the category has sub categories.
-- **Add** and **Settings** are greyed out when no category is selected or the **Registration** toggle of the category is off; **Queue** and **Deleted** when no category is selected; **Transfer** and **Recreate** until participants are ticked.
+- **Unpaid Players**, **Sub Category** / **Sub Division** (split the category), **Add** (players, pairs or teams), **Queue** (with its count, when there are queued entries).
+- **Settings** – organisation, rank type and seeding settings of the category. **Export** and **Import**.
+- **Transfer**, **Recreate** and **Merge** – they act on ticked participants; with nothing ticked they only show "Select players first". **Recreate** is hidden when the category has sub categories.
+- **Deleted** – opens the deleted list.
+- On smaller screens the buttons that do not fit move into the **more** (⋯) menu.
+- **Add** and **Settings** are greyed out when no category is selected or the **Registration** toggle of the category is off; **Queue** and **Deleted** when no category is selected; **Sub Category** until the category's registration end date has passed (see the transfer and sub category guide).
+
+## Players page: toolbar after ticking participants
+
+Ticking one or more participants replaces the toolbar with a selection bar:
+- "N selected" with a cross (**Clear selection**) to untick all.
+- **Add to Queue**, **Transfer**, **Recreate** (hidden when the category has sub categories) and **Merge**. **Merge** is greyed out until at least 2 are ticked ("Select at least 2 players").
+- **Delete** (marked "no refund") and **Delete & Refund**. Both ask for confirmation first (see the queue and delete guide).
 
 ## Players page: permissions
 
@@ -163,5 +169,7 @@ With a category selected the toolbar shows:
 **Why do I see Singles and Team-up tabs?** The category is doubles, mixed doubles or teams: **Singles** lists players who registered alone, **Team-up** the formed entries.
 
 **What do the columns of the player list mean?** **Sr.No**, **License ID**, the player or team name, **Club** and **Member Association** (shown once **Select Organisation** is saved), **Back No.**, **Seed**, **Rank**, **Points** ("In" from the internal platform, "Ex" from an external one), **Gender**, **DOB** or **Total Player**, **Registration Entry Date** and **Action** (the ⋮ menu).
+
+## Frequently asked questions about the Players page columns and lists (continued)
 
 **Why do I not see a category on the Players page?** The tab row shows one tab per category; use the arrows to scroll, and check the participant type dropdown before the tabs (**All**, **Singles**, **Teams**, **Doubles**, **Mixed Doubles**). A category with sub categories shows their tabs after you select it. If the event has no categories, add them on the event's **Details** step.

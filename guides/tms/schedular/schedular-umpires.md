@@ -39,6 +39,9 @@ source_files:
   - src/app/modules/tms/schedular/schedular.component.ts
   - src/app/core/services/schedular-service/schedular.service.ts
   - src/app/core/constants/api-constant.ts
+  - src/app/shared/auto-assign-umpire-dialog/auto-assign-umpire-dialog.component.html
+  - src/app/modules/admin/tournament-config/player-umpiring/umpiring-settings-sidebar/umpiring-settings-sidebar.component.html
+  - src/assets/i18n/en.json
 answer_notes: |
   Answering guidance for the TMS assistant:
   1. Identify whether the user wants to assign to selected matches, assign across a table, auto-assign, change settings, remove an umpire, undo, or reset assignments.
@@ -65,7 +68,7 @@ The tab supports selecting umpires and matches, assigning an umpire to all sched
 - **Assign to a match:** Select one or more umpires and matches, then select **Save**.
 - **Assign to a table:** Choose **Assign to all slots on a specific Table**, select a table, and save.
 - **Auto assign:** Uses the event's umpiring settings and works on matches that are already scheduled.
-- **Maximum umpires:** Two umpires can be assigned to a match.
+- **Maximum umpires:** The page allows two umpires per match; the server also enforces **Per Match Umpire** from Umpire Settings (1 or 2).
 - **Empty slot:** Cannot receive an umpire until a match is assigned to it.
 - **Remove:** Use the remove action beside the umpire and confirm the deletion.
 - **Reset:** Clears umpire assignments after confirmation.
@@ -89,15 +92,11 @@ A match can have up to **two umpires**. A match that already has two umpires can
 2. Select one or more matches in the match list.
 3. Select **Save**.
 
-Each selected umpire is assigned to the selected matches, subject to the slot prerequisite and the two-umpire limit.
+Each selected umpire is assigned to the selected matches, subject to the slot prerequisite and the umpire limit.
 
-### Undo the last change
+### Undo (Scheduler Umpire tab)
 
-Select **Undo** to revert the last change.
-
-Success message:
-
-`Action undone successfully!`
+**Undo** appears for about 3 seconds after you confirm a reset of umpire assignments ("Proceessing..."). Clicking it in that time cancels the reset and shows `Action undone successfully!`. It does not undo individual assignments.
 
 ### Match has no slot
 
@@ -119,6 +118,14 @@ The page offers two actions:
 
 The key distinction is that an unscheduled match needs a slot, while an empty slot has no match assigned to it.
 
+## Scheduler Umpire tab: server checks when saving
+
+- More umpires than **Per Match Umpire** (Umpire Settings): "Assignment would exceed per_match_limit for one or more matches".
+- The umpire already has a match at an overlapping time: "Event official has overlapping assignments".
+- A match without a slot: "Some matches don't have slots assigned".
+- The person has no active umpire registration for the event (or it was withdrawn): "No assignable event official found for user on this match".
+- Success: "Successfully assigned event officials to matches".
+
 ## Assign one umpire to all slots on a table
 
 Use **Assign to all slots on a specific Table** to assign one umpire across the scheduled matches on a selected table.
@@ -134,22 +141,31 @@ If there are no matches on the table, or all matches already have two umpires, t
 
 `No Match Scheduled For this table or all matches already have 2 umpires assigned`
 
-## Auto Assign Umpire
+## Auto Assign Umpire popup (Scheduler Umpire tab)
 
-Select **Auto Assign Umpire** to open the automatic assignment dialog.
+The **Auto Assign Umpire** icon (shown on the Umpire tab) opens **Assign to all umpires**.
 
-- Auto assignment works on matches that are already scheduled.
-- The assignment follows the event's configured **Umpiring Settings**.
+- **Assign all matches** toggle. When on: "Enabling this will make all the matches available for scoring to all registered umpires as on" the chosen dates. When off: "Disabling this will make matches unavailable for scoring to all registered umpires".
+- With the toggle on, choose **Select a date** (then pick dates in "Select date(s)") or **All dates**.
+- **Save** is disabled while saving or when specific dates are chosen but none is picked ("Please select at least one date").
+- Success shows the server message or "Saved successfully"; failure shows the server message or "Something went wrong".
 
-The source material does not specify the individual auto-assignment algorithm or the available umpiring-setting fields. Do not invent those details; refer to the event's settings or the relevant implementation if a more precise explanation is needed.
+## Umpiring Settings panel (Scheduler Umpire tab)
 
-## Umpiring Settings
+**Umpiring Settings** opens a side panel for player umpiring:
+- **Enable Player Umpiring**: "This allows the players to be umpire in the absence of referees".
+- **Select Category** and **Schedule Type**.
+- **Save** (or **Update**). Saving with no category selected asks "No Category Selected": "Umpiring settings will not be applied on any category. Do you want to continue?" (**Cancel** / **Confirm**).
+- **Reset** asks "Reset ?": "Are you sure, you want to reset Player Umpire settings?" (**No** / **Yes**).
 
-Select **Umpiring Settings** to open a side panel containing the umpire rules for the event.
+After saving, the schedule is refreshed.
 
-The settings are saved for the event and are used by auto assignment.
-
-This source does not list the individual settings or their possible values.
+What the server does with these settings:
+- Enabling needs at least one schedule type switched on in the global player umpiring settings; otherwise: "No schedule type is enabled in global settings. Enable at least one via update_scheduling_dependencies."
+- Player umpires are picked from the players of the same group, following the umpire sequence for the stage and group size. Only group stages with at least 3 players get player umpires.
+- Only scheduled matches get a player umpire. Matches in progress or already scored keep their umpires.
+- Player umpires get read access to the event and score entry for their own match.
+- Turning player umpiring off, or removing a category, removes the player umpires again. **Reset** clears the categories and removes player umpires but leaves the toggle as it is.
 
 ## Remove and reset umpire assignments
 
@@ -166,9 +182,7 @@ Select **Yes, Delete** to confirm removal, or **Cancel** to leave the assignment
 
 ### Reset umpire assignments
 
-Reset clears the umpire assignments. The screen asks for confirmation before sending the reset request.
-
-The source material does not specify more granular reset behavior, so do not assume that reset affects only a particular table or date unless the UI selection makes that scope explicit.
+On the Umpire tab, **Reset** opens **Reset Preferences**, where you choose which umpire assignments to clear: by **Date**, **Group**, **Participant Type**, **Category**, **Stage**, **Round**, **Umpire** (add choices with **Add**) or **ALL**. The **Reset** button stays disabled until a choice is made. **ALL** asks for confirmation (**Reset?**, **Yes, Reset** / **Cancel**). The reset is sent after about 3 seconds unless you click **Undo**.
 
 ## Messages and troubleshooting
 
@@ -178,9 +192,9 @@ The source material does not specify more granular reset behavior, so do not ass
 | `No match is assigned to this slot. Please assign one to add an umpire.` | The selected slot is empty. | Assign a match to the slot, or use the offered navigation/manual-entry action. |
 | `No Match Scheduled For this table or all matches already have 2 umpires assigned` | There are no scheduled matches on the selected table, or all of them already have two umpires. | Choose a table with eligible scheduled matches, or check current assignments. |
 | `Delete Umpire?` | Confirmation before removing an umpire. | Select **Yes, Delete** or **Cancel**. |
-| `Action undone successfully!` | The last change was undone. | No further action is needed unless you want to make another change. |
+| `Action undone successfully!` | A pending reset was cancelled with **Undo**. | No further action is needed. |
 
-Server-side assignment, removal, and reset messages are documented in the Scheduler API guide. The exact server response depends on the endpoint and request.
+When a reset finds nothing to clear, the server answers "No event official assignments found matching the provided criteria". Removing or resetting match slots in the Scheduler drops player umpires from those matches; umpires assigned by hand stay linked. Server-side assignment, removal, and reset messages are documented in the Scheduler API guide. The exact server response depends on the endpoint and request.
 
 ## Frequently asked questions
 
@@ -194,7 +208,7 @@ Open **Assign to all slots on a specific Table**, select the table, check the **
 
 ### How do I auto-assign umpires?
 
-Select **Auto Assign Umpire**. The operation applies to already-scheduled matches and follows the event's **Umpiring Settings**.
+Click the **Auto Assign Umpire** icon on the Umpire tab, turn on **Assign all matches**, choose **Select a date** or **All dates**, and click **Save**. This makes the matches available for scoring to all registered umpires on those dates.
 
 ### Why can't I add an umpire to a slot?
 
@@ -204,19 +218,21 @@ If a match exists but has no scheduled slot, the page displays `Please schedule 
 
 ### Why can't I assign another umpire?
 
-A match can have at most two umpires. If it already has two, another umpire cannot be assigned.
+A match can have at most two umpires, and the server limits it to **Per Match Umpire** in Umpire Settings. If that is 1, a second umpire is refused with "Assignment would exceed per_match_limit for one or more matches".
 
 ### How do I remove an umpire from a match?
 
 Use the remove/cross action beside the umpire, then select **Yes, Delete** in the confirmation dialog.
 
+## Frequently asked questions – Scheduler Umpire tab (2)
+
 ### What are Umpiring Settings?
 
-They are event-level rules shown in the **Umpiring Settings** side panel. Auto assignment follows these settings. The individual fields are not detailed in this document.
+The **Umpiring Settings** side panel turns on **Enable Player Umpiring** (players can umpire in the absence of referees) for the selected categories and schedule type.
 
 ### How do I undo an assignment?
 
-Select **Undo**. A successful undo displays `Action undone successfully!`.
+Individual assignments cannot be undone; remove the umpire instead. **Undo** only cancels a reset within about 3 seconds and then shows `Action undone successfully!`.
 
 ### Why does the Scheduler say "No match is assigned to this slot"?
 

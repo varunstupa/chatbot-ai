@@ -20,7 +20,7 @@ exclude_tenants: []
 overrides: null
 suggested_questions:
   - What happens in the backend when I update the event?
-  - Why does the update event return "Event Already Exists"?
+  - Why does the update event return "Event already exists"?
   - What does the event fetch return when no event matches?
   - What does the backend do when I save venues?
   - Why can I not remove a date from a venue?
@@ -56,13 +56,13 @@ Each section lists what the gateway does, what the TMS does in order, and the me
 - Gateway: needs Edit on Event Access.
 - TMS checks, in this order:
   1. Event not found: "No Event Found" (404).
-  2. Points already published and a ranking field is changing: the edit or delete is refused with code 403. The server message has no English text in the translation file yet, so the screen may show the raw message key.
+  2. Points already published to OTT and a ranking field is changing: an edit is refused with "This action is not permitted. Points for this event have been published to OTT. ..." and a delete with "Deletion is not permitted. Points for this event have been published to OTT. ..." (403). Settings-only edits (umpire, referee, accommodation, travel) still save.
   3. Extra fields and the event name are validated, unless the request is a delete.
   4. Another event already has this name: "Event Already Exists" (403).
   5. Umpire settings that conflict with the event: a 409 with the validation message.
   6. Delete: only the user role that owns the event may delete it: "Unauthorized Access" (403).
-  7. Delegation turned on without the show users: "Delegation Show Users Required" (409).
-  8. Date changes are checked against the venue dates.
+  7. Date changes are checked against the venue dates.
+  8. Delegation turned on without the show users: "Delegation Show Users Required" (409).
 - If every check passes, the event is saved. A change to the automatic fixture publish setting updates the stages of the event.
 
 ## Event configs – draw settings and display seeding (GET and PUT event/v1/get_event_configs, upsert_event_configs)
@@ -78,7 +78,7 @@ Each section lists what the gateway does, what the TMS does in order, and the me
 
 - GET: no venues for the event: "No Venue Found" (404). Success: "Success" (200). Reserved tables are added when requested.
 - POST (save venues): each venue can be edited by only one item of a save; a repeat gives 422 "Each venue can be edited (venue_update) by only one item of a save".
-- The event must exist: otherwise "No Event Found" (404).
+- The event must exist: otherwise "No Event Found" (404). Two venues marked as the default for one event: "Only one venue per event can be the default (is_default) in a save" (422).
 - A date cannot be removed when matches are already scheduled on it: "Cannot remove dates with scheduled matches" (409).
 - Any failing item saves nothing. Success: "Success" (200).
 
@@ -88,7 +88,7 @@ Each section lists what the gateway does, what the TMS does in order, and the me
 - get_print_alert_settings: returns the alert settings (global or per event). Errors return code 500 with the error text.
 - get_print_queue: returns the matches waiting to print, filtered by category and search, with the total count. An empty queue returns an empty list with code 200.
 - update_print_status: marks matches as printed. Success: "Print Status Updated" (200).
-- update_queue_status: adds the matches to the queue (is_queued true) or removes them (false).
+- update_queue_status: adds the matches to the queue (is_queued true) or removes them (false). Success: "Print Queue Updated" (200).
 
 ## Export of fixtures and export formats
 

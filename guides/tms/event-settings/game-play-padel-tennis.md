@@ -63,6 +63,8 @@ A game is counted 15, 30, 40, game. **Scoring Configuration** decides what happe
   - **Decider set Tie break** – "Enable this option to set custom tie-break points for the decider set when they differ from the standard tie-break points." Enter **Pts to Win** (for example 10).
   - **Super Tie break** – "Enable this option to use a Super Tie-Breaker set instead of the standard game-based set format." The deciding set is replaced by one tie-break to **Pts to Win** (for example 10).
 - **Win by Margin** – "Point Difference require to win a tie break" (**Min Lead**), usually 2. Example: tie-break to 7 with Min Lead 2 – at 6-6 play continues until one side leads by 2.
+- How saved scores are checked: when not set, Tie-Break Points is 7, decider and super tie-break Pts to Win are 10, and Min Lead is 2. Min Lead also applies to the super tie-break and, with tie-break off, to normal sets. A super tie-break only replaces the last set and (with ST) only when the sets are level; if both options were set, Super applies. Decider set and Super tie break only work with **Enable Tiebreak** and **Additional Tie Break Configuration** on.
+- Standard or Golden Point at 40-40 only affects live point-by-point scoring; it does not change which set scores the server accepts.
 
 ## Padel and Tennis: example formats
 
@@ -130,6 +132,8 @@ In **Scoring Management**, **Serving Rules**:
 **Why do I not see Point System Configuration (Tennis)?** It is not shown for Tennis organisations on this page.
 
 **I clicked Update on Scoring Management and saw "updated_successfully", but my changes are gone.** For Padel and Tennis, Scoring Management is currently not saved on the event page. Change it in Game-Play Configuration (organisation-wide) or contact support.
+
+## Frequently asked questions: Padel and Tennis scoring (continued)
 
 **Is the Padel or Tennis match format saved?** Yes. Result Management saves normally ("Rule Settings Updated").
 

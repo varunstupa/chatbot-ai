@@ -25,12 +25,14 @@ source_files:
   - src/app/modules/tms/event-accomodation/event-accomodation.component.html
   - src/app/shared/accommodation-filter-sidebar/accommodation-filter-sidebar.component.html
   - src/app/shared/accommodation-edit-sidebar/accommodation-edit-sidebar.component.html
+  - src/app/shared/accommodation-edit-sidebar/accommodation-edit-sidebar.component.ts
+  - src/app/shared/travel-acco-add-player-sidebar/travel-acco-add-player-sidebar.component.ts
   - src/app/shared/travel-acco-add-member-sidebar/travel-acco-add-member-sidebar.component.html
   - src/app/shared/travel-acco-add-player-sidebar/travel-acco-add-player-sidebar.component.html
 ---
 # Accommodation page – user guide
 
-This guide describes the **Accommodation** step of an event in the Stupa Event Management System (admin panel). Here the organiser togglees accommodation on for the event, decides who may request it, creates hotels and rooms, and manages the bookings.
+This guide describes the **Accommodation** step of an event in the Stupa Event Management System (admin panel). Here the organiser turns accommodation on for the event, decides who may request it, creates hotels and rooms, and manages the bookings.
 
 ## Where to find it
 
@@ -52,13 +54,13 @@ Open **Event** from the sidebar, then click **Accommodation** in the row of setu
 
 ## Accommodation Settings side panel: who can request and verification
 
-Click **Settings** to open **Accommodation Settings**, then click **Update** to save.
+Click **Settings** to open **Accommodation Settings**, then click **Update** to save. The server's confirmation message is shown; if the save fails, its error is shown and the **Enable Accommodation** toggle goes back to off.
 
 - **Roles allowed for accommodation** – "Provide access to roles who can send a request for accommodation". Tick the roles.
 - **Enable verification for accommodation** – requests must be approved before they count. "The system can support up to two levels of verification."
   - **Verification Type \***: **One-way verification** (one verifier) or **Two-way Verification** (two verifiers).
   - **Select Verifiers \***: for **Verification 1** (and **Verification 2** for two-way) choose a **Role** and then a **User** with that role.
-  - Missing verifier fields give "Please fill all required fields" and nothing is saved.
+  - Missing verification type or verifier role gives "Please fill all required fields" and nothing is saved. The verifier **role** is required; picking a specific user is optional.
 - **Enable Self Registration** – "Enables users' personalized requests, regardless of pre-defined role permissions". Tick the roles that may register themselves.
 - **Show Parents Info** – "The selected parent will be reflected in both listings and exports." Tick the parent roles (for example club or association) to show as extra columns. "No parent roles are configured for the Player role." means there is nothing to choose. If no parent role is ticked, the setting is saved as off.
 
@@ -66,6 +68,7 @@ Click **Settings** to open **Accommodation Settings**, then click **Update** to 
 
 - In the **Bookings** card, **Registration Date** shows the period in which accommodation can be requested (for example "01 Jun 26 - 15 Jun 26").
 - Click it to pick a new start and end date in the calendar. The new dates are saved immediately.
+- Dates after the event's end date cannot be picked.
 
 ## Bookings dashboard: the numbers
 
@@ -86,16 +89,16 @@ Click **Settings** to open **Accommodation Settings**, then click **Update** to 
 
 In the **Action** column:
 - **History** icon – shows the version history of the booking.
-- **Edit** icon – opens **Accommodation Edit** with **Check In**, **Check Out**, **Dietary Preferences**, **Options** and **Room Type**.
+- **Edit** icon – opens **Accommodation Edit** with **Check In**, **Check Out**, **Dietary Preferences**, **Options** and **Room Type**. **Check Out** cannot be before **Check In**. Click **Continue** to check the choices ("Preferences validated successfully.", or "Validation failed." / "Failed to validate preferences."); the room allocation view then opens and the button becomes **Register** to save the booking. "Failed to load accommodation configuration" means the options could not be loaded.
 - **Withdraw** icon – withdraws one booking at once: "Booking withdrawn successfully".
 - To withdraw several: tick the bookings (or the select-all box) and click **Withdraw (n)**: "Bookings withdrawn successfully". With nothing ticked: "Please select bookings to withdraw".
 - **Withdrawn** shows the **Withdrawn Requests** list. Use the restore icon to bring a booking back: "Booking restored successfully".
-- Failures: "Failed to withdraw booking(s)" / "Failed to restore booking". Try again.
+- Failures: "Failed to withdraw booking", "Failed to withdraw bookings" or "Failed to restore booking" (or the server's message). Try again.
 
 ## Adding people and exporting
 
 - **Add Member** → **Add Member**: choose a **User Role**, pick people from the list (**Name**, **Nationality**) and click **Add**. "Players added successfully!" confirms it; nobody selected gives "Please select at least one participant"; "Failed to add members" means the server refused.
-- **Add Member** → **Add Temporary Member**: add a person who has no account (with **Gender** and an optional **Description**).
+- **Add Member** → **Add Temporary Member**: add a person who has no account. **Name**, **Gender**, **Email** and **Role In the Org** are required ("Required"); the email must be valid ("Invalid email format"); **Description** is optional.
 - **Export** → **Accommodation** (bookings) or **Accommodation + Travel** (bookings with travel details). "Error exporting bookings data" means the export failed.
 
 ## Manage Listings: adding a hotel
@@ -105,10 +108,10 @@ Click **Manage Listings** to open the **Hotels List** (search by hotel name, edi
 **Hotel Details** tab:
 - **Hotel Name \*** (40 characters), **Hotel Status \*** (toggle, **Active**), **Hotel Rating \*** (stars).
 - **Description** (up to 200 characters: "Description cannot exceed 200 characters.").
-- **Address \*** (**Street Address 1**, **Street Address 2**), **State/City \***, **Country**, **Zip Code \***.
+- **Address \*** (**Street Address 1** required, **Street Address 2** optional), **State/City \***, **Country** (required, pick from the list), **Zip Code \***.
 - **Phone number \*** (country code and number), **Email Address**, **Website**, **Google Maps Link**.
 - Click **Next**. "Hotel created successfully" (new) or "Hotel Updated Successfully" (edit). Missing required fields: "Please fill all required details".
-- **Delete** removes the hotel.
+- **Delete** removes the hotel straight away (no confirmation). If the server refuses, its message is shown.
 
 ## Manage Listings: rooms of a hotel
 
@@ -116,17 +119,18 @@ Click **Manage Listings** to open the **Hotels List** (search by hotel name, edi
 - **Add Room** adds a room type. For each:
   - **Room Title \*** (40 characters: "Room title is required", "Room title must be at most 40 characters").
   - **Room Capacity \*** – guests per room, 1 to 10 ("Room capacity must be at least 1" / "Room capacity must be at most 10").
-  - **Room Rates \*** – price per room; only shown when invoicing is enabled for the organisation ("Room rates are required").
-  - **Room Inventory** – how many rooms of this type are available.
-- **Save** on a room saves it; **Delete** removes it. Click **Save** at the bottom to save the rooms: "Rooms added successfully" / "Room updated successfully".
+  - **Room Rates \*** – price per room, at least 0.01; only shown when invoicing is enabled for the organisation ("Room rates are required").
+  - **Room Inventory** – how many rooms of this type are available (0 or more). It can only be edited on a room that has been saved; a new room starts at 0.
+- **Save** on a room saves it; **Delete** removes it (a saved room asks "Are you sure you want to delete this" first). Missing room fields give "Please fill all required details". Click **Save** at the bottom to save the rooms: "Rooms added successfully" / "Room updated successfully".
 - In the Hotels List each room type shows its title, guests, price and "available/total Available".
 
 ## Accommodation page: permissions
 
 - Saving the accommodation settings needs **Edit** permission on **Edit Accomodation Settings**. Without it the save fails with "Access Denied".
+- Saving a booking change in **Accommodation Edit** also needs **Edit** on **Edit Accomodation Settings**, and the **Bookings** dashboard figures need at least **Read** on it; otherwise "Access Denied".
 - An expired sign-in gives "Unauthorized Access". Sign in again.
 
-## Frequently asked questions about the Accommodation page
+## Frequently asked questions about the Accommodation page (part 1)
 
 **How do I enable accommodation for this event?** Turn on the **Enable Accommodation** toggle, then click **Settings** to choose roles and verification.
 
@@ -148,4 +152,10 @@ Click **Manage Listings** to open the **Hotels List** (search by hotel name, edi
 
 **How do I bring back a withdrawn booking?** Click **Withdrawn**, then the restore icon on the booking.
 
+## Frequently asked questions about the Accommodation page (part 2)
+
 **How do I export the bookings?** **Export** → **Accommodation** or **Accommodation + Travel**.
+
+**Why can I not delete a room?** A saved room asks for confirmation first; if the server refuses, its message is shown.
+
+**Why can I not set the inventory of a new room?** Save the room first; Room Inventory can only be edited on a saved room.

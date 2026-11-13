@@ -29,6 +29,8 @@ source_files:
   - src/app/shared/components/player-registration-form/player-registration-form.component.html
   - src/app/modules/tms/players/team-player-list/team-player-list.component.ts
   - src/app/modules/tms/players/team-player-list/team-up-popup/team-up-popup.component.ts
+  - src/app/modules/tms/players/players.component.html
+  - src/app/shared/components/team-registration-sidebar/team-registration-sidebar.component.html
 ---
 # Players page – adding singles players and fixing add errors
 
@@ -65,9 +67,10 @@ This guide explains how to add singles players and temporary players on the **Pl
 - "Please Wait For Verification Add Members" – your own account is not verified yet, so you cannot create players.
 - To change a temporary player later: ⋮ on the row → **Edit**, change the form and click **Update** ("Please Wait For Verification Edit Members" if your account is not verified).
 
-## The Self toggle in the pairs and teams panels
+## The Self toggle in the Add Player, Add Pairs and team panels
 
-- The **Self** toggle in the **Add Pairs** and team panels is saved for the category at once: "Settings updated successfully" (or "Failed to update settings", and the toggle turns back).
+- The **Self** toggle sits in the header of the **Add Player** and **Add Pairs** panels and in the team panel. Its info icon says: "In order to generate invoice directly to players enable the toggle".
+- The toggle is saved for the selected category at once: "Settings updated successfully" (or "Failed to update settings", and the toggle turns back). If the request fails completely, the error is shown and the toggle also turns back.
 - With **Self** on, every player of a pair or team gets an individual entry and pays their own fee. With **Self** off, the pair or team is one entry with one order.
 
 ## Players added to the unpaid list
@@ -89,15 +92,14 @@ How to fix it:
 
 ## Other errors when adding players and how to fix them
 
-When you add players from the Players page, the registration dates, the role access and the point restriction of the category are not checked. These checks still apply:
+When you add players from the Players page, the registration dates, the role access (**Allow Registrations**) and the point restriction of the category are not checked. These checks still apply:
 - "Registration Not Enabled" – the **Registration** toggle of the category is off. Turn it on on the **Registration** page.
-- "Role Not Eligible For Registration" – no role is ticked in **Allow Registrations** on the **Registration** page.
 - "Category Registration Settings Not Found" – the category's registration settings were never saved. Save them on the **Registration** page.
-- "Participant Already Exists" / "All Participants Already Registered" – the player is already in the category.
-- "Participant cannot be registered in multiple categories when multi-entry is disabled" – the player is in another category of this type; turn on **Multiple Entry** on the **Registration** page.
-- "Player Max Categories Reached" – the player has reached the number of categories allowed by **Multiple Entry**.
-- "Players Already Registered With Another Pair" – a player is already in another pair.
-- "Participants Registered Successfully Except …" – some were added, the ones named were not.
+- "All Participants Already Registered" – every chosen player (or pair, team) is already in the category. Players already in the category are skipped silently when others can be added.
+- "Player '<name>' cannot be registered in multiple categories when multi-entry is disabled" (pairs and teams) – the player is already in another category of this type; turn on **Multiple Entry** on the **Registration** page.
+- "Player Max Categories Reached <name> <number>" (singles) – the player would be in more categories than **Multiple Entry** allows.
+- "Players Already Registered With Another Pair <names>" – none of the entries could be added; the named players are already registered elsewhere.
+- "Participants Registered Successfully Except <names>" – some were added, the ones named were not.
 
 ## Team-up: pairing players who registered alone
 
@@ -146,9 +148,11 @@ From the **Singles** tab you can also **Delete** or **Delete & Refund** single e
 
 **Why is a player in the Ineligible players list?** The player does not match the category's rules. Ineligible players cannot be added; click **Eligible players** to go back to the list of players who can be added.
 
+## Frequently asked questions about errors when adding players (continued)
+
 **How do I pair two singles into a doubles team?** Open the **Singles** tab of the category, tick both players, click **Team-up**, then **Save**. The new pair appears on the **Team-up** tab.
 
-**What does the Self toggle do?** With **Self** on, every player of a pair or team gets an individual entry and pays their own fee. With **Self** off, the pair or team is one entry with one order. The setting is saved for the category at once.
+**What does the Self toggle do?** With **Self** on, every player of a pair or team gets an individual entry and pays their own fee, so the invoice goes directly to the players. With **Self** off, the pair or team is one entry with one order. The toggle is in the header of the **Add Player**, **Add Pairs** and team panels and is saved for the category at once.
 
 **Why does adding a player say "Event payment settings are required"?** The event's payment setup is incomplete. Open **Event** → **Payment & Invoice**, select at least one **Raised To** role, choose **Enable Invoicing for this Event?** and the **Payment Type** (for **Online** also the receiving account), click **Save**, then add the player again.
 

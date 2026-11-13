@@ -45,6 +45,8 @@ suggested_questions:
   - What happens when I update match streaming status?
 backend_sources:
   - gateway/src/routers/scoring_router.py (update_score)
+  - gateway/src/decorators/decorator.py (permission_decorator)
+  - gateway/src/utils/permission_utils.py
   - gateway/src/routers/match_router.py (matches, update_match_status, sub-matches, reverse-participants-order)
   - gateway/src/routers/rule_setting_router.py (get_rule_settings)
   - tms/src/router/scoring_router.py (_dispatch_update_score)
@@ -53,6 +55,7 @@ backend_sources:
   - tms/src/service/scoring_service.py (update_score, rule lookup)
   - tms/src/utils/scoring/calculators/ (badminton, table_tennis, tennis, padel)
 source_files:
+  - src/app/modules/tms/score-and-streaming/score-input-feedback.util.ts
   - src/app/modules/tms/score-and-streaming/score-and-streaming.component.ts
   - src/app/core/constants/api-constant.ts
 answer_notes: |
@@ -67,17 +70,17 @@ answer_notes: |
 
   Intent: score will not save: Ask for or use the exact response message. A rule rejection can return 403 with a message such as “Wrong score input for set 2”. Check the relevant sport's scoring rules, sport ID, participant type and effective Game Play settings. If the message indicates a permission problem, check Update Score and Edit permissions or the live match scorer path. Do not treat every 403 as the same failure.
 
-  Intent: identify which sport calculator is used: Use the sport ID mapping in this document. Padel uses the Padel calculator, which uses Tennis rules. If no sport ID is supplied, the legacy path is used. If the sport ID has no registered strategy, the request is refused with the documented error. Do not guess what an unlisted sport ID represents.
+  Intent: identify which sport calculator is used: Use the sport ID mapping in this document. Padel uses the Padel calculator, which uses Tennis rules. If no sport ID is supplied, the gateway fills in the organisation's default sport. If the sport ID has no registered strategy, the request fails with an internal error. Do not guess what an unlisted sport ID represents.
 
   Intent: rule settings do not match expectations: Explain that Game Play settings are read from event, stage, category and round. Round-level settings override stage-level settings, and the round is matched by name. For a group stage, the group-stage round's rule is used. Mention that detailed sport rules are in the separate sport guides.
 
-  Intent: live score versus final score: The live flag selects the in-progress scoring path. Manual score entry is the final result and must resolve the match by identifying a winner before saving. Reset operations use a separate path.
+  Intent: live score versus final score: The live flag selects the in-progress scoring path. For Badminton, Padel and Tennis a manual score must resolve the match with a winner; Table Tennis may save part of a match, which stays In Progress. Reset operations use a separate path.
 
-  Intent: walkover blocks score entry: A walkover must be reset before new sets can be added. “Match Already Walkover Reset First” is 422. “Match Data Not Reset” is 403 when reset is blocked by rules. A knockout result change may be refused if a later round has already used the result. Do not infer a more specific reason without the exact response.
+  Intent: walkover blocks score entry: A walkover must be reset before new sets can be added. “Match Already Walkover Reset First” is 400. A reset is refused with “Cannot reset a match that has not started” or “Reset blocked because of an active forfeit”. A knockout result change is refused with “Next round already scored” (403) when the next match is in progress or scored, and any change is refused with “Cannot update score: a dependent stage is already in progress or completed.” when a later stage has started. Do not infer a more specific reason without the exact response.
 
   Intent: streaming update failed: Check Update Stream and Edit permissions, confirm the event exists, and use the exact response. “Event Not Found” is documented as 400; “Video Not Found” is 404. The streaming service's internal rules are outside this document, so do not invent provider-specific fixes.
 
-  Intent: team sub-match or lineup issue: Sub-matches require a team-match parent and are created one per playing table. Reversing order swaps sides of the team match's sub-matches. Automatic lineup creation requires team members. “Participant Not Found” means the requested participant could not be found during lineup update.
+  Intent: team sub-match or lineup issue: Sub-matches require a team-match parent; with several tables each sub-match's table must be one of the parent's tables. Reversing order swaps sides of the team match's sub-matches. Automatic lineup creation requires team members. “Participant Not Found” means the requested participant could not be found during lineup update.
 
   When to ask a follow-up question:
   Ask one focused question if the reported problem is too broad to diagnose from the available details.
@@ -104,12 +107,13 @@ It is a technical reference. When answering an organiser's question, explain the
 | User question or symptom | Relevant documented behaviour |
 |---|---|
 | “Which calculator scores this match?” | The request's sport ID selects the registered scoring calculator. |
-| “Why did the score return 403?” | A scoring rule may reject the submitted score and return its rule message, such as “Wrong score input for set 2”. Check the exact message. |
+| “Why did the score return 403?” | Either a scoring rule rejected the score (its rule message, such as “Wrong score input for set 2”) or the user lacks access (“Access Denied”). Check the exact message. |
 | “Is this a live score or final score?” | The live flag selects the in-progress score path. Manual score entry is expected to resolve the match with a winner before saving. |
 | “Which rules are applied to this match?” | Game Play settings are read from the event, stage, category and round. A round-level setting overrides a stage-level setting. |
-| “Why can't I add sets after a walkover?” | The walkover must be reset first. The documented error is “Match Already Walkover Reset First” (422). |
-| “Why can't I change a score in a knockout match?” | If a later round has already used the result, the progression check can refuse the change. |
-| “Why did streaming status fail?” | The gateway requires Update Stream and Edit permissions. Streaming-service-specific rules are outside this document. |
+| “Why can't I add sets after a walkover?” | The walkover must be reset first. The error is “Match Already Walkover Reset First” (400). |
+| “Why can't I change a score in a knockout match?” | “Next round already scored” (403): the next match of the winner or loser is in progress or scored. |
+| “Why can't I change any score in this stage?” | “Cannot update score: a dependent stage is already in progress or completed.” (400). |
+| “Why did streaming status fail?” | The gateway requires Update Stream and Edit permissions (403 “Access Denied” otherwise). Streaming-service-specific rules are outside this document. |
 | “Why can't I create team sub-matches?” | Sub-matches are supported for team matches; a non-team parent match is refused. |
 
 ## Save or update a score
@@ -120,17 +124,27 @@ It is a technical reference. When answering an organiser's question, explain the
 
 ### Request and permission checks
 
-- The gateway requires the event ID header and a score payload.
-- The request needs **Update Score** and **Edit** permissions. A live match scorer can also save.
+- The gateway requires the event ID header and a score payload. Missing header: **400** "event-id header is required"; a header that is not a number: **400** "event-id header must be a valid integer"; missing payload: **422** "Score payload is required"; header and payload event differ: **422** "event-id header must match the request event_id".
+- Saving from the admin app is allowed for the super administrator, users with Live Match Centre edit access, users with **Edit** on the event's "Event Access" permission, or users given **Update Score** (Edit) on that match (for example player umpiring; for league team sub-matches the parent match is also checked). Anyone else gets **403** "Access Denied".
 - The payload includes the sport ID, participant type, match, sets and walkover details.
 - TMS dispatches the request to the scoring implementation for the relevant sport. Live scoring follows the live path.
 
+## Save or update a score – Scoring and Streaming APIs (2)
+
 ### Success and validation failure
 
-- Successful response: **200**, message **“Score Updated”**.
+- Successful response: **200**, message **“Score Updated Successfully”**.
 - If a scoring rule rejects the submitted score, the response is **403** with the message from that rule. Example: **“Wrong score input for set 2”**.
+- Other refusals are **400**: “Match Already Walkover Reset First”, “Participant payment is pending”, “Cannot update score: a dependent stage is already in progress or completed.”, “Please reset golden match first.” (team match whose golden match has started) and “No scoring changes computed”. “Next round already scored” is **403**; “No Event Found”, “Stage Not Found” and “Match Not Found” are **404**.
+- A result with a winner (or a tie) sets the match to Scored; otherwise it becomes In Progress.
 
 A 403 response with a set-specific message means the submitted score did not satisfy a scoring rule. Use the exact message and the relevant sport's scoring guide to identify the rule. Do not assume every 403 is a score-validation error; permissions also apply to the request.
+
+### How errors appear on the page
+
+The page replaces some rule messages with a shorter wording, for example "Tie-break required in set 1" appears as "Tie-break is required for this set." and "Match Not Concluded Insufficient Sets" as "The match is not concluded. Complete the required sets before saving." The sport guides list these.
+
+## Save or update a score – Scoring and Streaming APIs (3)
 
 ### Suggested troubleshooting sequence
 
@@ -152,8 +166,8 @@ The request's **sport ID** determines the scoring calculator selected by the sco
 | `3` | Tennis | Tennis calculator |
 | `4` | Badminton | Badminton calculator |
 
-- If the request contains a sport ID that has no registered calculator, the request is refused with: **“No scoring strategy registered for sport_id {id}”**.
-- If no sport ID is supplied, the legacy scoring path is used.
+- If the request contains a sport ID that has no registered calculator, the request fails with an internal error (500); the server log reads “No scoring strategy registered for sport_id {id}”.
+- If no sport ID is supplied, the gateway fills in the organisation's default sport, so the sport calculator is still used.
 - The participant type determines the path within the selected sport:
   - **Singles (`1`)** — individual path.
   - **Doubles (`3`)** — individual path.
@@ -175,7 +189,8 @@ The backend distinguishes a live, in-progress score from a manually entered fina
 ### Manual score
 
 - A manual score is entered as the final result after the match.
-- It must resolve the match by identifying a winner before it can be saved.
+- Badminton, Padel and Tennis: it must resolve the match with a winner, otherwise it is refused ("Wrong Data Input" or "Match Not Concluded Insufficient Sets").
+- Table Tennis: the games entered must each be complete, but the match may be saved before it is decided; it then stays In Progress.
 
 ### Resetting a score
 
@@ -188,7 +203,7 @@ The scoring service reads Game Play settings associated with the event, stage, c
 ### Rule precedence
 
 - A **round-level** setting overrides the **stage-level** setting.
-- The round is matched by its name.
+- The round is matched by its name (or its ID in a knockout stage).
 - For a group stage, the rule for the group-stage round is used.
 
 When explaining an unexpected score validation result, check the effective rule for the match's round instead of assuming that the stage-level rule always applies.
@@ -202,8 +217,8 @@ The documented settings include:
   - **ST** — sets to win.
   - **SP** — play every set.
 - **Point rule**:
+  - Golden rule (Golden Point System): value `2`, no deuce. It wins when both rules are set.
   - Standard rule: deuce, value `1`.
-  - Golden rule: value `2` when the standard rule is off.
 - **Decider set** setting.
 - **Sudden death / cap** setting.
 - **Sub-match rule** for team matches.
@@ -220,19 +235,19 @@ A walkover is saved with its reason, and the server calculates the match result 
 A match with a walkover cannot receive new sets until the walkover has been reset.
 
 - Error: **“Match Already Walkover Reset First”**
-- HTTP status: **422**
+- HTTP status: **400**
 - Resolution: reset the walkover first, then submit the score if the workflow permits it.
+- A walkover win gives the winner the majority of sets (ST) or all sets (SP) at the set target, the loser nothing. A double walkover is stored as a tie with no set scores.
 
-### Reset blocked by the rules
+### Reset blocked
 
-- Error: **“Match Data Not Reset”**
-- HTTP status: **403**
-
-The message indicates that the reset was blocked by the applicable rules. Do not claim a more specific cause unless the relevant rule or server response identifies it.
+- **“Cannot reset a match that has not started”** (400): the match has no score.
+- **“Reset blocked because of an active forfeit”** (400): a participant has an active forfeit.
+- The dependent-stage and knockout checks below also apply to a reset.
 
 ### Changing a result in a knockout stage
 
-If a match has already been won in a knockout stage, the system checks progression before allowing the score to change. If a later round has already used that result, the change is refused with the relevant progression error.
+If a match has already been won in a knockout stage, the change (or reset) is refused with **“Next round already scored”** (403) when the next match of the winner or of the loser is in progress or scored. Any score of a stage is locked with “Cannot update score: a dependent stage is already in progress or completed.” once a later stage that depends on it has started.
 
 When a user reports that a score cannot be changed after the next round has been populated, explain that the result may already have affected later-round progression. The exact response message should be checked before diagnosing further.
 
@@ -245,10 +260,18 @@ When a user reports that a score cannot be changed after the next round has been
 ### Gateway checks and documented responses
 
 - The gateway requires **Update Stream** and **Edit** permissions.
-- If the event is not found, the response is **400**, message **“Event Not Found”**.
-- On the documented successful path, the response is **200**, message **“Match Updated Successfully”**.
+- The super administrator role and users with Live Match Centre access pass this check; anyone else without the permission gets **403** "Access Denied".
+- If the match or event is not found, the response is **400**, message **“Event Not Found”**.
+- Turning streaming on creates the stream (one per table for a multi-table match; existing streams are reused) and returns the streaming links with their RTMP URLs.
+- Turning streaming off returns **200**, message **“Match Updated Successfully”**. The server does not refuse this for a match that has started; that lock is only on the page.
+- Bulk change (`PATCH match/v1/matches/streaming`): at most 100 matches per request, all from the event the permission was checked for (otherwise **403** “Access Denied”). Matches already in the requested state are skipped; failures are reported per match.
+- Reset stops the stream and deletes the match's video.
+- Changing the banner image or switching the video on/off needs an existing video; otherwise **404** “Video Not Found”.
+- These responses use a different message field, so the page may only show "Something went wrong" for them, and the toggle returns to its previous state.
 - Publishing a stream, turning streaming off, or changing the video uses the streaming service.
 - If the requested video is missing, the response is **404**, message **“Video Not Found”**.
+
+## Match status and streaming – Scoring and Streaming APIs (2)
 
 ### Scope limitation
 
@@ -262,8 +285,9 @@ If a user asks why a stream is unavailable, use the documented checks first: con
 
 API: `POST match/v1/sub-matches`
 
-- Team-match sub-matches are saved one per playing table.
-- A parent match that is not a team match is refused.
+- Requires the **Update Score** (Edit) permission.
+- With several tables, each sub-match's playing table must be one of the parent match's tables; with one table it is set automatically.
+- A parent match that is missing or not a team match is refused with an internal error (500).
 
 If sub-match creation fails, first confirm that the parent match is a team match. Do not assume that sub-matches can be created for an individual match.
 
@@ -295,6 +319,10 @@ Documented responses:
 - **404** — “Participant Not Found” when the participant cannot be found.
 
 When troubleshooting a lineup issue, distinguish between fetching an existing lineup, automatically creating one from team members, and updating a participant's status.
+
+## Manual scoring (start / stop match scoring)
+
+The manual scoring button sends a match update through `PUT match/v1/matches`, which requires the **Update Score** (Edit) permission. Starting sets the match status to In Progress; stopping sets it back to Not Started. The server saves the status as sent; only the page blocks it once the match is Scored, or for a team match after a sub-match has a score.
 
 ## Read Game Play rule settings
 
@@ -357,12 +385,14 @@ Possible questions:
 - “Live score aur manual score mein kya difference hai?”
 - “Why does manual score need a winner?”
 
+## Natural-language question patterns – Scoring and Streaming APIs (2)
+
 ### Intent: walkover blocks score entry
 
 Possible questions:
 - “Why can't I add sets after a walkover?”
 - “Match Already Walkover Reset First aa raha hai.”
-- “What does Match Data Not Reset mean?”
+- “What does Next round already scored mean?”
 - “Can I change a knockout result after the next round is ready?”
 
 ### Intent: streaming update failed
@@ -386,15 +416,15 @@ Possible questions:
 
 | Operation | API | Documented response or check |
 |---|---|---|
-| Update score | `PUT score/v1/update_score` | 200 “Score Updated”; scoring-rule rejection may return 403 with the rule message |
-| Update match status / streaming | `PATCH match/v1/update_match_status` | Requires Update Stream and Edit; event missing: 400 “Event Not Found”; video missing: 404 “Video Not Found”; success: 200 “Match Updated Successfully” |
+| Update score | `PUT score/v1/update_score` | 200 “Score Updated Successfully”; scoring-rule rejection may return 403 with the rule message |
+| Update match status / streaming | `PATCH match/v1/update_match_status` | Requires Update Stream and Edit (else 403 “Access Denied”); event missing: 400 “Event Not Found”; video missing: 404 “Video Not Found”; streaming off: 200 “Match Updated Successfully” |
 | Read Game Play rules | `GET rule_setting/v1/get_rule_settings` | Login required; invalid global/event context: 401 “Unauthorized Access”; success: 200 “Rule Settings Get” |
 | Create team sub-matches | `POST match/v1/sub-matches` | Only a team-match parent is supported |
 | Reverse participant order | reverse-participants-order operation | Missing match: 404 “Match Not Found” |
 | Fetch team lineup | `POST team/v1/fetch_lineup` | 200 fetched; 201 created when members exist; 404 when no team participants are available for auto creation |
 | Update team lineup | `PUT team/v1/update_lineup` | 200 “Participant Status Updated”; missing participant: 404 “Participant Not Found” |
-| Add sets after walkover | Score update path | 422 “Match Already Walkover Reset First” until walkover is reset |
-| Reset match data | Reset path | May be blocked with 403 “Match Data Not Reset” |
+| Add sets after walkover | Score update path | 400 “Match Already Walkover Reset First” until walkover is reset |
+| Reset match data | Reset path | 400 “Cannot reset a match that has not started” or “Reset blocked because of an active forfeit”; 403 “Next round already scored” |
 
 ## Source-of-truth and scope limitations
 

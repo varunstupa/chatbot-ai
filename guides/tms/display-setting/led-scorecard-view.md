@@ -2,6 +2,10 @@
 doc_id: tms.display-setting.scorecard-view
 title: Score card view – the full-screen match or table scorecard, the reverse card, side order, timers, cards and live updates
 routes:
+  - :type/:event_id/:table_id
+  - :type/:event_id/:table_id/:sub_match_id
+  - :type/:event_id/:table_id/reverse
+  - :type/:event_id/:table_id/:sub_match_id/reverse
   - tms/display-view-card
   - tms/:type/:event_id/:table_id
   - tms/:type/:event_id/:table_id/:sub_match_id
@@ -44,6 +48,7 @@ source_files:
   - src/app/modules/tms/display-setting/display-view-card-reverse/display-view-card-reverse.component.html
   - src/app/app.routes.ts
   - src/app/modules/tms/tms.module.ts
+  - src/app/modules/tms/display-setting/display-setting.component.ts
 ---
 # Score card view
 
@@ -54,8 +59,9 @@ There are two components with the same code: the **view card** and the **reverse
 ## Addresses
 
 - `/tms/display-view-card` is the page in the admin tree. With no match in the address it shows nothing.
-- `/table/:event_id/:table_id` shows the match in progress on that table. Clicking **Link** for a table on the Display Setting screen opens this for sport ids other than 2.
-- `/:type/:event_id/:table_id/:sub_match_id` shows one sub match of a team match.
+- `/table/:event_id/:table_id` shows the match in progress on that table. Clicking the **Broadcast link** of a table on the Display Setting **Tables** tab opens this for sport ids other than 2.
+- `/match/:event_id/:match_id` shows one match. On the Display Setting **Live Matches** tab, **Link.match..** and the **Team Link** in **View Links** open this address (for Padel, sport id 2, **Link.match..** opens the umpire view instead).
+- `/match/:event_id/:match_id/:sub_match_id` shows one sub match of a team match. The **Match Link** in **View Links** opens it for sports other than Padel.
 - Adding `/reverse` at the end shows the reverse card. The reverse routes are matched first for those addresses.
 - `/stream/match/...` and `/stream/table/...` are the stream overlay, not this card.
 

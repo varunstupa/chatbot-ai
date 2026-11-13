@@ -50,18 +50,19 @@ Open **Fixtures/Results** from the sidebar.
 - Page address: `/tms/fixture/<participant id>/<category id>/<event id>/<event category id>/<stage id>`, for example `/tms/fixture/0/169/1358/4869/0`.
 - The page title is **Fixture Settings**.
 - Open it from the event's **Fixtures** step. Use the category and sub category tabs to choose what to work on.
-- Until a category is chosen the page shows **Select options to browse through fixtures**.
-- If no event is selected, the page shows the empty state **No record found** with a button **Go to Event**. Open the event first.
+- While the selected category has no stage yet, the page shows **Select options to browse through fixtures** above the tabs.
+- If no event is selected, the page shows the empty state **No record found** – "Create Event to begin with Fixtures/Results." – with a button **Go to Event**. Open or create the event first.
+- If the event has no categories, the empty state reads "Add Categories in this event to begin with fixture creation." **Go to Event** opens the event's settings so you can add categories.
 
 ## Header buttons: Notify Users, Publish All, Ready for Print, Export
 
 The header row shows these buttons when a category is loaded:
 - **Notify Users** – sends notifications about published fixtures (see below).
 - **Publish All** – a toggle that publishes or unpublishes every fixture of the event.
-- **Ready for Print** – opens the print queue; the number on it is the matches waiting to be printed.
+- **Ready for Print** – opens the print queue; the number on it is the matches waiting to be printed (the number is shown only when at least one match is waiting).
 - **Export** – opens the export sidebar.
 
-The buttons are hidden while the page is loading.
+**Notify Users**, **Publish All** and **Ready for Print** are hidden while the page is loading and when the event has no categories. **Export** is always shown.
 
 ## Notify Users: when the button shows and what it does
 
@@ -80,12 +81,12 @@ The details of the notification service are documented in the notification guide
 - Success messages from the server:
   - "All genuine and sample fixtures published successfully" (toggle turned on);
   - "All genuine and sample fixtures unpublished successfully" (toggle turned off);
-  - "Event Update" when only the event was saved.
+  - "Event updated successfully" when the server returns no other message.
 - The page then reloads the stages so the **Publish** toggles of each stage show the new state.
 - Error messages shown in a snackbar:
   - the message returned by the server, for example "Event Already Exists", "Unauthorized Access", or the umpire and delegation checks ("Delegation Show Users Required");
   - "Something went wrong" when the server gives no message.
-- When points were already published to OTT, the server blocks edits to events, categories and stages. The text of that message is not in the English translation file yet, so the screen may show an empty or raw message. Report it to the administrator.
+- When points were already published to OTT, the server blocks event changes that affect ranking: "This action is not permitted. Points for this event have been published to OTT. Editing events, categories, or stages is not allowed after publication. ..." (403).
 
 Saving needs **Edit** permission on the feature **Event Access** (the gateway returns "Access Denied" without it).
 
@@ -106,7 +107,7 @@ Saving needs **Edit** permission on the feature **Event Access** (the gateway re
 
 - Click **Export** to open the export side panel.
 - Choose the export **Format** and, optionally, the categories, a date range and the scoring type; click export.
-- The export is prepared in the background. The server confirms with its message; if the server returns an error, the message is shown, otherwise "Unknown error" or "Something went wrong" appears.
+- The export is prepared in the background. On success the sidebar closes and the server's message is shown; if the server returns an error, its message is shown, otherwise "Unknown error" or "Something went wrong" appears.
 - The export format list comes from the organisation's published formats. Only a format that is published appears.
 
 Export needs **Edit** permission on the fixture feature.
@@ -123,7 +124,7 @@ Export needs **Edit** permission on the fixture feature.
 
 - **Format** (required): a published export format. "Please select a format" when missing.
 - **Category** (required) with **Select Categories**: "Please select a category" when missing.
-- **Date Range**: start and end dates sent as `YYYY-MM-DD`.
+- **Date Range**: optional. Matches from the start of the first day to the end of the last day are included.
 - **Team Case** (shown only for some categories): **Single Match** and **Doubles**; with doubles, **Choose Selection Type** appears. **Optional**: **Horizontal** or **Vertical** layout of player positions (one of them can be ticked at a time).
 - **Scoring Type** (when shown):
   - **All** – "Export both scored and un-scored matches together";

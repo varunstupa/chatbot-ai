@@ -39,7 +39,10 @@ source_files:
   - src/app/modules/tms/events-settings/payment-invoice/payment-invoices-history/payment-invoices-history.component.ts
   - src/app/modules/tms/events-settings/payment-invoice/payment-invoices-history/payment-invoices-history.component.html
   - src/app/modules/tms/events-settings/payment-invoice/merge-invoice-dialog/merge-invoice-dialog.component.ts
-  - src/app/modules/tms/events-settings/payment-invoice/financial-report/financial-report.component.ts
+  - src/app/modules/tms/events-settings/payment-invoice/order-details-dialog/order-details-reconciliation-v3.util.ts
+  - src/app/modules/admin/invoice-management/financial-template/financial-template.component.html
+  - src/app/core/utils/financial-report/financial-report-reconciliation-v3.mapper.ts
+  - src/app/modules/admin/invoice-management/event-invoice-details/event-audit-log.util.ts
   - src/app/modules/tms/events-settings/payment-invoice/order-details-dialog/order-details-dialog.component.ts
 ---
 # Payment & Invoice page – user guide
@@ -55,8 +58,8 @@ Open **Event** from the sidebar, then click **Payment & Invoice** in the row of 
 Open the event, then choose **Payment & Invoice** in the event setup steps. The page has three buttons at the top:
 
 - **Payment and Invoices** – the settings: **Raised To**, **Payment Type**, **VERIFICATION SETTINGS** and the receiving account (Online only), **Enable Invoicing for this Event?**, the invoice templates, and **Save**.
-- **Invoice History** – the event's orders, invoices and merged invoices, where invoices are sent, merged and marked as paid.
-- **Financial Report** – the event's income per class or per entity, with refunds and totals, downloadable as PDF or XLS.
+- **Invoice History** – the event's orders, invoices, merged invoices and the **Audit Log** of fee changes, where invoices are sent and merged, entry prices are adjusted and orders are marked as paid.
+- **Financial Report** – the event's financial statement: order value, paid, unpaid, refunded, adjusted and net amount, by class or by entity, downloadable as PDF or XLS.
 
 The registration fee itself is set per category on the **Registration** page (Fee & Refund Information card). This page decides how that fee is collected and invoiced.
 
@@ -91,7 +94,7 @@ If the organiser registers participants themselves, registration is refused with
 - **Cash** – "Traditional cash payment method. The payment shall be received through cash offline by the organizer." Players register without paying online; the organiser collects the money and marks orders as paid in **Invoice History**.
 - **Online** – "Hassle-free cashless payment method. The payment shall be received digitally through online methods such as net-banking, credit card, debit card, etc." Players pay through the organisation's payment gateway.
 
-Clicking the inactive card togglees to it. Clicking the active card turns it off, and then no payment type is selected, which disables **Save**.
+Clicking the inactive card switches to it. Clicking the active card turns it off, and then no payment type is selected, which disables **Save**.
 
 Choosing **Online** shows two more sections: **VERIFICATION SETTINGS** and the account picker ("Select Account you want to receive payments in"). Choosing **Cash** hides them and the saved account is removed from the event when you save.
 
@@ -142,7 +145,7 @@ Once the first registration invoice of the event has been generated, the Registr
 ## Creating, copying, editing and previewing invoice templates
 
 - **Create Template** (in the **Create your own Template** banner): opens the template editor in Invoice Management for the current tab (Registration or Merged), linked to this event. "Event organizers can also create their own unique invoice associated with the Event. The template would not be visible in other Events." If you have unsaved changes, "Are You Sure?" – "These changes will not be reflected unless saved" asks first; **Continue** leaves without saving.
-- **Copy** icon (only on **Global Template**): "Copy Template" – "Do you want to copy "<name>"?" → **Yes, copy it** makes a copy for this event and togglees to **Event Template**. Success: the server's message or "Template copied successfully". Failure: the server's message or "Failed to copy template".
+- **Copy** icon (only on **Global Template**): "Copy Template" – "Do you want to copy "<name>"?" → **Yes, copy it** makes a copy for this event and switches to **Event Template**. Success: the server's message or "Template copied successfully". Failure: the server's message or "Failed to copy template".
 - **Edit** icon (only on **Event Template**): opens the template in the editor.
 - **Eye** icon: preview the template without editing.
 
@@ -173,22 +176,54 @@ Fix any of these by completing this page and clicking **Save**.
 
 ## Invoice History tab: Orders
 
-**Invoice History** has three tabs: **Orders**, **Invoices** and **Merged Invoices**. **Orders** lists the event's registration orders:
+**Invoice History** has four tabs: **Orders**, **Invoices**, **Merged Invoices** and **Audit Log**. **Orders** (with the number of orders in brackets) lists the event's registration orders:
 
-**S.No**, **Order ID**, **Registered By** (entity and role), **Registered Qty**, **Verification Status** (✔ verified / ❌ rejected counts), **Withdrawn**, **Amount**, **Refund Status** (with refund amount), **Payment Mode** (Online/Offline), **Payment Status**, **Invoice Status** (Generated/Pending) and **Action** (eye = order details, send = generate invoice).
+**S.No**, **Order ID**, **Registered By** (entity and role), **Registered Qty**, **Verification Status** ("N accepted", plus "+N more"), **Withdrawn**, **Amount**, **Refund**, **Payment Mode** (Online/Offline), **Payment**, **Invoice Status** (Generated/Pending), **Adjusted** (Yes/No), **Changed on** and **Action** (pencil = edit price, eye = order details, send = generate invoice).
 
-Filters: **Invoice Status** (generated, pending), **Refund Status** (initiated, completed, cancelled), **Payment Status** (paid, unpaid, overdue), and **Search** by name. Results are paginated (10 to 100 per page).
+Toolbar: **Search by registered by...**, **Only needs attention**, and the filters **Payment** (paid, unpaid, overdue), **Invoice Status** (generated, pending) and **Changed on** (All dates, Last 7 days, Last 30 days, Custom range with **From** and **To**). Rows per page: 10, 20, 25, 30, 50 or 100.
 
-The eye icon opens **Order Details**: Order ID, registered by/for, date and time, categories, amounts, withdrawn and refund status per player ("Order details not found." if it cannot be loaded).
+With no orders: "Orders appear here once participants register for this event."
 
-If the event is **Online** but some orders are cash, a warning explains that these came from adding participants directly in the fixture with the Replacement feature, and that the organiser must collect those payments. Such rows are highlighted.
+## Invoice History Orders: highlighted rows and Needs attention
+
+- **Needs attention** rows are highlighted and listed first; the footer counts them ("orders need attention: highlighted, listed first"). An order needs attention when its payment mode is offline (cash), no invoice has been generated for it yet, and it contains an entry in a category whose fee was changed (on the **Registration** page) after the order was made. Generating its invoice clears the flag. Online orders are never flagged. Tick **Only needs attention** to show only these.
+- If the event is **Online** but some orders are cash, the legend shows "Cash order in an online-payment event — collect payment" and a warning explains: "Payment Mode is selected as 'Online', but there are some orders generated in 'Cash' Mode due to direct addition of Participant in Fixture using Replacement Feature. Please make sure to collect Payment for all Cash Payment from respective Payee." Such rows are highlighted.
+
+## Invoice History Orders: Order Details and Edit price
+
+- The **eye** icon opens **Order Details**: Order ID, registered by/for, date and time, the entries with category, player, price, payment and status, and an **Order History** tab with every price change. "Order details not found." or "Failed to load order details. Please try again." means it could not be loaded.
+- The **pencil** icon opens the same dialog with **Edit price** on each entry. It is enabled only for **offline (cash)** orders, without a generated invoice, **after the event has ended** (end date before today).
+- Edit price: enter the **New price**, choose a **Reason (required)** – **Fee corrected (input error)**, **Fee updated by organiser**, **Late entry fee**, **Discount / goodwill**, **No charge (official, guest)** or **Other** – and click **Save**. Without a reason: "Choose a reason first". Same price: "Price unchanged".
+- Before saving, the dialog explains the effect, e.g. "Nothing paid yet: stays Unpaid at the new price", or for a paid entry "becomes Adjusted" with the amount to collect or to return to the payer.
+- "Price saved. Recorded in the order history." confirms it; the order then shows **Adjusted: Yes**.
+- Except for the main administrator, a user can only edit prices, apply the current fee or change the payment status on orders they created themselves; other orders give "Access Denied".
+
+## Invoice History Orders: Apply current fee
+
+When a category's fee was changed after people registered, existing entries keep their old price. To update them:
+
+1. Tick one or more orders (orders with a generated invoice cannot be ticked).
+2. Click **Apply current fee**.
+
+- At most 10 orders at a time: "Select up to 10 orders at a time." The server also refuses more than 10.
+- Only entries whose participant is currently accepted (not withdrawn) get the new fee; entries still pending or rejected keep their price.
+- "N prices set to the current fee. Recorded in each order's history." confirms it; if some orders could not be changed: "N prices set to the current fee, N orders skipped. …".
+- "Every selected entry is already at the current fee or can't be changed." means nothing changed.
+
+## Invoice History tab: Audit Log
+
+The **Audit Log** tab lists category fee changes in this event: **Date and time**, **Changed by**, **Change** ("Category fee changed", category, old fee → new fee), **Reason** and **Affects** ("N orders").
+
+- Click **N orders ›** to open **Orders** filtered to the orders of that category; a chip on the Orders toolbar shows the filter, click its × to remove it.
+- Filters: **Search category**, **Changed on** (All dates, Last 7 days, Last 30 days, Custom range) and **Changed by** (pick one or more people). Rows per page: 10, 20 or 50.
+- Empty: "No changes yet" – "Category fee changes show here." (or "Try another date range or person." when filters are set).
 
 ## Invoice History: marking an order as paid
 
-The **Payment Status** dropdown on an order can be set to **Paid**, **Unpaid** or **Overdue**, with these limits:
+The **Payment** dropdown on an order can be set to **Paid**, **Unpaid** or **Overdue**, with these limits:
 
-- Only **cash (offline)** orders can be changed. Online orders get their status from the payment gateway, so the dropdown is disabled.
-- Once an order is **Paid**, its status is locked.
+- Only **cash (offline)** orders can be changed. Online orders get their status from the payment gateway and show a status badge instead of the dropdown.
+- Once an order is **Paid**, its status is locked and shown as a badge.
 
 Messages: "Payment status updated successfully." or the server's message / "Failed to update payment status. Please try again.". "Invalid order. Order ID is missing." means the row has no order ID; reload the list.
 
@@ -215,7 +250,7 @@ Lists the generated registration invoices: **S.No**, **Invoice No.**, **Raised T
 **Merge Invoice** (on the **Invoices** tab) opens **Merging by User**: "You are consolidating multiple invoices from these users into a single file." Each row is a payer (**Raised To**) with **T. Invoices** (number of invoices), **Qty**, **Amount**, **Refund** and **Status** (**To Generate** or **Generated**).
 
 1. Tick the payers to merge – at most 10 at a time. Payers with status **Generated** cannot be ticked.
-2. Click **Yes, Merge**. One merged invoice per payer is created with the **Merged Invoice** template selected on the settings tab. "Invoice summary created successfully." (toast "Merging Successful") and the page togglees to **Merged Invoices**.
+2. Click **Yes, Merge**. One merged invoice per payer is created with the **Merged Invoice** template selected on the settings tab. "Invoice summary created successfully." (toast "Merging Successful") and the page switches to **Merged Invoices**.
 
 A **+N** badge means N invoices were created after the merged invoice. The **Regenerate** icon then rebuilds that payer's merged invoice to include them ("Invoice summary regenerated successfully.").
 
@@ -231,18 +266,21 @@ Lists merged invoices: **S.No**, **Invoice No.**, **Raised To**, **Qty**, **Amou
 
 ## Financial Report tab
 
-Shows the event's income. If no report exists yet: "No record found" and a **Generate financial report** button, which builds the report (per class and per entity).
+Shows the event's financial statement. If no report exists yet: "No record found" and a **Generate financial report** button, which builds the report.
 
 When a report exists:
 
-- Header: event name, **Competition Dates**, **Venue** and **Organizer Name** (venue and organiser are not shown for leagues).
-- **Filter by**: **Class** (one row per class/category) or **Entity** (one row per paying entity).
-- Columns include **Entries**, **Price**, **Total**, **Amount received from Entries** (Entity view), **Adjusted Amt**, **Refund** and **Amount**. Some report formats show an info icon on **Amount** with the breakdown (entries × amount, refund, line total, **Total Amount**).
-- A summary below lists the totals, fees and the final total as calculated by the server.
-- **Refresh** rebuilds the report with the latest orders and refunds.
-- **Download**: **PDF** (print) or **XLS** (spreadsheet with the same rows and totals).
+- Header: **Event Name**, **Event Dates**, **Venue** and **Organiser** (venue and organiser are not shown for leagues), with **View audit log**, **Refresh** and **Download**.
+- Summary cards: **Order value** ("Paid + unpaid"), **Paid** ("Received and kept"), **Unpaid** ("Accepted, not paid yet"), **Refunded** ("Withdrawn, rejected or expired"), **Adjusted** ("Price changed after payment, or fee moved") and **Net amount**. **View Orders** on a card opens **Invoice History** → **Orders** filtered to those orders.
+- Table **By Class** or **By Entity** (pick in the dropdown above the table). Columns include **Current fee** (class view), **Entries**, **Amount**, **Paid**, **Unpaid**, **Adjusted**, **Refund** and **Net amount**. An info icon on an amount shows its breakdown and **Total Amount**.
+- A summary card lists the sub total, fees and the total to the organiser as calculated by the server.
 
-Messages after **Refresh** or **Generate financial report** come from the server.
+## Financial Report tab: Refresh, Download and View audit log
+
+- **Refresh** rebuilds the report with the latest orders and refunds. Messages come from the server.
+- **Download** → "Download as" **PDF** ("Event statement, A4") or **XLS** ("Spreadsheet export"). A preview opens before the file is saved.
+- **View audit log** opens **Invoice History** → **Audit Log**.
+- Fees cannot be edited from this tab.
 
 ## Payment & Invoice page: loading problems
 
@@ -251,7 +289,7 @@ Messages after **Refresh** or **Generate financial report** come from the server
 - Account list errors: see Receiving account for online payments.
 - If settings look different from what you saved, reload the page; saved settings are always read again from the server when the page opens and after saving.
 
-## Frequently asked questions about the Payment & Invoice page
+## Frequently asked questions about the Payment & Invoice page (part 1)
 
 **Why is the Save button disabled?** All four must be set: at least one Raised To role, Enable Invoicing Yes or No, a Payment Type, and with Online a receiving account.
 
@@ -269,6 +307,8 @@ Messages after **Refresh** or **Generate financial report** come from the server
 
 **Why didn't my new template get used?** After the first invoice is generated the Registration Invoice template is fixed; after the first merged invoice the Merged Invoice template is fixed.
 
+## Frequently asked questions about the Payment & Invoice page (part 2)
+
 **How many payers can I merge at once?** Up to 10 per merge.
 
 **What does +N next to a merged payer mean?** N invoices were created after the merge. Use Regenerate to include them.
@@ -278,3 +318,11 @@ Messages after **Refresh** or **Generate financial report** come from the server
 **How do I choose who the invoice is raised to?** In **Raised To**, click the role cards in the order invoices should be raised; the number on a card is its order. A registration is billed to the participant's parent (for example their club) with the first matching role, otherwise to the event organiser. Select at least one role, then **Save**.
 
 **How do I send invoices for registrations?** Open **Invoice History**. Click the **Send** icon on an order to generate its invoice, or tick several orders and click **Send Invoice** to generate them grouped per payer. Invoicing must be on: set **Enable Invoicing for this Event?** to **Yes** and save.
+
+## Frequently asked questions about the Payment & Invoice page (part 3)
+
+**Why is the pencil (edit price) icon disabled?** Prices can only be edited on offline (cash) orders without a generated invoice, after the event has ended.
+
+**How do I update old orders after changing a category fee?** In **Orders**, tick up to 10 orders and click **Apply current fee**. Only entries of accepted, not withdrawn participants are changed. Each change is recorded in the order history.
+
+**What does Needs attention mean?** The order is a cash (offline) order without an invoice that contains an entry in a category whose fee was changed after the order was made, so its price may be out of date. It is highlighted and listed first. Use **Apply current fee** or **Edit price** if needed, then generate the invoice (which clears the flag). Tick **Only needs attention** to see only these.

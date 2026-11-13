@@ -31,6 +31,7 @@ suggested_questions:
   - How do I reset or remove match slots?
   - What does "No active planners found for this venue and date" mean?
 backend_sources:
+  - gateway/src/common/enum/enums.py (Schedule Match Access, Schedule Umpire Access)
   - gateway/src/routers/planner_router.py (assign, auto assign, swap, remove, reset, visibility, event slots, umpire endpoints)
   - tms/src/router/planner_router.py
   - tms/src/service/planner.py (assign_match_slots, assign_match_slots_by_venue, swap_match_slots, get_day_schedule)
@@ -63,7 +64,7 @@ This guide describes the documented backend behavior for Scheduler APIs: day sch
 
 The gateway checks login and the required permission before forwarding each call. A successful response does not imply that every requested match was placed: auto scheduling can return a pending list, and manual assignment can follow a configured conflict-handling decision.
 
-Messages marked as having no English text may appear in the interface as a raw translation key. This guide does not cover every Scheduler UI or API: the match list, player umpiring settings, live match-centre status, event official notes, and event venue days were not traced in this pass.
+This guide does not cover every Scheduler UI or API: the match list, player umpiring settings, live match-centre status, event official notes, and event venue days were not traced in this pass.
 
 ## Quick reference
 
@@ -91,11 +92,11 @@ A successful empty response can therefore mean that no planner exists for the se
 
 ## Assign matches to slots
 
-**Endpoints:**
-- `POST planner/v1/assign_match_slots`
-- `POST planner/v1/assign_match_slots_by_venue`
+**Endpoint:** `POST planner/v1/assign_match_slots` (when a shared venue is sent instead of one event venue, the same endpoint spreads the matches over that venue's plans; it then needs a start table).
 
-### Validation order and messages
+If the event uses Match Call Out, every slot action (assign, auto schedule, swap) is refused with 409 "This event uses Match Call Out: time slots cannot be assigned".
+
+## Assign matches to slots – validation messages
 
 The documented checks include:
 
@@ -106,20 +107,22 @@ The documented checks include:
 | No active planner exists for the venue | `No active planners available` (404) |
 | Requested start time is outside planner hours | `Start time is outside planner range` (400) |
 | Planner has no configured slots | `No slots configured for planner` (400) |
-| No free slots exist in the requested range | 400 response with no English text |
+| Only plans with status available or pending are used | otherwise `No active planners available` (404) |
+| No free slots exist in the requested range | "There are no available slots to schedule the matches you have selected. All slots are either fully occupied or blocked. ..." (400, cannot be overridden) |
+| Fewer free slots than selected matches | "It seems that you don't have enough slots to schedule all the matches you have selected. You can proceed with Partial Scheduling ..." (400) |
 | By-venue request is invalid | `Invalid assign request: {reason}` (400) |
 | No valid matches remain for a by-venue request | `No valid matches to schedule` (400) |
 | By-venue assignment fails unexpectedly | `Planner assignment failed` (500) |
 
+## Assign matches to slots – Scheduler APIs (2)
+
 ### Scheduling conflicts
 
-The planner can report these conflict types:
-- Participant scheduling conflict.
-- Round sequence conflict, such as a later round being placed before an earlier one.
-- Round overlap conflict.
-- Multiple conflicts at once.
-
-The conflict messages do not yet have English text and may appear as raw keys.
+The planner reports these conflicts (400), each with its own message:
+- A player is in more than one match in the same or an overlapping slot ("... A player is involved in more than one match assigned to the same slot. ...").
+- Matches from different rounds in the same slot ("... Matches from the different rounds cannot be placed in the same slot. ...").
+- A later round in the same slot as, or before, an earlier round of the same group ("... Matches from a later round cannot be scheduled in the same slot as, or before, an earlier round. ...").
+- More than one of these at once ("... Press Continue (Partial) to schedule only the valid matches, press Continue to force-schedule all selected matches, or press Cancel ...").
 
 Unless the request specifies how to continue, a conflict stops the placement and nothing is saved. The documented continuation decisions are:
 - Use the default behavior.
@@ -128,17 +131,21 @@ Unless the request specifies how to continue, a conflict stops the placement and
 
 Do not assume that every conflicting assignment is automatically saved. The result depends on the decision supplied with the request.
 
+On the Scheduler page a conflict opens an **Alert!** popup with the server message. **Continue ( Partial )** retries with valid matches only (not offered for a single match); **Continue** schedules all of them anyway; **Cancel** saves nothing. If nothing valid is left: "No valid matches to schedule".
+
 ## Auto schedule
 
 **Endpoint:** `POST planner/v1/auto_assign_match_slots`
 
 ### Required inputs and prerequisites
 
-- The request must include either a list of match IDs or a stage ID. If neither is supplied, the backend returns a 400 response whose message has no English text.
+- The request must include either a list of match IDs or a stage ID. If neither is supplied: "A filter (event_venue_id, venue_id, or match_ids) is required to auto-schedule" (400).
 - Venue registration must be enabled for the event. Otherwise, the backend returns `Venue registration is not enabled for this event` (400).
-- Matches are grouped by venue and date, then placement is attempted.
+- For a whole stage, only unscheduled matches that have both participants are used.
+- Matches are grouped by the home side's registered venue and date, then placed. Matches that do not fit are tried at other registered venues.
+- Auto scheduling does not force through conflicts; such matches end up pending.
 
-### Pending matches and reasons
+## Auto schedule – pending matches and reasons
 
 Auto scheduling can succeed overall while returning some matches as pending. The pending reason indicates why a match could not be placed.
 
@@ -166,10 +173,11 @@ The backend validates the proposed swap before saving it.
 | A match does not exist | `Match Not Found` (400) |
 | Either match has no assigned slot | `Match Slot Not Assigned` (400) |
 | A match's planner cannot be found | `Not Found` (400) |
+| The tables of one match do not fit in the other slot | `Match Cannot Move To Slot` (400) |
 | The swap plan is missing required data | `Invalid Swap Plan` (500) |
 | Swap succeeds | `Match Slots Swapped Successfully` (200) |
 
-The swap is also checked for scheduling conflicts. A conflicting swap is refused with a 400 response. Conflict types include multiple conflicts, round sequence, round overlap, and participant scheduling. These conflict messages do not yet have English text.
+The swap is also checked for the same scheduling conflicts (player, different rounds, round order). A conflicting swap returns the conflict message (400) and offers only **Continue** (swap anyway) or **Cancel**.
 
 If a swap fails, check that the two matches are different, both exist, both have assigned slots, both planners are available, and the proposed swap does not violate the scheduling rules.
 
@@ -179,11 +187,12 @@ If a swap fails, check that the two matches are different, both exist, both have
 - `POST planner/v1/remove_match_slots`
 - `POST planner/v1/reset_match_slots`
 
-- **Remove:** Removes slot assignments from the specified matches and updates schedule visibility.
-- **Reset:** Clears the slots for the specified matches.
+- **Remove:** Removes slot assignments (slot, tables, start and end time) from the specified matches and makes their schedule visible again. Success: "Successfully removed slot assignments".
+- **Reset:** Clears the slots of all matches that fit the chosen filters (event, category, stage, group, round, participant type, venue, date).
+- Both remove automatically assigned player umpires from those matches; umpires assigned by hand stay linked. Matches handled by Match Call Out are skipped.
 - Resetting the whole venue requires confirmation in the UI before the request is sent.
 
-The source material does not specify additional reset safeguards or permission names for these endpoints; do not infer them.
+Assigning, auto-assigning, swapping, removing and resetting match slots need the **Schedule Match Access** permission with Edit; assigning umpires (officials) needs **Schedule Umpire Access** with Edit. Administrators and users with Live Match Centre access pass these checks; others get **403** "Access Denied". On the page, a reset is only sent about 3 seconds after confirmation, so it can still be cancelled with **Undo** in that time.
 
 ## Schedule visibility
 
@@ -223,8 +232,12 @@ For `assign_event_official_match`:
 | `user_role_ids` is supplied without a type | `type is required when user_role_ids is provided` (400) |
 | No active planner exists for the venue/date | `No active planners found for this venue and date` (404) |
 | No slots are available in the requested time range | `No slots available for the specified time range` (400) |
+| No match is available to assign | `No matches available for assignment` (400) |
+| More officials than available matches | `Not enough matches available for all officials` (400) |
+| An official would be in two overlapping matches | `Some officials have overlapping assignments` (400) |
+| Success | `Successfully assigned event officials to matches` (200) |
 
-### Assign by match IDs
+## Assigning match officials – by match IDs
 
 For `assign_event_official_match_ids`:
 
@@ -233,6 +246,12 @@ For `assign_event_official_match_ids`:
 | No assignable official is found for the user on a match | `No assignable event official found for user on this match` (400) |
 | Some match IDs are invalid or being modified | `Some match IDs are invalid or currently being modified` (400) |
 | One or more matches have no assigned slot | `Some matches don't have slots assigned` (400) |
+| More officials than the per-match limit in Umpire/Referee Settings | `Assignment would exceed per_match_limit for one or more matches` (400) |
+| An official would be in two overlapping matches | `Event official has overlapping assignments` (400) |
+
+Assigning by match IDs and resetting official assignments only check that you are signed in; assigning by venue/date and removing need **Schedule Umpire Access** (Edit).
+
+## Assigning match officials / umpires – Scheduler APIs (2)
 
 ### Remove official assignments
 
@@ -275,6 +294,8 @@ The documented API prerequisite is that venue registration must be enabled for t
 ### Why can I not swap two matches?
 
 Check that the selected matches are different, both exist, both have assigned slots, both planners can be found, and the swap does not cause participant scheduling, round sequence, or round overlap conflicts.
+
+## Frequently asked questions – Scheduler APIs (2)
 
 ### Why does an umpire assignment fail because there are no slots?
 

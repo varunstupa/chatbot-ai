@@ -27,7 +27,7 @@ This guide covers the **Print Layout → Score Sheet** panels for Table Tennis, 
 ## Score sheet: Event Details and Best Of
 
 - **Event Details** → **Event Title** – prints the event name at the top of the sheet.
-- **Best Of** – choose 1 to 6. It sets how many game columns the sheet has for writing scores.
+- **Best Of** – choose 1 to 7. It sets how many game columns the sheet has for writing scores.
 
 ## Score sheet: Match Details (Singles and Doubles)
 
@@ -62,4 +62,4 @@ For **Teams** the panels are the same, plus:
 
 **Why is the team line-up empty on the sheet?** Choose a format under **Playing Order** and save.
 
-**What does Best Of change on the score sheet?** **Best Of** (1 to 6) sets how many game columns the score sheet has for writing scores.
+**What does Best Of change on the score sheet?** **Best Of** (1 to 7) sets how many game columns the score sheet has for writing scores.

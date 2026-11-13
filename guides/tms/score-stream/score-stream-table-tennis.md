@@ -34,6 +34,9 @@ backend_sources:
   - tms/src/utils/scoring/strategies/register_strategies.py (sport 1)
 source_files:
   - src/app/modules/tms/score-and-streaming/score-and-streaming.component.ts
+  - src/app/modules/tms/score-and-streaming/score-input-feedback.util.ts
+  - src/app/modules/tms/score-and-streaming/redundant-set.util.ts
+  - src/assets/i18n/en.json
   - src/app/modules/tms/score-and-streaming/score-input-feedback.constants.ts
   - src/app/shared/game-play-config/game-play-config.defaults.ts
 answer_notes: |
@@ -58,12 +61,12 @@ The server checks the score when it is saved. If a score is rejected, use the va
 
 ## Quick reference
 
-- **Default target:** 11 points per game.
-- **Standard rule (deuce):** A side must reach the target and lead by two points.
-- **Golden point (simple rule):** The first side to reach the target wins; no two-point lead is needed.
-- **Sudden death (cap):** Reaching the configured death point wins immediately, even without a two-point lead, subject to the documented restrictions.
-- **Decider game:** The last game can use its own target and the golden rule.
-- **Score entry:** Enter side A and side B points for each game, then select **Update**.
+- **Game target:** 11 points. The server always uses 11 for table tennis games.
+- **Standard rule (deuce):** A side must reach 11 and lead by two points.
+- **Golden point:** The first side to reach 11 wins; no two-point lead is needed and no score above 11 is accepted.
+- **Sudden death (cap):** Reaching the configured **Max Point** wins the game, subject to the restrictions below.
+- **Decider game:** The last game of the match can use its own target, always without deuce.
+- **Score entry:** Enter side A and side B points for each game, then click **Save**.
 - **Fast entry:** The cursor advances when the game appears complete under its rules. The two-digit auto-advance behavior is specific to Badminton, not Table Tennis.
 
 ## How a table tennis match is scored
@@ -72,38 +75,31 @@ A match consists of multiple games. In the system, these games may be called **s
 
 1. Enter the points for side A and side B in each game's score boxes.
 2. Each score box accepts at most two digits.
-3. The match is won by the side that wins the majority of games.
-4. Once the match winner is decided, do not enter later games.
-
-The default game target is 11 points. A game's accepted final score depends on the applicable Game Play rule.
+3. With **ST** the match is won by the side that first wins the majority of games. With **SP** every game is played.
+4. Every game you enter must be a finished game. An unfinished game (for example 8–5 or 10–10) is refused with "Wrong score input for set {n}".
+5. You may save before the match is decided (for example two games of a best of five); the match then stays **In Progress**. A score that decides the match sets it to **Scored**.
+6. With ST, games entered after the match is already decided are ignored by the server.
 
 ## The three ways a game can be won
 
 ### Standard rule (deuce; default)
 
-A game is won at the target with a two-point lead. At 10–10, the game continues until one side leads by two points.
+A game is won at 11 with a two-point lead. From 10–10 the game continues until one side leads by exactly two points.
 
-Examples:
-- **11–9:** valid winning score.
-- **11–10:** not a valid final score.
-- **12–10:** valid winning score.
-- **13–11:** valid winning score.
+Examples: **11–9**, **12–10** and **13–11** are valid; **11–10** and **12–11** are not final scores; **12–9** is refused because the game ended at 11–9.
 
-### Golden point (simple rule)
+### Golden point
 
-There is no deuce. The first side to reach the configured target wins the game outright. The Game Play setting for this rule is the **rule point**.
-
-For a target of 11, this means a score such as **11–10** can be accepted under the golden-point rule.
+Chosen with **Golden Point System**. There is no deuce: the first side to reach 11 wins, so **11–10** is valid. A score above 11 is refused. Sudden death does not apply under this rule.
 
 ### Sudden death (cap)
 
-When a death point is configured, reaching that point wins the game immediately, even without a two-point lead.
+Turned on with **Sudden Death Point** (**Max Point**) under the standard rule:
+- No side may score above the Max Point, and both sides cannot be on it.
+- When the Max Point is 11 or more, a score on it wins only if the loser is within two points. Example with Max Point 15: **15–14** and **15–13** win; **15–12** is refused.
+- When the Max Point is below 11, reaching it wins at any score of the opponent.
 
-The documented restrictions are:
-- The opposing side cannot be on the same death-point score.
-- No score can go above the configured death point.
-
-Do not assume a specific death-point value unless it is available in the event's Game Play settings.
+Do not assume a specific Max Point unless it is shown in the event's Game Play settings.
 
 ## Valid scores under the standard rule (target 11)
 
@@ -116,80 +112,88 @@ Do not assume a specific death-point value unless it is available in the event's
 | 12–11 | Invalid as a final score | Only a one-point lead |
 | 12–9 | Invalid as a final score | The game should already have ended at 11–9 |
 
-For live scoring, a score can be in progress while neither side has yet won. The final score must follow the selected rule. These examples assume a target of 11 and the standard rule.
+For live scoring, a score can be in progress while neither side has yet won. These examples assume no sudden death.
 
 ## The decider game
 
-The last game of the match can use its own target, configured as **Decider set** points, and use the golden rule with no deuce.
+With **Decider set** on, the last game of the match (for example game 5 of a best of five) uses the decider **Point** as its target and is played without deuce: the first side to reach it wins and no higher score is accepted. Without a decider Point, the target stays 11.
 
-Enter the decider game in the same way as other games, but apply the decider settings for that game. Do not assume a particular decider target if the configured value is not available.
+The decider rule only applies to the last possible game, not to an earlier game that happens to decide the match.
+
+## Special rule (SP) in table tennis
+
+- Every game must be played. A game left at 0–0 is refused: "Under Special Rule, all configured sets must be completed before saving the match. Set {n} was not played."
+- The winner is the side with more games. If the games are level (an even number of games), the side with more total points wins; equal points make the match a tie.
 
 ## Validation messages and troubleshooting
 
 ### "Wrong score input for set {set_number}"
 
-**Meaning:** The two scores do not form a valid result for that game under the configured rules.
+**Meaning:** The two scores do not form a finished game under the configured rules, or the game number is beyond the match format.
 
 **Check:**
-- Whether the game has a valid final score.
-- Whether the standard rule requires a two-point lead.
-- Whether the golden-point rule or sudden-death cap is configured.
-- Whether the decider game uses a different target.
+- Whether the game has a valid final score (two-point lead under the standard rule).
+- Whether golden point, sudden death or the decider game is configured.
 - Whether the entered score would have ended the game earlier.
 
-Example: **11–10** is rejected as a final score under the standard rule, but may be accepted under the golden-point rule.
+Example: **11–10** is rejected under the standard rule, but accepted under the golden-point rule.
 
 ### "Set exceeded"
 
-**Meaning:** More games/sets were entered than the match allows.
+**Meaning:** More games were entered than the match format allows.
 
-**What to do:** Check the match format and remove scores for games beyond the allowed number or after the match winner has already been determined.
+**What to do:** Check the match format and remove the extra games.
 
-### "Score Updated"
+### "Score Updated Successfully"
 
-**Meaning:** The score was saved successfully.
+**Meaning:** The score was saved.
 
 ### "Match Already Walkover Reset First"
 
-**Meaning:** A walkover is recorded, and new game scores cannot be entered until the walkover is reset.
+**Meaning:** A walkover is recorded, and new game scores cannot be entered until the walkover is cleared.
 
-**What to do:** Reset the walkover first if the match is meant to be played and scored.
+### Reset refused
 
-### "Match Data Not Reset"
-
-**Meaning:** A match reset operation is blocked.
-
-The source material does not specify every condition that blocks a reset. Check the match state and applicable configuration; do not assume a specific cause from this message alone.
+"Cannot reset a match that has not started" means the match has no score. "Reset blocked because of an active forfeit" means a player has an active forfeit.
 
 ## Walkovers and disqualifications
 
-A walkover or disqualification is saved with its reason. The server sets the match result, so game-by-game scores are not required for that result.
+A walkover or disqualification is saved with its reason. The server sets the result: the walkover winner is given the games needed to win (ST) or all games (SP) at 11–0. A double walkover is saved as a tie with no game scores.
 
-A match with a recorded walkover cannot accept new game scores until the walkover is reset. If the system returns **"Match Already Walkover Reset First"**, check whether the walkover still needs to be reset.
+A match with a recorded walkover cannot accept new game scores until the walkover is cleared ("Match Already Walkover Reset First").
 
 ## Entering scores quickly
 
-The cursor moves on when the game appears complete under the configured rules, allowing the scorer to enter games in sequence without clicking each box.
+The cursor helps the scorer enter games in sequence without clicking each box:
+- In side A, a value above 1 (while side B is still empty) moves the cursor straight to side B.
+- In side B, the cursor moves to the next game when the game looks finished on an 11-point game: 11 against 9 or less, or both sides at 10 or more with a two-point lead.
 
-The **two-digit auto-advance behavior is specific to Badminton** in the documented interface. Do not explain that behavior as a Table Tennis feature.
+The cursor always uses this 11-point logic; it does not follow golden point, the cap or the decider target. The server still validates the score against the configured rules when you click **Save**.
 
-## Messages (table tennis)
+The **two-digit auto-advance behavior is specific to Badminton**. Do not explain that behavior as a Table Tennis feature.
 
-- **"Wrong score input for set {set_number}"** — the game score is invalid under the configured rules.
-- **"Set exceeded"** — more games were entered than the match allows.
-- **"Score Updated"** — the score was saved.
-- **"Match Already Walkover Reset First"** — the walkover must be reset before new game scores can be entered.
-- **"Match Data Not Reset"** — the match reset operation is blocked; the exact cause is not specified here.
+## Table tennis score messages as shown on screen
+
+The table tennis messages appear on screen as the server sends them:
+- "Wrong score input for set {n}"
+- "Set exceeded"
+- "Under Special Rule, all configured sets must be completed before saving the match. Set {n} was not played."
+- "Match Already Walkover Reset First"
+- "Score Updated Successfully"
+
+For Table Tennis the page does not reject a game while you type; all checks happen when the score is saved. After a successful save that decides the match, the **Winner Confirmation** popup opens; **Cancel** there clears the saved score.
+
+Once the entered sets decide the match, later empty sets are locked; a later set that still holds a score blocks saving with "Invalid Score: Set {n} cannot be scored because the match has already concluded." (not when the rules play every set).
 
 ## Frequently asked questions
 
 ### How do I enter a table tennis score?
 
-Enter the points for side A and side B for each game, then select **Update**. Enter only the games needed to determine the match result.
+Enter the points for side A and side B for each game, then click **Save**. Each game you enter must be finished.
 
 ### When is a game won?
 
-By default, a game is won at 11 points with a two-point lead. Under the golden-point rule, the first side to reach the target wins outright. Under sudden death, reaching the configured death point wins immediately, subject to the documented restrictions.
+At 11 points with a two-point lead (standard rule). Under the golden-point rule the first side to 11 wins. Under sudden death, a score on the Max Point wins when the loser is within two points.
 
 ### What is deuce in table tennis?
 
@@ -197,35 +201,41 @@ At 10–10 under the standard rule, the game continues until one side leads by t
 
 ### Why does "Wrong score input for set 1" appear?
 
-The score does not form a valid game result under the configured rules. For example, 11–10 is invalid as a final score under the standard rule. Continue the game if it is still in progress, or check the golden-point, sudden-death, and decider settings.
+The score is not a finished game under the configured rules. For example, 11–10 is invalid under the standard rule. Check the golden-point, sudden-death and decider settings.
 
 ### What is the golden-point rule?
 
-The first side to reach the configured target wins the game. No two-point lead is required.
+The first side to reach 11 wins the game. No two-point lead is required and no score above 11 is accepted.
 
 ### What is sudden death in table tennis?
 
-Sudden death means reaching the configured death-point score wins immediately, even without a two-point lead. The opposing side cannot be on the same death-point score, and the score cannot go above the configured death point.
+A Max Point that ends a long deuce. Nobody may go above it, both sides cannot be on it, and (for a Max Point of 11 or more) the loser must be within two points, for example 15–14 or 15–13 with Max Point 15.
+
+## Frequently asked questions – table tennis scoring (2)
 
 ### How does the decider game work?
 
-The last game can use its own configured target and the golden-point rule, with no deuce. Check the event's Decider set points setting for the actual target.
+The last game of the match is played to the decider **Point** without deuce. Check the event's Decider set setting for the actual target.
+
+### Can I save a match that is not finished?
+
+Yes, in table tennis. Enter the finished games and save; the match stays In Progress until a later save decides it.
 
 ### Can I enter scores after recording a walkover?
 
-Not until the walkover is reset. The server rejects new game scores while the walkover remains recorded.
+Not until the walkover is cleared. The server answers "Match Already Walkover Reset First".
 
 ### What does "Wrong score input for set 1" mean in table tennis?
 
-The score does not form a valid game result under the configured rules. For example, 11–10 is invalid as a final score under the standard rule. Continue the game if it is still in progress, or check the golden-point, sudden-death and decider settings.
+The score does not form a finished game under the configured rules. For example, 11–10 is invalid under the standard rule. Check the golden-point, sudden-death and decider settings.
 
 ### Why does the system say "Set exceeded"?
 
-More games were entered than the match allows. Remove the scores of games beyond the allowed number, or after the match winner was decided.
+More games were entered than the match format allows. Remove the extra games.
 
 ### Why is a table tennis score rejected?
 
-The entered points do not form a valid game result under the Game Play rules (the default game is to 11). Check the two-point lead of the standard rule, the golden point, sudden death and decider settings, and do not enter games after the match winner is decided.
+The entered points do not form a finished game under the Game Play rules (games to 11). Check the two-point lead of the standard rule, golden point, sudden death and the decider game.
 
 ## Natural-language and Hinglish query patterns
 

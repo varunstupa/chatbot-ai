@@ -54,7 +54,9 @@ Game play settings exist on four levels. The most specific one that exists is us
 4. the **organisation** defaults (**Game-Play Configuration** in the admin manage menu, `/admin/manage/game-play-config/0`).
 
 What this means:
-- When the event has no own settings yet, this page shows the organisation defaults. Clicking **Update** saves them as the event's own settings.
+- When an event is created, the organisation's Game-Play Configuration is copied into the event's own settings. Later changes to the Game-Play Configuration do not change existing events.
+- When the event has no own settings, this page shows the defaults. Clicking **Update** saves them as the event's own settings.
+- Saving on this page has no lock: it is accepted even when matches are already in progress or scored (the locks apply on the Fixtures screen).
 - Event settings apply to every category of the event that has **no own settings**. A category or stage configured on the Fixtures screen keeps its own values.
 - Saving here never overwrites category or stage settings.
 - The message "Rule Settings Updated" confirms the save.
@@ -69,7 +71,7 @@ Turn on the toggle to give standing points per match result. Enter the points fo
 These points are added up for the group standings (for example 2 for a win, 1 for a loss).
 
 **Enable Set Point System** – "Each set winner will receive the below configured point for the team (Walkover and Not Played will be defined as 0 points)". Enter points for **Single**, **Doubles** and **Golden Match**, each 1 to 99.
-- **Advance Set Point System** (only with the Standard rule, **ST**) – "extend matches until the required winning lead is reached": **Minimum Lead** (pts, 1–99) and **No. of consecutive matches to be played**.
+- **Advance Set Point System** (only with the Standard rule, **ST**) – "extend matches until the required winning lead is reached": **Minimum Lead** (pts, 1–99) and **No. of consecutive matches to be played** (at least 1, at most the number of matches in the team playing order, otherwise 99).
 - **Target Point System** – a target number of points to win (**Pts**, 1–99).
 
 Invalid values block the save with "Please enter valid values for …" naming the fields (for example Single, Doubles, Golden Match, Minimum Lead).
@@ -132,7 +134,8 @@ Padel and Tennis have extra timeout options (medical timeouts, minimum time betw
 - "Rule Settings Updated" – saved.
 - "updated_successfully" (Padel and Tennis, Scoring Management only) – despite the wording, the scoring settings were **not** saved for the event; see the Padel and Tennis guide.
 - "Please enter valid values for …" – a number is missing or out of range; the named fields must be fixed before saving.
-- "This setting is applied to all rounds. You cannot update it once the match status is In Progress or Scored. …" – shown when a locked setting is changed for a stage that already has matches in progress or scored (on the Fixtures screen). Reset the match to change it.
+- "This setting is applied to all rounds. You cannot update it once the match status is In Progress or Scored. …" – shown on the Fixtures screen (not on this page) when a locked setting is changed for a category or stage that already has matches in progress or scored. Reset the match to change it.
+- The number range checks ("Please enter valid values for …", 11–30 points for Badminton) are made only in the admin app; the server does not check them.
 - "Access Denied" – saving needs **Edit** permission on **Edit Game Play Settings**.
 - "Unauthorized Access" – your session expired. Sign in again.
 
@@ -148,7 +151,11 @@ Padel and Tennis have extra timeout options (medical timeouts, minimum time betw
 
 **What is the difference between ST and SP?** ST ends the match when one side wins the majority of an odd number of games/sets; SP always plays all games/sets.
 
+## Frequently asked questions about the Game Play page (continued)
+
 **Why do I not see team point options?** They are set per Teams category on the Fixtures screen, not on this event page.
+
+**Where is Scoring Access?** Not on this event page. The **Scoring Access** section is at the top of the **Scoring Management** tab on the Fixtures screen, only for a group or knockout stage of a League event. While it is open, **Update** is greyed out with "Close Scoring Access to update the other settings."
 
 **What does Head-to-Head mean?** Only matches between the tied players or teams are compared.
 

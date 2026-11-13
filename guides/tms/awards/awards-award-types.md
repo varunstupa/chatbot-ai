@@ -28,13 +28,15 @@ suggested_questions:
   - What does Apply to all do in an award?
   - How is the Order of Merit points calculated?
 backend_sources:
-  - gateway/src/routers/award_router.py (awards/v1 global and event awards)
+  - gateway/src/routers/awards_router.py (awards/v1 global and event awards)
   - tms/src/router/award_router.py
   - tms/src/service/award_service.py (upsert_event_award, _validate_weightage_per_category, sync_awards)
   - tms/src/service/award_calculators.py (BestPlayerCalculator, OrderOfMeritCalculator, OOM_METHOD_STRATEGIES)
   - tms/src/schema/award_schema.py (AwardUpsert, OrderOfMeritScoring, ResultPoints, CategoryScoring)
   - tms/src/common/award_constants.py (AwardType, OoMCalculationMethod)
 source_files:
+  - src/app/modules/tms/award-standings/best-player/constants/best-player.constants.ts
+  - src/app/modules/tms/award-standings/best-player/services/best-player-config.service.ts
   - src/app/modules/tms/award-standings/best-player/components/best-player-create-award-sidebar/best-player-create-award-sidebar.component.html
   - src/app/modules/tms/award-standings/best-player/components/best-player-point-allocation-step/best-player-point-allocation-step.component.html
   - src/app/modules/tms/award-standings/order-of-merit/components/order-of-merit-create-award-sidebar/order-of-merit-create-award-sidebar.component.html
@@ -47,41 +49,45 @@ Two award types exist. **Best Player** gives points for the position a player fi
 
 ## Creating an award
 
-- The panel title is "Create Award", "Edit Award" or "View Award" (view is read only).
+- The panel title is "Create Award", "Edit Award" or "View Award" (view is read only, with **Close**).
+- **Edit** from an award card on the event page keeps **Award Name** and **Select Category** read only; only the points step can be changed. View and edit show both steps on one screen.
 - The steps are **Basic Details** and **Points Allocation** (Best Player) or **Point Allocation** (Order of Merit). With the single page layout both appear on one screen.
 - **Back** and **Next** move between steps. **Next** stays greyed out until the basic details are complete.
 - **Save** (or **Update** when editing) saves the award. **Cancel** and **Close** leave without saving.
 
 ## Basic Details
 
-- **Award Name** – "Set name for your award". The name must be unique in the event; a duplicate is refused: "Award name '{name}' already exists in this event".
-- **Select Category** – "Select the categories to be awarded inside this award". Pick one or more categories with the multi-select; each chosen category is shown as a chip with a cross to remove it.
-- **Apply to all** – a toggle that applies one set of points to all the selected categories.
+- **Award Name** – "Set name for your award". The name must be unique in the event; a duplicate is refused: "Award name '{name}' already exists in this event". The name is only checked when the award is created; it cannot be changed later.
+- **Select Category** – "Select the categories to be awarded inside this award". Pick one or more categories with the multi-select; each chosen category is shown as a chip with a cross to remove it. The server refuses an award with no category.
+- **Apply to all** – a toggle kept per participant type (singles, doubles, team). When it is on, the server copies the points of the first selected category of that type to every other selected category of the same type.
 
 ## Best Player: points for each position
 
-- **Set position Limit** – "Add till which position you wish to award". Type the last position that receives points; the minimum is shown as the first position.
-- **Set points for each position** – "Set points allotted to the player for each position based on your limit set above." One box per position; the points are whole numbers of zero or more.
-- A position with no points gets zero points.
-- **Tie Breaker Criteria** – "Set the tie breaker criteria for resolving equal points across categories." For each category choose one of **Won**, **Win-Loss** or **Win/Loss Ratio**. The choice is saved with the award and is used after total points to rank players with equal points (see the operations API guide, awards-api-operations, for the ranking rule).
+- **Set position Limit** – "Add till which position you wish to award". The range starts at 1; type the last position that receives points ("1 to …"), from 1 to 10. A new category starts with 3.
+- **Set points for each position** – "Set points allotted to the player for each position based on your limit set above." One box per position (positions 1 to 3 are labelled **Gold**, **Silver** and **Bronze**); the points are whole numbers of zero or more.
+- A position with no points gets zero points. The server needs exactly one points entry for each position from 1 to the limit, and points of 0 or more.
+- **Tie Breaker Criteria** – "Set the tie breaker criteria for resolving equal points across categories." Each category has one row; choose **Won**, **Win-Loss** or **Win/Loss Ratio** (the default is **Win/Loss Ratio**). Drag a row by its handle to change the order, and use the eye button to hide or show a row (hidden rows are not used). The choice is saved with the award and is used after total points to rank players with equal points (see the operations API guide, awards-api-operations, for the ranking rule).
 
 ## Order of Merit: points and weightage
 
 - **Set points for each category win** – "Set points allotted to the player for each position and the weightage in total calculation."
 - The grid has the three outcomes of a player in a category (win, loss and participation). Each outcome has, for each format (points and weightage), the boxes **points** and **Wt.** (weightage, in %).
-- The weightages of each outcome of a category must total at most 100. A total above 100 shows "Total % exceeds 100. Please input a valid entry", and **Save** is greyed out until it is fixed. The server refuses a total above 100 as well (400, "Weightage for category '{category_name}' exceeds 100 percent").
+- The weightages of each outcome of a category must total at most 100. A total above 100 shows "Total % exceeds 100. Please input a valid entry", and **Save** is greyed out until it is fixed.
+- The server adds the win, loss and participation weights of a category together and refuses a total above 100: "Weightage for category '{category_name}' must not exceed 100% (got {total_weight}%)". Keep the three weights of a category at 100 or less in total.
 - The points and weightages are whole numbers of zero or more; a weightage is at most 100.
 - The Order of Merit tie breaker criteria are chosen in the same way as Best Player (Won, Win-Loss, Win/Loss Ratio).
 
 ## How Best Player standings are worked out
 
-- Each player's position in a category gives the points from the position table of the award.
+- The position used is the player's place in the category's **Final Standing** (the cumulative standing). For doubles and team entries every member gets the entry's place.
+- That position gives the points from the position table of the award; a place beyond the position limit gives zero. The points of all the award's categories are added up.
 - If the category has its own position table, that table is used; otherwise the shared position table is used.
-- A player without a position in a category gets zero points.
+- A player without a final position in a category gets zero points for it.
+- Positions are only worked out when **Generate Positions** or **Regenerate Positions** is clicked.
 
 ## How Order of Merit standings are worked out
 
-- The points of a category are worked out from the player's wins, losses and participation (matches played). The screen sends the weightage method, and the server uses it:
+- The points of a category are worked out from the player's scored matches in that category: wins, losses and participation (matches played). In team categories only the sub matches the player played count. The screen sends the weightage method, and the server uses it:
   - **Weightage** – wins × win points × win weight %, plus losses × loss points × loss weight %, plus participation points × participation weight % if the player played at least one match.
 - The server also knows these methods, which the screen does not offer: win points (wins × win points), win ratio (wins ÷ matches played × win points), win and loss (wins × win points + losses × loss points), and win minus loss ((wins − losses) × win points).
 - A category with no points set gives zero points.
@@ -89,17 +95,19 @@ Two award types exist. **Best Player** gives points for the position a player fi
 ## Global and event awards
 
 - An award can be created for the event (event award) or synced from a federation (global) award (see Sync Awards on the awards guide).
-- A synced award keeps the points of the global award; it is copied to the event when synced.
-- A global award type that is disabled at the federation level cannot be added: "This award type is disabled at federation level".
+- A synced award keeps the points of the global award; it is copied to the event when synced. Later changes to the global award are not copied again, and syncing it a second time is skipped.
+- Only global awards published at federation level can be synced.
+- A new award or a sync of an award type that is disabled at the federation level is refused: "This award type is disabled at federation level". Editing an existing award is not blocked by this.
 
 ## Messages
 
 - "Award name '{name}' already exists in this event" – change the name.
 - "Total % exceeds 100. Please input a valid entry" – reduce the weightages of the category.
+- "Weightage for category '{category_name}' must not exceed 100% (got {total_weight}%)" – the server's check: the win, loss and participation weights of that category together are above 100.
 - "This award type is disabled at federation level" – the type is off for the federation.
 - "Award not found" – the award was removed; reload the page.
 - "Invalid award_type" – the type is not Best Player or Order of Merit.
-- "None of the award's categories exist in this event" – no category of the award is in the event; the server message for this has no English text yet.
+- "None of the award's categories exist in this event. Please update the award categories or sync a matching award." – shown on **Generate Positions** when no category of the award is in the event.
 
 ## Frequently asked questions
 
@@ -107,13 +115,19 @@ Two award types exist. **Best Player** gives points for the position a player fi
 
 **How do I set the points for each position?** Set the limit, then type the points in each position box.
 
+**Which position does Best Player use?** The player's place in the category's **Final Standing**. Generate the final standing before generating the award positions.
+
 **What does the weightage mean?** The share of each outcome (win, loss or participation) in the total points of a category. The weightages of a category must total no more than 100 percent.
 
 **Why can I not save the Order of Merit award?** A category total is above 100 percent. Lower the weightages until the warning goes.
 
+**Why is the Order of Merit award not saving?** The weightages of a category add up to more than 100 percent. Lower them until the warning goes, then click **Save**. If the server says "Weightage for category '…' must not exceed 100%", the win, loss and participation weights of that category together are above 100.
+
 **What are the tie breaker criteria?** The criterion chosen for each category to decide between players with equal points: Won, Win-Loss, or Win/Loss Ratio.
 
-**What does Apply to all do?** It applies one set of points to all the selected categories.
+**What does Apply to all do?** It copies the points of the first selected category of a participant type (singles, doubles or team) to the other selected categories of the same type.
+
+## Frequently asked questions (continued)
 
 **What is the Order of Merit weightage?** Each outcome of a player in a category (win, loss and participation) has points and a weightage (**Wt.**, in %). The points are worked out as wins × win points × win weight %, plus losses × loss points × loss weight %, plus participation points × participation weight % when the player played at least one match. The weightages of one category must total at most 100.
 

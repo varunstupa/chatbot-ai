@@ -44,6 +44,9 @@ backend_sources:
   - tms/src/utils/scoring/strategies/register_strategies.py (sport 2 and sport 3)
 source_files:
   - src/app/modules/tms/score-and-streaming/score-and-streaming.component.ts
+  - src/app/modules/tms/score-and-streaming/score-input-feedback.util.ts
+  - src/app/modules/tms/score-and-streaming/redundant-set.util.ts
+  - src/assets/i18n/en.json
   - src/app/modules/tms/score-and-streaming/score-input-feedback.constants.ts
   - src/app/shared/padel-score-navigation/padel-score-navigation.engine.ts
   - src/app/shared/game-play-config/game-play-config.defaults.ts
@@ -88,7 +91,11 @@ The match is decided when one side has won the majority of sets, such as in a be
 
 ### SP — Play every set
 
-Every configured set is played. The match winner is the side that has won more sets.
+Every configured set is played. The match winner is the side that has won more sets; with sets level, the side with more games in total wins, and equal games make the match a tie.
+
+### Whole match required
+
+A Padel or Tennis score saved on this page must decide the match: every set entered must be finished, and the sets together must give a winner. Otherwise the server answers "Match Not Concluded Insufficient Sets" (shown as "The match is not concluded. Complete the required sets before saving."). Golden point or advantage scoring at 40–40 is only used in live game-point scoring; it does not change which set scores are accepted here.
 
 ### Padel set count
 
@@ -141,7 +148,7 @@ A tie-break is normally played to **7 points** with a **two-point margin**:
 
 ### Tie-breaks disabled
 
-With tie-breaks disabled, the set continues past six games until one side leads by two games. Examples include:
+With tie-breaks disabled, the set continues past six games until one side leads by the **Win by Margin** (two games by default). Examples include:
 - **6–4**
 - **7–5**
 - **8–6**
@@ -166,7 +173,7 @@ If a tie-break error appears, check that the set score is 6–6, that tie-break 
 
 ### Super tie-break
 
-Where the match format supports it, a super tie-break replaces the last set. It is played to **10 points with a two-point margin**.
+With **Enable Tiebreak**, **Additional Tie Break Configuration** and **Super Tie break** on, a super tie-break replaces the last set (for example set 3 of 3). It is played to its **Pts to Win** (10 when not set) with the **Win by Margin** (2 when not set). Enter the super tie-break points in that set's normal score boxes; its tie-break boxes must stay empty, otherwise "Invalid super tie-break score in last set {n}". When both Super and Decider are set, Super applies.
 
 Related validation messages include:
 - `Invalid super tie-break score in set {set_number}`
@@ -174,7 +181,7 @@ Related validation messages include:
 - `Invalid super tie-break overshoot in set {set_number}`
 - `Invalid super tie-break score in last set {set_number}`
 
-The super tie-break is only allowed when the sets before the last set are level. The source material says this rule's message does not yet have English text, so the interface may show a raw translation key.
+With ST the super tie-break is only allowed when the sets before the last set are level; otherwise the page shows the server's message "Super tie-break can only be played when the sets are level in set {n}". With SP this check does not apply.
 
 If a super tie-break is rejected, check:
 1. Whether the configured format uses a super tie-break.
@@ -192,7 +199,7 @@ Related validation messages:
 - `Invalid decider set overshoot`
 - `Invalid decider set game score`
 
-The messages may include the relevant set number. The source material does not specify the decider point target, so do not invent one; use the event's configured decider settings.
+The decider tie-break applies to the last set when **Decider set Tie break** is chosen and tie-break points are entered for that set. The game score must be 6–6 or 7–6 (otherwise "Invalid decider set game score in set {n}"), and the tie-break is played to the decider **Pts to Win** (10 when not set) with the Win by Margin. The messages include the set number and are shown as the server sends them.
 
 ## Other score validation messages
 
@@ -200,9 +207,38 @@ The messages may include the relevant set number. The source material does not s
 |---|---|
 | `Extra set {set_number} provided after match already decided` | A set was entered after the match had already been decided. Check ST/SP and the number of sets entered. |
 | `Match Not Concluded Insufficient Sets` | The entered sets do not yet decide the match. Check whether the required sets have been entered and whether the selected match format expects more sets. |
-| `Wrong score input for set {set_number}` | The set score is invalid under the configured rules. Check the set result, tie-break requirements, and relevant format settings. |
+| `Wrong score input for set {set_number}` | The set number is beyond the configured number of sets. |
+| `Wrong Data Input` | The number of sets sent does not match the configured number of sets, or no sets were sent. |
+| `Under Special Rule, all configured sets must be completed before saving the match. Set {n} was not played.` | With SP, a set was left at 0–0. Shown as is. |
 | `Invalid normal set score in set {set_number}` | The normal set score is not a valid end of set. Check the two-game margin and tie-break setting. |
 | `Match Already Walkover Reset First` | The match has a recorded walkover; reset it before changing set scores. |
+
+## Padel and tennis checks while typing
+
+For Padel and Tennis the score popup checks each set as soon as both boxes are filled:
+- If the games form an impossible set, the set is marked red, side B is cleared and the message reads "Invalid normal set score in set {n}".
+- If both sides have the same number of games at or above the set target while tie-break is off, the message reads: "This score is not valid for your Game Play Settings. Sets are first to {setPoint} games (best of {setCount}), win by {winBy}, and tie-break is off. {scoreA}-{scoreB} cannot be a completed set."
+
+The tie-break boxes of a set only appear when the set needs a tie-break under the Game Play settings. The server validates the full score again when you click **Save**.
+
+## Padel and tennis server messages as shown on screen
+
+The page replaces some server messages with a shorter wording:
+
+| Server message | Shown on screen |
+|---|---|
+| Tie-break required in set {n} | Tie-break is required for this set. |
+| Invalid tie-break margin in set {n} | The tie-break is not complete. Win by the configured margin. |
+| Invalid tie-break overshoot in set {n} | This tie-break score overshoots the allowed points. |
+| Invalid super tie-break score / margin / overshoot (any set) | Invalid super tie-break score in the last set. |
+| Match Not Concluded Insufficient Sets | The match is not concluded. Complete the required sets before saving. |
+| Wrong Data Input | The submitted set scores do not match the configured number of sets. |
+| Invalid game point {x}: must be 0, 15, 30, 40, or 50 (AD) | Invalid game point. Use 0, 15, 30, 40, or advantage. |
+| Both players cannot have advantage simultaneously | Both players cannot have advantage. |
+
+Other messages (for example "Invalid tie-break score in set {n}", "Tie-break winner does not match set winner in set {n}", "Extra set {n} provided after match already decided") are shown as is.
+
+Once the entered sets decide the match, later empty sets are locked; a later set that still holds a score blocks saving with "Invalid Score: Set {n} cannot be scored because the match has already concluded." (not when the rules play every set).
 
 ## Entering scores and cursor navigation
 
@@ -210,7 +246,7 @@ The messages may include the relevant set number. The source material does not s
 - **Live scoring:** Use the game-point entry for points such as 0, 15, 30, 40, and advantage (50).
 - **Padel navigation:** The cursor follows the Padel score-navigation rules, moving after a game is complete to the next game or to the tie-break boxes.
 - **Padel set submission:** The submitted number of sets follows the configured rule set count. Extra sets are dropped and missing sets are filled with zero.
-- **Team matches:** The Double Walk Over option is not available.
+- **Team matches:** The Double Walkover option is not available.
 
 The source material specifically describes cursor movement using the Padel navigation rules. Do not assume identical cursor behavior for Tennis unless confirmed by the implementation.
 
@@ -220,13 +256,13 @@ A walkover or disqualification is saved with its reason. A walkover must be rese
 
 `Match Already Walkover Reset First`
 
-Team matches do not offer the Double Walk Over option.
+Team matches do not offer the Double Walkover option.
 
 ## Frequently asked questions
 
 ### How do I enter a tennis score?
 
-Enter the games won by each side for every set. If a set reaches 6–6 and tie-breaks are enabled, enter the tie-break points in the tie-break boxes. Select **Update** to save the score.
+Enter the games won by each side for every set. If a set reaches 6–6 and tie-breaks are enabled, enter the tie-break points in the tie-break boxes. Click **Save** to save the score.
 
 ### How do I enter a Padel score?
 
@@ -248,6 +284,8 @@ A super tie-break is a single tie-break to 10 points with a two-point margin tha
 
 The value 50 represents advantage. It is valid only when the opponent is at 40, and both sides cannot have advantage simultaneously.
 
+## Frequently asked questions – padel and tennis scoring (2)
+
 ### What is the difference between ST and SP?
 
 - **ST (Sets to win):** The match ends when one side has won the majority of sets.
@@ -268,6 +306,8 @@ The value 50 means advantage. It is valid only when the opponent is at 40 (deuce
 ### Why does the scorer see "Tie-break required in set 1"?
 
 The set reached a score that needs a tie-break, but no tie-break score was entered. Enter the tie-break points in the tie-break boxes of that set.
+
+## Frequently asked questions – padel and tennis scoring (3)
 
 ### Why is the super tie-break rejected?
 

@@ -8,6 +8,9 @@ aliases:
 - event setup
 - event not live
 - event not publishing
+- tournament not visible
+- tournament not live
+- players cannot see event
 - tournament poster upload
 - add category
 audience:
@@ -28,9 +31,10 @@ routes:
 source_files:
 - src/app/modules/tms/create-tournament/create-tournament.component.ts
 - src/app/modules/tms/create-tournament/create-tournament.component.html
-- src/app/shared/ai-banner-generator-dialog/ai-banner-generator-dialog.component.html
-- src/app/shared/ai-banner-generator-dialog/ai-banner-generator-dialog.component.ts
 - src/app/modules/admin/venue-management/event-venue/event-venue-section.component.html
+- src/app/modules/admin/venue-management/event-venue/event-venue-section.component.ts
+- src/app/modules/admin/venue-management/event-venue/event-venue-form.mapper.ts
+- src/app/shared/confirm-popup/confirm-popup.constants.ts
 - src/app/shared/components/category-view/category-view.component.html
 suggested_questions:
 - How do I create a tournament?
@@ -112,7 +116,7 @@ answer_notes: |
 
 # Event Details page --- Create, Edit and Troubleshoot an Event
 
-## Purpose of this guide
+## Details page: purpose of this guide
 
 This guide explains how to create and edit an event in the Stupa
 Tournament Management System (TMS). It covers the fields, buttons,
@@ -123,30 +127,7 @@ English, Hindi, or Hinglish. Users may not know the exact name of a
 button or setting. Match their meaning to the documented behaviour, then
 explain the solution in simple language.
 
-## Quick navigation
-
--   [Where to find the page](#where-to-find-the-page)
--   [Page sections](#page-sections)
--   [Create or edit an event](#create-or-edit-an-event)
--   [Event fields](#event-details-panel-fields)
--   [Banner, thumbnail and logo](#banner-thumbnail-and-logo)
--   [Generate a banner with AI](#generate-a-banner-with-ai)
--   [Add, edit and reorder categories](#add-classcategory-or-division)
--   [Extra information sections](#extra-information-sections)
--   [Venue details](#venue-details)
--   [Verification and publishing](#verification-and-publishing)
--   [Understand automatic event
-    status](#understand-automatic-event-status)
--   [Change event dates safely](#change-event-dates-safely)
--   [Errors and troubleshooting](#common-errors-and-how-to-fix-them)
--   [Editing and deleting after points are
-    published](#editing-or-deleting-after-points-are-published)
--   [Natural-language question
-    patterns](#natural-language-question-patterns)
--   [When to ask a follow-up
-    question](#when-to-ask-a-follow-up-question)
-
-## Where to find the page
+## Details page: where to find the page
 
 1.  Open **Event** from the sidebar.
 2.  Open the **Details** step, the first step in event setup.
@@ -170,7 +151,7 @@ Use this page to enter event information, add categories or divisions,
 complete any extra information sections, link a venue, request
 verification when required, and publish the event.
 
-## Page sections
+## Details page: page sections
 
 The Details page contains collapsible panels. Select a panel title to
 open it; only one panel is open at a time.
@@ -194,9 +175,7 @@ Class/Category is complete after at least one category is saved. Extra
 sections are complete when all mandatory fields are filled. Venue Detail
 is complete when a venue is linked.
 
-## Create or edit an event
-
-### Create a new event
+## Details page: create a new event
 
 1.  Open the Details step for a new event.
 2.  Fill in all mandatory fields. Fields marked with a red `*` are
@@ -215,7 +194,7 @@ Mandatory fields for creating an event include Event Name, Event Status,
 Event Type, Start Date, End Date, Event Levels, Event Banner, Thumbnail
 and Logo, plus any organisation-defined mandatory custom fields.
 
-### Edit an existing event
+## Details page: edit an existing event
 
 Existing events open in **view mode**, so fields look greyed out and
 cannot be changed.
@@ -230,7 +209,7 @@ unsaved changes in another panel.
 There is no dedicated **Cancel edit** button. To discard unsaved
 changes, leave or reload the page without clicking Update.
 
-### Edit and Delete permissions
+## Details page: Edit and Delete permissions
 
 If **Edit** or **Delete** is missing, the user's role may not have Edit
 permission for **Event Management (Event Details)**. Ask an
@@ -239,10 +218,18 @@ administrator to check the user's access.
 Only the user who created an event can delete it. An event whose ranking
 points have been published to OTT cannot be deleted.
 
-### Delete an event
+On the server, saving or deleting an existing event needs **Edit**
+permission on **Event Access** for that event, and saving categories in
+**Add Class/Category** needs **Edit** permission on both **Player Screen**
+and **Edit Category**. Without it the save is refused with "Access
+Denied". Deleting an event someone else created gives "Unauthorized
+Access".
+
+## Details page: delete an event
 
 1.  Click **Delete** at the top right of an existing event.
-2.  Confirm the prompt: "Are you sure you want to delete this event?"
+2.  Confirm the prompt "Delete?" -- "Are you sure you want to delete
+    this event?" with **Yes, Delete** (or **Cancel**).
 3.  On success, the message "The Tournament is deleted successfully"
     appears and the user returns to the events list.
 
@@ -250,22 +237,31 @@ Deleting an event removes it from event lists. Its name can be reused.
 Calculated ranking lists that have not been published for the event are
 removed. Deletion does not show the schedule-reset confirmation.
 
-## Event Details panel fields
+## Details page: Event Details panel name, status and type
 
 Fields marked with a red `*` are mandatory.
 
 -   **Event Name**\* --- free text, maximum 50 characters. It must not
     contain only numbers. For example, `2026` is not allowed, but
     `Open 2026` is allowed.
--   **Event Status**\* --- controlled by the Auto/Manual toggle.
+-   **Event Status**\* --- controlled by the **Auto**/**Manual** toggle
+    next to the label. A new event starts in **Manual** mode (some
+    organisations start in Auto). On an existing event the toggle can
+    only be changed in Edit mode.
     -   **Manual:** the user chooses a status from the organisation's
         configured list. The system does not change that status
         automatically, even when dates pass.
-    -   **Auto:** the system manages the status. A newly created event
-        starts as `INCOMPLETE`.
+    -   **Auto:** the system manages the status and the Event Status
+        dropdown is greyed out. Switching a new event to Auto sets the
+        status to `INCOMPLETE`.
 -   **Event Type**\* --- Tournament or League. Default: Tournament. It
     cannot be changed after the event has been created. Changing the
     type before creation reloads the extra sections for that type.
+
+## Details page: Event Details panel dates, level, season and licence
+
+Fields marked with a red `*` are mandatory.
+
 -   **Start Date**\* --- choose a date from the calendar.
 -   **End Date**\* --- unavailable until a Start Date is chosen and
     cannot be earlier than the Start Date. Changing the Start Date
@@ -281,11 +277,14 @@ Fields marked with a red `*` are mandatory.
 -   **License** --- optional multi-select field shown only for
     organisations using licences. The list stays empty until a Season is
     selected.
--   **Event Description** --- optional free text.
+-   **Event Description** --- optional free text, maximum **350**
+    characters ("(Maximum 350 characters)" is shown next to the label).
+    Longer text, typed or pasted, is cut to 350 characters with the
+    message "Event description cannot exceed 350 characters".
 -   **Custom fields** --- the organisation may add fields at the bottom
     of this panel. A red `*` indicates a mandatory field.
 
-### Linking a master event
+## Details page: Linking a master event
 
 1.  Turn on the **Master** toggle. The **Link Master Tournament** side
     panel opens.
@@ -299,17 +298,17 @@ Fields marked with a red `*` are mandatory.
 Turning the toggle off removes the link. Closing the side panel without
 selecting an event turns the toggle back off.
 
-## Banner, thumbnail and logo
+## Details page: banner, thumbnail and logo
 
 The banner, thumbnail and logo are different image fields and have
 different rules.
 
-### Event Banner
+## Details page: Event Banner
 
 -   Recommended dimensions: **1200 × 360 px**.
 -   Maximum file size: **15 MB**.
--   You can upload an image, select a predefined image, or use
-    **Generate with AI**.
+-   You can upload an image or select a predefined image. There is no
+    AI banner generator on this page.
 -   Predefined images may be grouped by sport, such as Table Tennis,
     Padel, Tennis and Badminton.
 -   To replace a banner, hover over it and select **Reupload**.
@@ -321,7 +320,7 @@ different rules.
 -   A file larger than the allowed limit may show: "File Exceed max
     limit of 15mb."
 
-### Thumbnail
+## Details page: Thumbnail
 
 -   Required dimensions: **exactly 379 × 200 px**.
 -   File size: **less than 1 MB**.
@@ -338,8 +337,13 @@ Possible errors:
 -   "Thumbnail size should be less than 1MB" --- reduce the file size.
 -   "Thumbnail dimensions must be exact 379x200px" --- resize the image
     to exactly 379 × 200 pixels.
+-   "Failed to load image" or "Failed to read file" --- the browser
+    could not open the file as an image. Save it again as PNG or JPG and
+    retry.
+-   "No file selected" --- the file picker was closed without choosing
+    a file.
 
-### Logo
+## Details page: Logo
 
 -   Allowed formats: **PNG, JPEG or JPG**.
 -   Maximum file size: **1 MB**.
@@ -350,7 +354,7 @@ Possible errors:
 -   "Only PNG, JPEG, and JPG files are allowed"
 -   "Logo size should be less than 1MB"
 
-### Server upload rules
+## Details page: server upload rules
 
 The server accepts files with these types: PNG, JPG, JPEG, HEIC, HEIF,
 AVIF, PDF, DOC and DOCX. The server's maximum size is 15 MB, while the
@@ -371,32 +375,7 @@ If an upload shows **File upload failed**:
 5.  Try again after confirming the user is signed in.
 6.  If it still fails, contact support.
 
-## Generate a banner with AI
-
-The **Generate with AI** button beside Event Banner opens the **Generate
-Banner with AI** window.
-
-1.  Enter a description under **Describe your event banner**, or choose
-    a Quick suggestion.
-2.  Click **Generate**. A preview appears while "Painting pixels..." is
-    displayed.
-3.  If the image is suitable, click **Use as Event Banner**. The image
-    is uploaded and selected as the event banner.
-4.  Click **Cancel** to close without using the generated image.
-5.  To try another image, change the description and click **Generate**
-    again.
-
-Notes:
-
--   The generator is tuned for table tennis images.
--   "Generation failed. The model may be loading. Try again in a
-    minute." --- wait about a minute and retry.
--   "AI Image API Not Configured" --- the feature is not configured for
-    this installation. Contact support.
--   The banner is stored with the event only after **Create** or
-    **Update** is clicked in the Event Details panel.
-
-## Add Class/Category or Division
+## Details page: Add Class/Category or Division
 
 The **Add Class/Category** panel controls which categories participants
 can enter. For a League, the panel is called **Add Division**, and
@@ -404,7 +383,7 @@ categories are called divisions.
 
 The event must be created first, and the page must be in Edit mode.
 
-### Add a category
+## Details page: add a category
 
 1.  Select **Category Levels**. For a League, the field is called
     **Division**.
@@ -434,13 +413,13 @@ If the Class list is empty, select Category Levels and Participant Type
 first. If it says "No matching data found," try another search term or
 confirm that the required selections are correct.
 
-### Primary Display Selection
+## Details page: Primary Display Selection
 
 Choose **Class** or **Abbreviation** at the top of the panel. This
 determines which label appears for categories across the event's
 screens. Save the choice with Create or Update.
 
-### Edit a category
+## Details page: edit a category
 
 1.  Click the pencil icon for a category that has already been saved.
 2.  The **Edit category** side panel opens. For a League, it is called
@@ -456,7 +435,7 @@ empty.
 The pencil icon is only available for categories that have already been
 saved.
 
-### Reorder categories
+## Details page: reorder categories
 
 1.  Enter Edit mode.
 2.  Drag a category row using the dotted handle on the left.
@@ -465,20 +444,37 @@ saved.
 
 The saved order is used wherever event categories are listed.
 
-### Delete a category
+## Details page: delete a category
 
-1.  Click the red bin icon and confirm "Are you sure you want to delete
-    this category?"
+1.  Click the red bin icon. The **Delete Category** popup asks: "Are
+    you sure you want to delete this category? Once deleted, the
+    category cannot be recovered and all data associated with this
+    category will be lost." Click **Delete** (or **Cancel**).
 2.  Click **Update** at the bottom of the panel to make the deletion
     permanent.
 
 Until Update is clicked, reloading the page restores the previously
-saved category. Deleting a category removes all participants entered in
-it. This cannot be undone from this screen.
+saved category.
 
-A category cannot be deleted if fixtures have already been generated for
-it; delete its stages on the Fixtures screen first. Deletion is also
-blocked if ranking points for that category have been published to OTT.
+The server only deletes a category that has nothing built on it yet.
+When Update is clicked it refuses the deletion, and saves nothing from
+that Update, with one of these messages:
+
+-   "Category cannot be deleted because players are currently registered
+    or present in the Unpaid list for this category." --- remove its
+    players first (on the **Players** page). Deleted or withdrawn players
+    do not block it; registered, unpaid, pending and queued players do.
+-   "Category cannot be deleted because a stage or draw has already been
+    created for this category." --- delete its stages (also draft draws)
+    on the Fixtures screen.
+-   "Category cannot be deleted because fixtures have already been
+    created for this category." --- delete its stages on the Fixtures
+    screen first.
+-   "Category cannot be deleted because data has already been created
+    for this category." --- more than one of the above applies.
+
+Sub categories of the category count too. Deletion is also blocked if
+ranking points for that category have been published to OTT.
 
 A newly added category inherits its minimum and maximum points, Born
 After and Born Before dates, and gender from the selected class.
@@ -486,7 +482,7 @@ After and Born Before dates, and gender from the selected class.
 A category with participant type **Teams** makes the team leaderboard
 available for the event.
 
-### Category changes after points are published
+## Details page: category changes after points are published
 
 For a category whose ranking points have been published to OTT:
 
@@ -500,7 +496,7 @@ For a category whose ranking points have been published to OTT:
 -   If every attempted change affects a category with published points,
     a points-published restriction message may appear.
 
-## Extra information sections
+## Details page: extra information sections
 
 Additional sections may appear below the category panel. They are
 configured by the organisation for the selected event type. They become
@@ -517,9 +513,13 @@ mode.
 -   An invalid email may show: "Invalid email format".
 -   Sections containing an **Organiser** field have a **Publish**
     toggle. Turn it on and save to publish that section's information.
-    Turn it off and save to unpublish it.
+    Turn it off and save to unpublish it. Its info icon explains:
+    "Enabling this option will make your Organiser Name, Phone Number
+    and Email Address visible to users on the Event Overview page on
+    OTT. The Event must also be published for these details to be
+    visible to users."
 
-## Venue details
+## Details page: Venue Detail panel
 
 The Venue Detail panel says: "Select a venue created in Venue Management
 to view its form or create your own."
@@ -534,10 +534,23 @@ If the list says **No venues found**, no matching venue is available in
 the list. Check the search term or use **Add new venue** to create a
 venue without leaving the page.
 
-Other rules:
+## Details page: Venue Detail – Add new venue
 
--   The first venue linked to an event becomes the primary/default
-    venue.
+**Add new venue** (top right of the panel) opens a venue form in a side
+panel. The venue's associated role and user are not asked for: they are
+filled with the signed-in user. After the venue is saved it is selected in **Select Venue**
+automatically; click **Update** to link it to the event.
+
+-   "Please fill all mandatory fields." --- a required venue field is
+    empty.
+-   "Venue saved. Choose an address suggestion to place it on the map."
+    --- the venue was saved, but the address was typed without picking
+    one of the suggestions, so it has no map position.
+
+## Details page: Venue Detail rules
+
+-   The venue linked here (with **Update**) becomes the event's
+    default venue, replacing the previous default.
 -   For a Tournament, a newly linked venue receives all the event's
     dates.
 -   For an event waiting for verification, a venue is needed before Auto
@@ -548,14 +561,14 @@ Other rules:
     scheduled on a date being removed from that venue. Unschedule those
     matches first.
 
-For a League, venue days are managed differently; see [Changing event
-dates safely](#changing-event-dates-safely).
+For a League, venue days are managed differently; see the Details page
+section about changing event dates safely.
 
-## Verification and publishing
+## Details page: verification and publishing
 
 Verification and publishing are different steps.
 
-### Send an event for verification
+## Details page: Send an event for verification
 
 Some Event Levels require the event to be approved before it can be
 published. The selected Event Level determines whether verification is
@@ -588,7 +601,7 @@ Events whose level does not require verification are accepted
 automatically when created. An event created by the main administrator
 account is verified automatically.
 
-### Publish the event
+## Details page: Publish the event
 
 The **Publish** toggle is in the bottom action bar.
 
@@ -599,6 +612,11 @@ first be approved. The user must be in Edit mode to use the toggle.
 -   Turn the toggle on to publish the event.
 -   Turn it off to unpublish the event.
 -   The change is saved immediately and a confirmation message appears.
+-   If the event has a Venue Detail panel and no venue is linked yet,
+    turning Publish on is refused with "Please select and update the
+    venue in Venue Detail before publishing the event." and the toggle
+    turns back off. Choose a venue in Venue Detail, click **Update**,
+    then publish.
 
 If Publish is missing, check:
 
@@ -611,7 +629,7 @@ If Publish is missing, check:
 Do not tell users that sending the event for verification automatically
 publishes it. Verification approval and publishing are separate actions.
 
-## Understand automatic event status
+## Details page: understand automatic event status
 
 In **Auto** mode, the system calculates Event Status. It recalculates
 after relevant event, category or verification changes and approximately
@@ -642,7 +660,7 @@ event's current state:
 -   **VERIFIED** --- verification is accepted, or the Event Level does
     not require it.
 
-### Manual status mode
+## Details page: Manual status mode
 
 In **Manual** mode, the system does not change the status automatically.
 The status stays as selected, even after the event dates pass.
@@ -662,7 +680,7 @@ The status stays as selected, even after the event dates pass.
     approximately once an hour. Do not suggest waiting as the only fix
     when a required setup item is missing.
 
-## Changing event dates safely
+## Details page: changing event dates safely
 
 Changing Start Date or End Date can affect venue days, planning, matches
 and officials.
@@ -686,7 +704,7 @@ be removed, as well as official registrations that will be withdrawn.
     matches cannot be removed.
 -   The same warning can appear when publishing or deleting an event.
 
-### What happens to venue days?
+## Details page: what happens to venue days?
 
 **Tournament**
 
@@ -714,9 +732,7 @@ followed by the dates.
 If the dates have not changed, saving the event does not modify venue
 days.
 
-## Common errors and how to fix them
-
-### "Event Already Exists"
+## Details page error: "Event Already Exists"
 
 **What it means:** An event with the same name and the same Event Type
 (Tournament or League) already exists.
@@ -725,7 +741,7 @@ days.
 reused after the original event is deleted. This check also runs when
 renaming an event.
 
-### "Event name must not be purely numeric"
+## Details page error: "Event name must not be purely numeric"
 
 **What it means:** The name contains only a number, such as `2026`,
 `0999`, `-3` or `3.5`.
@@ -736,21 +752,21 @@ contain both letters and digits are allowed.
 An existing event with a numeric name may still be edited if its name is
 not changed.
 
-### "You can't skip mandatory fields"
+## Details page error: "You can't skip mandatory fields"
 
 **What it means:** A required field, banner or thumbnail is missing.
 
 **What to do:** Look for red-bordered fields and complete the required
 information before clicking Create or Update.
 
-### "Please upload a thumbnail"
+## Details page error: "Please upload a thumbnail"
 
 **What it means:** The thumbnail is missing.
 
 **What to do:** Upload a PNG, JPG or JPEG that is exactly 379 × 200 px
 and smaller than 1 MB.
 
-### "Invalid email format"
+## Details page error: "Invalid email format"
 
 **What it means:** An email field contains an address that does not
 match the expected email format.
@@ -758,14 +774,14 @@ match the expected email format.
 **What to do:** Check for typing mistakes, spaces or a missing part of
 the email address.
 
-### "You are typing an invalid key"
+## Details page error: "You are typing an invalid key"
 
 **What it means:** A number field has received a character other than a
 digit.
 
 **What to do:** Enter digits only in that field.
 
-### "Sport default configs are required"
+## Details page error: "Sport default configs are required"
 
 **What it means:** No sport is configured for the organisation, so the
 event cannot be created.
@@ -774,7 +790,7 @@ event cannot be created.
 This is not something the organiser can fix by changing ordinary event
 fields.
 
-### "No Event Found"
+## Details page error: "No Event Found"
 
 **What it means:** The event may have been deleted, or the page URL
 contains an incorrect event ID.
@@ -782,7 +798,7 @@ contains an incorrect event ID.
 **What to do:** Return to the event list and open the event again. If it
 is missing, ask an administrator to check it.
 
-### "Unauthorized Access"
+## Details page error: "Unauthorized Access"
 
 **What it means:** The session may have expired, or the user is trying
 to delete an event they did not create.
@@ -790,13 +806,13 @@ to delete an event they did not create.
 **What to do:** Sign in again and retry. If the issue occurs while
 deleting, confirm that the current user created the event.
 
-### "Access Denied"
+## Details page error: "Access Denied"
 
 **What it means:** The user's role is not allowed to work on the event.
 
 **What to do:** Ask an administrator to review the user's permissions.
 
-### "File upload failed"
+## Details page error: "File upload failed"
 
 **What it means:** The server rejected the file or did not receive it
 successfully.
@@ -806,20 +822,7 @@ limit, the image dimensions where required, and whether the file's
 actual content matches its extension. Confirm the user is signed in.
 WEBP is not accepted by the server.
 
-### "Generation failed. The model may be loading. Try again in a minute."
-
-**What it means:** The AI banner generator may not be ready.
-
-**What to do:** Wait about a minute and try Generate again.
-
-### "AI Image API Not Configured"
-
-**What it means:** The AI banner feature is not configured for this
-installation.
-
-**What to do:** Contact support.
-
-### "Please select Participant Type"
+## Details page error: "Please select Participant Type"
 
 **What it means:** No participant type was selected while adding a
 category.
@@ -827,42 +830,44 @@ category.
 **What to do:** Select Singles, Teams, Doubles or Mix-Doubles. For a
 League, select Teams.
 
-### "Please select Category"
+## Details page error: "Please select Category"
 
 **What it means:** No Class was selected.
 
 **What to do:** Choose a Class after selecting Category Levels and
 Participant Type.
 
-### "Please select Category Levels"
+## Details page error: "Please select Category Levels"
 
 **What it means:** The category level was not selected.
 
 **What to do:** Select Category Levels first.
 
-### "Category Already Added In List" or "Category Already Exists"
+## Details page error: "Category Already Added In List" or "Category Already Exists"
 
 **What it means:** The class is already in the event or appears more
 than once in the list being saved.
 
 **What to do:** Remove the duplicate and save the category list again.
 
-### "Cannot Delete Category, Fixtures Already Generated"
+## Details page error: "Category cannot be deleted because ..."
 
-**What it means:** Fixtures have already been generated for the
-category.
+**What it means:** The category (or one of its sub categories) still has
+players (registered, unpaid, pending or queued), a stage or draw, or
+fixtures. The message names the reason; "data has already been created"
+means more than one applies.
 
-**What to do:** Open the Fixtures screen and delete the category's
-stages first. A category with only draft stages may be deleted.
-Published ranking points may also block deletion.
+**What to do:** Remove the players on the Players page, or delete the
+category's stages (draft draws included) on the Fixtures screen, then
+click Update again. Published ranking points may also block deletion.
 
-### "No Venue Found"
+## Details page error: "No Venue Found"
 
 **What it means:** The venue linked to the event was deleted.
 
 **What to do:** Select a different venue in Venue Detail.
 
-### "Cannot remove dates with scheduled matches"
+## Details page error: "Cannot remove dates with scheduled matches"
 
 **What it means:** Matches are scheduled on a venue date that is being
 removed.
@@ -870,7 +875,7 @@ removed.
 **What to do:** Unschedule the affected matches before removing the
 date.
 
-### "Please complete all sections before sending for verification"
+## Details page error: "Please complete all sections before sending for verification"
 
 **What it means:** At least one required section is incomplete.
 
@@ -878,21 +883,21 @@ date.
 mandatory information. Every section must show a blue tick before
 sending for verification.
 
-### "This action is not permitted. Points for this event have been published to OTT..."
+## Details page error: "This action is not permitted. Points for this event have been published to OTT..."
 
 **What it means:** The requested change affects event or category
 information locked after ranking points have been published to OTT.
 
-**What to do:** Review [Editing or deleting after points are
-published](#editing-or-deleting-after-points-are-published). If the
+**What to do:** Review the Details page section about editing or
+deleting after points are published. If the
 requested change is blocked, contact the administrator for guidance.
 
-## Editing or deleting after points are published
+## Details page: editing or deleting after points are published
 
 Once ranking points for an event have been published to OTT, changes
 that affect those points are restricted.
 
-### Changes blocked on the Details page
+## Details page: changes blocked after points are published
 
 -   Event Name
 -   Start Date
@@ -911,7 +916,7 @@ changes are not allowed after points have been published. Match-level
 changes, such as editing results or adding/deleting matches, may still
 be permitted and can require recalculation.
 
-### Changes that may still be allowed
+## Details page: changes still allowed after points are published
 
 -   Banner
 -   Thumbnail
@@ -927,7 +932,7 @@ For a category with published points, deleting it or changing its
 Abbreviation, Color or Category Level is blocked. Reordering it or
 saving it unchanged is allowed.
 
-## What happens automatically when an event is created?
+## Details page: what happens automatically when an event is created?
 
 After Create succeeds, the system:
 
@@ -943,7 +948,7 @@ After Create succeeds, the system:
 -   Automatically verifies an event created by the main administrator
     account.
 
-## External events
+## Details page: external events
 
 The same form is used for **External Events**, which are events held
 outside the system but registered for ranking calculations.
@@ -956,72 +961,98 @@ Differences from regular events:
 -   There is no Delete button.
 -   The Publish toggle is available as soon as the event is saved.
 
-## Natural-language question patterns
+Messages for external events (the server's own message is shown when it
+sends one): "External event created successfully.", "Failed to create
+external event.", "External event updated successfully.", "External
+event categories saved successfully.", "Failed to save external event
+categories.", "External event published successfully." and "External
+event unpublished successfully."
+
+## Details page: natural-language question patterns
 
 Users may ask about a feature without using the exact UI wording. The
 examples below are alternate ways of asking about documented behaviour,
 not additional product features.
 
-### Intent: create an event
+## Details page question patterns – Intent: create an event
 
 Possible questions: - "How do I create a tournament?" - "I want to add a
 new event." - "Tournament kaise banau?" - "Naya event create karna hai,
 where do I start?" - "What details do I need before creating an event?"
 
-### Intent: event not visible or not live
+## Details page question patterns – Intent: event not visible or not live
 
 Possible questions: - "My tournament is not live." - "Players cannot see
 my event." - "Event publish nahi ho raha." - "How do I make the
 tournament public?" - "The Publish button is missing." - "Event create
 ho gaya but live nahi hai."
 
-### Intent: event stuck on INCOMPLETE
+## Details page question patterns – Intent: event stuck on INCOMPLETE
 
 Possible questions: - "Why is my event still incomplete?" - "Sab details
 bhar di, phir bhi incomplete aa raha hai." - "Tournament ready kyun nahi
 ho raha?" - "Why has my event status not changed?" - "I added the
 details but status is not updating."
 
-### Intent: category missing or not saved
+## Details page question patterns – Intent: category missing or not saved
 
 Possible questions: - "I added a category but it disappeared." -
 "Category add ki thi, save nahi hui." - "Why can't I find my class?" -
 "Where do I add Singles or Doubles?" - "Class dropdown empty hai." -
 "Players cannot register for the category I added."
 
-### Intent: image or poster upload failure
+## Details page question patterns – Intent: image or poster upload failure
 
 Possible questions: - "My tournament poster is not uploading." - "Banner
 upload nahi ho raha." - "Thumbnail error aa raha hai." - "Can I upload
 WebP?" - "What size should my event image be?" - "Logo upload failed."
 
-### Intent: cannot edit or delete an event
+## Details page question patterns – Intent: cannot edit or delete an event
 
 Possible questions: - "Edit button is not showing." - "Event ke fields
 grey hain." - "I cannot change the tournament name." - "Why is my event
 locked?" - "Delete option nahi aa raha." - "Why can't I delete this
 tournament?"
 
-### Intent: date changes or schedule reset
+## Details page question patterns – Intent: date changes or schedule reset
 
 Possible questions: - "I changed the dates and my schedule
 disappeared." - "Date change karne par matches delete honge?" - "Why is
 it asking to reset the schedule?" - "Can I move the tournament after
 matches have started?" - "My venue dates changed automatically."
 
-### Intent: verification pending or rejected
+## Details page question patterns – Intent: verification pending or rejected
 
 Possible questions: - "How long until my event is approved?" - "My event
 is pending." - "Event reject ho gaya, what now?" - "Where can I see
 reviewer comments?" - "I cannot send it for verification."
 
-### Intent: duplicate name or invalid event name
+## Details page question patterns – Intent: duplicate name or invalid event name
 
 Possible questions: - "Why can't I use this tournament name?" - "Event
 Already Exists aa raha hai." - "Can two tournaments have the same
 name?" - "Why is 2026 not accepted as the event name?"
 
-## Frequently asked questions
+## Details page: source-of-truth and escalation rules
+
+-   This guide documents the Event Details page. It does not prove the
+    current state of a specific event.
+-   Do not infer an event's actual status, visibility, verification
+    result, category list, venue, permissions or upload result without
+    access to live application data.
+-   If the user reports a current event-specific problem, provide
+    documented checks first. If the answer depends on data not available
+    to the assistant, say what needs to be checked in TMS or by an
+    administrator.
+-   Organisation-specific fields, statuses, event levels, sport
+    configurations and extra sections may vary.
+-   Do not invent review timelines, upload retry limits, event
+    visibility rules beyond those documented here, or undocumented
+    backend behaviour.
+-   If a server-side configuration issue is indicated, such as "Sport
+    default configs are required," direct the user to the organisation's administrator or support.
+
+## Frequently asked questions about the Details page
 
 ### How do I create an event?
 
@@ -1089,8 +1120,7 @@ Check the bottom action bar while in Edit mode.
 ### Why can't I publish my event? (event not live)
 
 Publishing the event is done on this Details step with the **Publish**
-toggle in the bottom action bar. It does not depend on standings,
-results or awards. If you cannot publish, check:
+toggle in the bottom action bar. If you cannot publish, check:
 
 1.  The event has been created and saved.
 2.  If the Event Level requires verification, the event has been
@@ -1098,6 +1128,9 @@ results or awards. If you cannot publish, check:
     must be fixed and sent again.
 3.  You are in Edit mode.
 4.  You are looking at the bottom action bar of the Details step.
+5.  A venue is linked in **Venue Detail** (when the panel is shown);
+    otherwise publishing is refused with "Please select and update the
+    venue in Venue Detail before publishing the event."
 
 Turn the **Publish** toggle on to publish the event; the change is
 saved immediately.
@@ -1111,11 +1144,32 @@ toggle shows only when the event is saved, its verification is
 are in Edit mode. If players can see the event but cannot register,
 check the Registration step instead.
 
+### Why can players not see my tournament?
+
+A tournament is an event here, and players see it only after it is
+published. Turn on the **Publish** toggle in the bottom action bar of
+this Details step. The toggle shows only when the event is saved, its
+verification is **Event Accepted** (when the Event Level requires
+verification) and you are in Edit mode.
+
+### Why is my event not going live?
+
+An event goes live for players when it is published. Turn on the
+**Publish** toggle in the bottom action bar of this Details step. If
+the toggle is missing, save the event, check that its verification is
+**Event Accepted** (when the Event Level requires verification) and
+open the event in Edit mode.
+
 ### What happens if I change event dates?
 
 After confirmation, planning and match schedules on removed days are
 cleared, along with other affected registrations and plans. Days with
 played matches cannot be removed.
+
+### How many characters can the event description have?
+
+At most 350. Longer text is cut with the message "Event description
+cannot exceed 350 characters".
 
 ### Why can't I edit after publishing points?
 
@@ -1125,14 +1179,18 @@ remain editable.
 
 ### What happens to players if I delete a category?
 
-All participants entered in that category are removed when you click
-Update. This cannot be undone from this screen.
+A category that still has players cannot be deleted: Update is refused
+with "Category cannot be deleted because players are currently
+registered or present in the Unpaid list for this category." Remove the
+players first with **Delete** on the **Players** page (they move to the
+**Deleted** list and can be restored), then delete the category.
 
 ### Why can't I delete a category?
 
-Fixtures may already have been generated, or ranking points may have
-been published. Delete the relevant stages first when fixtures are the
-blocker. Published points can prevent deletion.
+It still has players (registered, unpaid, pending or queued), a stage
+or draw, or fixtures, or its ranking points were published. The message
+says which. Remove the players on the Players page or delete the stages
+on the Fixtures screen, then click Update again.
 
 ### How do I create a tournament?
 
@@ -1162,22 +1220,3 @@ Removing days from the event clears the planning and match schedules on those da
 
 Check the file type and size for that field: the logo must be PNG, JPEG or JPG within 1 MB, and the thumbnail exactly 379 × 200 px. WEBP is not accepted, and renaming a file does not change its type. An expired sign-in can also make uploads fail.
 
-## Source-of-truth and escalation rules
-
--   This guide documents the Event Details page. It does not prove the
-    current state of a specific event.
--   Do not infer an event's actual status, visibility, verification
-    result, category list, venue, permissions or upload result without
-    access to live application data.
--   If the user reports a current event-specific problem, provide
-    documented checks first. If the answer depends on data not available
-    to the assistant, say what needs to be checked in TMS or by an
-    administrator.
--   Organisation-specific fields, statuses, event levels, sport
-    configurations and extra sections may vary.
--   Do not invent review timelines, upload retry limits, event
-    visibility rules beyond those documented here, or undocumented
-    backend behaviour.
--   If a server-side configuration issue is indicated, such as "Sport
-    default configs are required" or "AI Image API Not Configured,"
-    direct the user to the organisation's administrator or support.

@@ -41,7 +41,7 @@ This guide explains how to add and edit doubles pairs, mixed doubles pairs and t
 
 1. Select a doubles or mixed doubles category and click **Add**. The **Add Pairs** panel opens: "Choose participants to create a pair, you can also borrow participant from other organizations with unpaired participants."
 2. Click **Add participant 1**, pick the player from **Available Participants** (use **Search**, **Search by**, the **Licensed** / **Unlicensed** tabs or **Add Temporary Player**), then do the same for **Add participant 2**.
-3. Click **Add** to register the pair.
+3. Click **Add** to register the pair. The **Add Pairs** panel stays open with an empty form so you can add the next pair; close it with its cross. If registration fails, the chosen players stay in the form.
 
 - **Unpaired Participants** lists players of this category who registered without a partner, so you can pair them – also players of other organisations.
 - **Ineligible players** shows players who do not match the category's rules; they cannot be chosen.
@@ -73,10 +73,10 @@ This guide explains how to add and edit doubles pairs, mixed doubles pairs and t
 
 ## Team rules checked by the server
 
-When a team is created or saved, the server checks the category's team settings (on the **Registration** page):
-- "Minimum Members Required" / "Maximum Members Allowed" – the number of players is outside **Players in Team**.
-- "Maximum EU Members Allowed", "Maximum Non EU Members Allowed", "Maximum Other Members Allowed" – too many players of one type for **Player Bifurcation**.
-- "Player Already Registered In Category" – a player is already in another entry of the category.
+When a team is created or saved, the server checks the category's team settings (on the **Registration** page). The messages end with the allowed number:
+- New team: "Minimum Members Required N" / "Maximum Members Allowed N"; when editing a team: "Minimum N members required" / "Maximum N members allowed" – the number of players is outside **Players in Team**.
+- "Maximum EU Members Allowed N", "Maximum Non EU Members Allowed N", "Maximum Other Members Allowed N" – too many players of one type for **Player Bifurcation**.
+- When editing: "Player Already Registered In Category <names>" – a player is already in another entry of the category.
 
 ## Editing a pair or a team
 
@@ -85,7 +85,7 @@ When a team is created or saved, the server checks the category's team settings 
 
 The server then checks:
 - "Modification Not Allowed" – the **Registration** toggle of the category is off. Turn it on on the **Registration** page to edit entries.
-- "Player Already Registered In Category" – a new player is already in another entry.
+- "Player Already Registered In Category <names>" – a new player is already in another entry.
 - The team size and bifurcation limits above.
 - "Registration blocked due to point restriction" – the point restriction of the category still applies when editing (unlike adding).
 
@@ -122,7 +122,7 @@ Image messages: "File exceeds max limit of N MB.", "… resolution must be W px 
 
 **How do I add a team?** **Add** → role and **Select Parent** → **Team Name** → **Add Player** → **Save**.
 
-**Why does saving a team say Minimum Members Required?** The team has fewer players than **Players in Team** on the Registration page requires.
+**Why does saving a team say Minimum Members Required?** The team has fewer players than **Players in Team** on the Registration page requires (the number at the end is the minimum).
 
 **Why "Modification Not Allowed" when editing a team?** The **Registration** toggle of the category is off.
 
@@ -133,5 +133,7 @@ Image messages: "File exceeds max limit of N MB.", "… resolution must be W px 
 **How do I edit the roster of a team in a league?** Click the **Player Details** icon on the team's row, add players with **Add Players** → **Add** (or **Loan**), set **Active** / **Reserve**, and save. The team's name, members, venues and images are edited under **Team Details**.
 
 **How do I add a team logo in a league?** **Team Details** icon → **Upload Photos** → **Team Logo** (80 × 75 px).
+
+## Frequently asked questions about pairs and teams (continued)
 
 **How do I change the players of a team?** In a league event, click **Player Details** on the team's row. In the roster use **Add Players** → **Add** to add players, set each player **Active** or **Reserve**, and click **Save**.

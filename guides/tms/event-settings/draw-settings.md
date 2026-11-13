@@ -146,7 +146,7 @@ Until you click **Save** on this step, the event follows the organisation's sett
 - A message starting with "Invalid" names a value the server could not accept. Reload the page and choose the options again.
 - If loading fails, an error message is shown and the page shows its starting values. Reload the page before saving, so you do not overwrite the stored settings with those starting values.
 
-## Frequently asked questions about the Draw Settings page
+## Frequently asked questions about the Draw Settings page (part 1)
 
 **How do I keep players from the same club apart in the draw?** Select **Clubs** in Group Stage settings and in PARENT SELECTION ORDER, give it priority 1 if it matters most, and click **Save** before creating the stages.
 
@@ -159,6 +159,8 @@ Until you click **Save** on this step, the event follows the organisation's sett
 **What is the difference between As far as possible and 1st Round Only?** As far as possible keeps same-entity participants apart for as many rounds as possible. 1st Round Only keeps them apart in the first round only.
 
 **Do these settings change draws I already made?** No. They are applied when a stage is created. Change an existing stage on the Fixtures screen.
+
+## Frequently asked questions about the Draw Settings page (part 2)
 
 **Why does the page say "Global Draw Settings" on my event?** The heading is shared with the organisation-wide page. On the event step the settings are saved for this event only.
 

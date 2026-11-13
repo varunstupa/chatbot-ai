@@ -27,12 +27,13 @@ suggested_questions:
   - What does Apply to all do in the Order of Merit sidebar?
   - Is a new Order of Merit award published straight away?
 backend_sources:
-  - gateway/src/routers/award_router.py (awards/v1 event and global awards)
+  - gateway/src/routers/awards_router.py (awards/v1 event and global awards)
   - tms/src/router/award_router.py
   - tms/src/service/award_service.py (upsert_event_award, _validate_weightage_per_category, _apply_tie_breakers)
   - tms/src/service/award_calculators.py (OrderOfMeritCalculator, OOM_METHOD_STRATEGIES)
   - tms/src/schema/award_schema.py (OrderOfMeritScoring, CategoryScoring, ResultPoints, TieBreaker)
 source_files:
+  - src/app/modules/tms/award-standings/best-player/components/best-player-tms-positions-view/best-player-tms-positions-view.component.html
   - src/app/modules/tms/award-standings/order-of-merit/components/order-of-merit-create-award-sidebar/order-of-merit-create-award-sidebar.component.html
   - src/app/modules/tms/award-standings/order-of-merit/components/order-of-merit-create-award-sidebar/order-of-merit-create-award-sidebar.component.ts
   - src/app/modules/tms/award-standings/order-of-merit/components/order-of-merit-points-weightage-step/order-of-merit-points-weightage-step.component.html
@@ -51,6 +52,7 @@ This guide explains the Order of Merit side panel in depth: which mode it opens 
 - **View** on an event award opens the panel read only.
 - **Edit** on an event award opens the panel with the basic details read only; only the points, the weightages and the tie-breakers can be changed.
 - The federation (global) award screen uses the create and edit modes for global awards. An event award keeps the publish state it has when it is edited: a published award stays published after the edit is saved.
+- Saving an edit does not change the award's positions. Click **Regenerate Positions** to apply the new points; on a published award the new positions are public at once.
 - The panel title is "Create Award", "Edit Award" or "View Award".
 
 ## Basic details
@@ -75,36 +77,39 @@ This guide explains the Order of Merit side panel in depth: which mode it opens 
 ## Weightage validation
 
 - The screen refuses to save when, for one outcome row, the weightages of the enabled columns add up to more than 100. The message is "Total % exceeds 100. Please input a valid entry" and Save is greyed out.
-- The server adds the three weightages of a category together (win, loss and participation) and refuses a total above 100 with code 400.
-- **Finding:** the screen checks each row on its own and the server checks the sum of all three rows. So a category with a win weightage of 60 and a loss weightage of 50 passes the screen and fails on the server. The server message for that refusal has no English text yet, so the screen can show a raw key or nothing. Keep the three weightages of a category to 100 in total until this is fixed.
+- The server adds the three weightages of a category together (win, loss and participation) and refuses a total above 100: "Weightage for category '{category_name}' must not exceed 100% (got {total_weight}%)".
+- **Finding:** the screen checks each row on its own and the server checks the sum of all three rows. So a category with a win weightage of 60 and a loss weightage of 50 passes the screen and is refused by the server with "… must not exceed 100% (got 110%)". Keep the three weightages of a category to 100 in total.
 
 ## Apply to all
 
 - The **Apply to all** toggle copies one grid to every category of the same participant type (singles, doubles or teams).
 - The toggle is shown when the points step is filtered to one participant type. With the filter on all types, it is shown for the participant type of the active category.
 - The toggle is kept separately for each participant type, so turning it on for singles does not change doubles or teams.
+- On save the server does the copying: for each participant type with the toggle on, the grid of the first selected category of that type is copied to the other selected categories of that type.
 - Apply to all is not available in view mode.
 
 ## Tie-breakers
 
 - Each category has one tie-breaker row, with the criterion set to **win-ratio** by default.
 - The criteria offered are **Won** (wins), **Win-Loss** (wins minus losses) and **Win/Loss Ratio** (wins divided by matches played).
-- The tie-breaker order follows the order of the categories in the award: the first category is the first tie-breaker. A row can be hidden with its visibility toggle; hidden rows are not used.
+- The tie-breaker order follows the order of the categories in the award: the first category is the first tie-breaker. Drag a row by its handle to change the order (not in view mode). A row can be hidden with its visibility (eye) button; hidden rows are not used.
 - The server sorts the players by total points, then applies the visible tie-breakers in order. For each tie-breaker the server uses the player's wins (Won), wins minus losses (Win-Loss), or wins divided by matches played (Win/Loss Ratio) in that category. A player not in the category counts as zero for it.
 - **Naming note:** the criterion labelled **Win/Loss Ratio** is computed as wins divided by matches played, not wins divided by losses.
+- Players still equal after every tie-breaker are put in a fixed internal order, so two players never share a position.
 
 ## Save
 
 - **Save** (or **Update** when editing) is greyed out only while a weightage row is over 100.
 - With an empty name or no category chosen, clicking **Save** does nothing and shows no message. Fill in the basic details first (**Next** is greyed out until they are complete).
 - An event award is saved to the event. A new award is saved unpublished. A failed save shows the server's message, or "Failed to save the award." when the server sends none.
+- A new award is refused when its name is already used in the event ("Award name '{name}' already exists in this event") or the Order of Merit type is switched off for the organisation ("This award type is disabled at federation level"). Edits skip both checks.
 - A global award is saved to the federation.
 - Back and Next move between the basic details and the points step. On the single page layout both appear on one screen.
 
-## Publishing and deleting from the cards
+## Order of Merit sidebar: publishing and deleting
 
-- **Publish** and **Unpublish** on an event award card call the standings publish for that award (see the operations guide). The award's standings must be generated before they can be published.
-- Deleting an event award removes it from the event (see the awards API guide).
+- On the event page the award card itself has only **View** and edit. Click the card to open the award's positions: **Generate Positions** first, then **Publish** or **Publish All**, and later **Un-publish**, each after a confirmation (see the Awards and Standings guide). The standing must be generated before it can be published.
+- Deleting an event award removes it from the event (see the awards API guide). Its published standing is not removed with it and can still show publicly, so **Un-publish** the award before deleting it.
 
 ## Frequently asked questions
 
@@ -122,10 +127,12 @@ This guide explains the Order of Merit side panel in depth: which mode it opens 
 
 **Why is the Save button greyed out for Order of Merit?** A weightage row of a category is above 100 percent. Lower it until the warning goes. If the name or a category is missing, **Save** does nothing, so fill in the basic details first.
 
+## Frequently asked questions (continued)
+
 **What is the difference between view and edit for a published Order of Merit award?** **View** opens the award read only. **Edit** keeps the basic details read only and lets you change only the points, the weightages and the tie-breakers. A published award stays published after the edit is saved.
 
 **How are the tie breakers used to rank Order of Merit players?** Players are sorted by total points first. Players with equal points are then compared by the visible tie-breakers in category order (the first category is the first tie-breaker): **Won** (wins), **Win-Loss** (wins minus losses) or **Win/Loss Ratio** (wins divided by matches played). Hidden rows are not used.
 
 **What does Apply to all do in the Order of Merit sidebar?** It copies one points grid to every category of the same participant type (singles, doubles or teams). It is kept separately for each participant type and is not available in view mode.
 
-**Is a new Order of Merit award published straight away?** No. A new event award is saved unpublished. Publish it from its card with **Publish** after its standings have been generated.
+**Is a new Order of Merit award published straight away?** No. A new event award is saved unpublished. Click its card, click **Generate Positions**, then **Publish** and **Confirm**.

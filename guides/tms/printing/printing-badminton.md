@@ -40,23 +40,29 @@ This guide applies to events whose sport is **Badminton** (sport ID 4). Badminto
 
 ## Which sheet is printed
 
-- For a Badminton event the Printing page togglees the day-wise score sheet, the score sheet and the toss sheet to the Badminton layout.
-- The Badminton layout is chosen from the sport of the event, not from the participant type. A singles, doubles or team Badminton category all use it.
+- For a Badminton event the Printing page switches the day-wise score sheet and the score sheet to the Badminton layout.
+- The Badminton layout is chosen from the sport of the app, not from the participant type. A singles, doubles or team Badminton category all use it.
+- **Up to 6 score sheets per page** prints a compact sheet for singles and doubles. Team matches always print the full one-page sheet, as does **1 score sheet per page**.
 
 ## Layout of the Badminton sheet
 
-- Each match has a block with the two sides. For singles each side is one player with its back number. For doubles each side shows the pair.
-- **Games** is the heading of the score area. Each game is a column block: the points of side A and side B are written in rally boxes.
-- **Rally boxes**: each game has 30 numbered boxes (1 to 30) for the points. The boxes are used by hand: the scorer ticks or writes each point.
-- The number of game blocks follows the points stored for the match. A blank sheet (with no points) shows **three** game blocks, marked as the placeholder sides **A1** and **B1**.
-- **vs** separates the two sides.
-- **Result** is the number of games won by each side.
+- The sheet starts with the match type (for example SINGLES) and a **Match Details** block: **Match Number**, **Match Date**, **Court Number** ("Table" and the table number, or "-"), **Round**, **Category**, **Commencement Time**, **Conclusion Time** and **Duration**.
+- Each game is a block headed **Game 1**, **Game 2** and so on, with one row per side: the back number, the player name (both names for doubles, under **Player Names**), 30 numbered rally boxes and the game score.
+- **Rally boxes**: 30 numbered boxes (1 to 30) per side and game. With scores, the boxes up to the side's points are shaded; without scores they are left plain for the scorer.
+- The number of game blocks follows the points stored for the match. A match with no points shows **three** game blocks.
+- **Winner** is the winner's name and **Result** the games won, winner first (for example 2-1). **Umpire Signature** and **Winner Signature** are empty boxes.
+- The full sheet adds **Officials** (**Umpire** and **Referee** with name and **Signature**), **Service Judge**, **Misconduct Tracking** (a **Black Card** grid for Player A and Player B) and **Overall Result**.
 
 ## Team Badminton sheets
 
-- A team match prints each sub-match (a playing table of the tie) with its own games, the same as the other team sheets.
+- A team match prints a **Submatches** section: each sub-match of the line-up, marked SINGLES or DOUBLES, with the players from the playing order (club or member association under the names), its games, its result (games won, for example 2-1) and its **Winner** when known.
+- A team match with no line-up yet prints one blank SINGLES block with the placeholder sides **A1** and **B1**.
 - The team logos are printed when the print settings enable the team logos (Logo 1 to Logo 6).
 - The playing order of the team tie is read from the playing order of the match. The toss sheet is printed for team categories only.
+
+## Print settings that decide the Badminton fields
+
+- Each field of the sheet (match number, date, court, round, category, commencement and conclusion time, duration, winner, overall result, umpire, referee, service judge and misconduct tracking) is printed only when it is switched on in the print settings of the event.
 
 ## Print settings that matter for Badminton
 
@@ -65,8 +71,8 @@ This guide applies to events whose sport is **Badminton** (sport ID 4). Badminto
 
 ## Printing without scores
 
-- With **Without Scores** the rally boxes and the Result are left blank, so the scorer can write the points by hand.
-- With **With Scores** the points saved for each game are printed in the rally boxes.
+- With **Without Scores** the rally boxes are not shaded and the game scores, **Winner** and **Result** are hidden, so the scorer can write them by hand.
+- With **With Scores** the rally boxes up to the saved points are shaded and the game scores, winner and result are printed.
 
 ## Messages
 
@@ -78,12 +84,14 @@ This guide applies to events whose sport is **Badminton** (sport ID 4). Badminto
 
 **What are the rally boxes?** Thirty numbered boxes for each game, used to mark the points of the game during the match.
 
-**How many games are on a blank Badminton sheet?** Three game blocks, with the placeholder sides A1 and B1.
+**How many games are on a blank Badminton sheet?** Three game blocks (Game 1 to Game 3) when the match has no points yet. A team match with no line-up shows a placeholder block with the sides A1 and B1.
 
-**What does Result show?** The number of games each side has won.
+**What does Result show?** The games won, winner first (for example 2-1).
 
-**Why does the sheet look different from the other sports?** The Badminton sheet has rally boxes for the points of each game. The other sports use the score sheet layout of the day-wise and score sheets.
+**Why is a field missing from the Badminton sheet?** Each field is printed only when it is switched on in the event's print settings.
 
-**What does the Result column show on the Badminton sheet?** The number of games each side has won.
+**Why does the sheet look different from the other sports?** The Badminton sheet has 30 rally boxes per side for each game. The other sports use the score sheet layout of the day-wise and score sheets.
+
+**What does the Result column show on the Badminton sheet?** The games won by the winner and the loser, for example 2-1. It is hidden when printing without scores.
 
 **How are the team logos printed on the Badminton sheet?** They are printed when the print settings enable the team logos (Logo 1 to Logo 6).

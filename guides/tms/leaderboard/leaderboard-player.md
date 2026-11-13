@@ -39,7 +39,7 @@ The tab is paged, and it has the same search box as the other tabs.
 
 ## Columns
 
-- **Position** – the rank from the total points. Players with the same total share a position.
+- **Position** – the rank from the total points. Players with the same total share a position, and the next total takes the next number (1, 1, 2).
 - **Player Name** – the player's name.
 - **M.A.** or **Club** – the parent of the player, shown when the event's parent role is one of them.
 - **Team** – the team the player belongs to. A dash is shown when the player has no team.
@@ -52,13 +52,14 @@ The columns depend on the event's rule setting for the stage:
 - **Top and bottom rule** (rule value TOP_AND_BOTTOM): four record columns.
   - **S Top W/L** – singles matches in the top group of the rule (won-lost).
   - **S Bottom W/L** – singles matches in the bottom group.
-  - **D Top W/L** – doubles and mixed matches in the top group.
-  - **D Bottom W/L** – doubles and mixed matches in the bottom group.
+  - **D Top W/L** – doubles matches in the top group (mixed doubles are not counted in these two columns).
+  - **D Bottom W/L** – doubles matches in the bottom group.
 - **Other rules**: two record columns.
   - **S W/L** – singles matches won and lost.
   - **D W/L** – doubles and mixed matches won and lost.
 
-Each cell is written as won-lost, for example "3-1". A cell with no matches shows "0-0".
+Each cell is written as won-lost, for example "3-1". A cell with no matches shows "0-0" (with the two-column layout an empty record shows "0 - 0"). **Points** shows 0 when the player has none.
+- The rule comes with the player list, so the columns can change when you change the stage.
 
 ## What the records count
 
@@ -67,7 +68,9 @@ Each cell is written as won-lost, for example "3-1". A cell with no matches show
 
 ## Position and ties
 
-- The position is worked out from the total points. Players with equal points share the same position.
+- The position is worked out from the total points, highest first. Players with equal points share the same position, and the next total takes the next number: for example 1, 1, 2, not 1, 1, 3.
+- No other tie-break is used on this tab; the **Winner Logic** applies to the team final standing only.
+- The position is given before the search, so a player found by search keeps the overall position.
 
 ## Search and paging
 
@@ -86,12 +89,12 @@ Each cell is written as won-lost, for example "3-1". A cell with no matches show
 
 **What is the Player Leaderboard?** The list of players of the team categories with their singles and doubles records, and their total points.
 
-**What do the S and D W/L columns mean?** Singles (S) and doubles (D) matches, shown as won-lost. Doubles includes mixed doubles.
+**What do the S and D W/L columns mean?** Singles (S) and doubles (D) matches, shown as won-lost. In the two-column layout doubles includes mixed doubles; in the top and bottom layout it counts doubles only.
 
 **What is the difference between Top W/L and Bottom W/L?** When the stage uses the top and bottom rule, the records are split between the top group and the bottom group of the rule.
 
 **Why does a player show 0-0?** The player has no match in that stage or category for that record, so no result counts yet.
 
-**How is the position worked out?** From the total points. Equal points share the same position.
+**How is the position worked out?** From the total points. Equal points share the same position, and the next total takes the next number (1, 1, 2).
 
 **How do I search the player leaderboard?** Type a player or team name in the Search box.

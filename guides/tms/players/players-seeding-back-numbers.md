@@ -30,6 +30,7 @@ source_files:
   - src/app/modules/tms/players/players.component.ts
   - src/app/modules/tms/players/seeding-method-dialog/seeding-method-dialog.component.html
   - src/app/modules/tms/players/bulk-seeding-dialog/bulk-seeding-dialog.component.html
+  - src/app/modules/tms/players/bulk-seeding-dialog/bulk-seeding-dialog.component.ts
   - src/assets/json-data/auto_seed_list.json
   - src/assets/json-data/back_no_data.json
 ---
@@ -51,7 +52,7 @@ This guide explains seeding (giving the best participants seed positions for the
 
 - In the **Auto-seed settings** window click **Manually seed**. Each row then has a seed dropdown; pick the seed for each participant and click **Save**.
 - The dropdown offers the seeds of the chosen **Seed Range** that are not yet given to another participant. Choose a **Seed Range** first.
-- **Reset** removes all seeds of the category: "Seed Reset Success".
+- **Reset** removes all seeds (system and display seeds) of the category: "Seed Reset Success". The category then no longer counts as seeded.
 - Errors:
   - "Duplicate Seed" – two participants got the same seed.
   - "Seed values are already assigned for this event category" – the seed is already taken by another participant.
@@ -69,8 +70,9 @@ This guide explains seeding (giving the best participants seed positions for the
 2. **Select Category** (participant type: singles, doubles, mixed doubles or teams), choose **Internal Points-Rank** ("choose between points and rank") or **External Points-Rank** ("use external points"), for internal also **Points** or **Rank**, and a **Seeding Range**. Click **Next**.
 3. "Seeding in progress" is shown, then the **Execution Summary Report** with **Category**, **Status** and **Participant Seeds** per category. Click **Okay**.
 
-- Categories whose draw is already created are skipped; the summary shows their status.
+- The **Status** of each category is **Success**, **Failed** or **Skipped**. Categories whose draw is already created, and categories without eligible participants, are skipped. Each seeded category's old seeds are cleared first.
 - "Seeding failed" – the bulk seeding could not run; nothing was changed.
+- The window also has a **Reset** button next to **Next**. It needs a participant type to be chosen and usually shows "Seed Reset Success", but it does **not** clear the seeds of the categories of that type: the server treats the participant type as a single category number, so normally nothing is reset. "Reset failed" means it could not run. The **Seeding Range** choice is cleared.
 - To remove seeds, use **Auto Seed** → **Manually seed** → **Reset** in each category.
 
 ## Display seed (organisation setting)
@@ -91,17 +93,17 @@ The player list's **Seed** column then shows the display seed. In the **Auto-see
 
 Click **Back No.** in the page header. The **Back No Settings** window lists the participants (**S.No**, **Participant name**, back number, member association, club).
 
-- **Specify the no to start from**: choose 1, 100, 500 or 1000. Numbers are given at once in sequence: "Backno Auto Success".
+- **Specify the no to start from**: choose 1, 100, 500 or 1000. Numbers are given at once in sequence to all eligible participants, replacing numbers given before: "Backno Auto Success".
 - Only accepted, paid, active participants who are not in the queue get numbers.
 - Back numbers belong to the person for the whole event, not per category.
 - To set numbers by hand, type them in the boxes and click **Save**: "Backno Manual Success".
-- **Reset** removes all back numbers of the event.
+- **Reset** removes all back numbers of the event: "Backno Reset Success".
 - "N New players found" means N participants still have no back number.
 
 ## Back number errors
 
 - "Back No Duplicate" – the same number was typed twice.
-- A conflict message when a number is already used by another participant of the event.
+- "Back number(s) N already assigned to another participant in this event" – the number is already used by someone else in the event.
 - "No Event Found" – the event no longer exists.
 
 ## Frequently asked questions about seeding and back numbers
@@ -123,5 +125,9 @@ Click **Back No.** in the page header. The **Back No Settings** window lists the
 **Are back numbers per category?** No, one back number per person for the whole event.
 
 **Why does it say Back No Duplicate?** The same back number was typed twice. Give each participant a different number; one back number is used per person for the whole event.
+
+## Frequently asked questions about seeding and back numbers (continued)
+
+**How do I remove seeds?** In the category, **Auto Seed** → **Next** → **Manually seed** → **Reset** ("Seed Reset Success"). Do this per category: the **Reset** button of the **Seeding** window in the page header does not clear the categories' seeds, even when it says "Seed Reset Success".
 
 **How do I seed all categories at once?** Click **Seeding** in the page header, choose the participant type, **Internal Points-Rank** or **External Points-Rank** (for internal also **Points** or **Rank**) and a **Seeding Range**, then **Next**. The **Execution Summary Report** shows the result per category; categories whose draw already exists are skipped.

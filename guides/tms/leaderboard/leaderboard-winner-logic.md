@@ -41,13 +41,13 @@ source_files:
 ---
 # Winner Logic sidebar
 
-The **Winner Logic** sidebar sets how the leaderboard orders teams and players when their points are level. It is opened with the **Winner logic** button on the Leaderboard screen (the button with the recalculate icon, next to the search box). The sidebar has two parts: the **comparison method** and the **winner basis** for each criterion.
+The **Winner Logic** sidebar sets how the leaderboard orders teams and players when their points are level. It is opened with the **Winner Logic** button on the Leaderboard screen, next to the search box. The button is shown only when **ALL** (the final standing) is selected. The sidebar has no title; close it with the **X**. The sidebar has two parts: the **comparison method** and the **winner basis** for each criterion.
 
 ## Winner Comparison
 
 - **Head-to-Head** – teams that are level on points are compared with each other only, using the results between them.
-- **Compare with All** – teams that are level on points are compared with all the other teams in the group or category.
-- Leagues use Compare with All by default; tournaments use Head-to-Head.
+- **Compare with All** – every team is measured against the whole category on its overall record with the ticked criteria. Points are not grouped first, so **Points** counts only when it is ticked.
+- Leagues use Compare with All by default; tournaments use Head-to-Head. Older league categories that already had group results were kept on Head-to-Head so their standing did not change; you can switch them here.
 
 ## Winner Basis (For Final Position)
 
@@ -64,7 +64,7 @@ Five criteria are listed in this order. Each can be switched on or off with its 
 - **Win-Loss** compares the difference between wins and losses.
 - For Match and Sub Match these are match and sub match records. For **Game** the records are sets won and lost, and for **Score** they are points won and lost.
 
-When a criterion is switched off, its basis options are cleared and it is not used for ties.
+When a criterion is switched off, its basis options are cleared and it is not used for ties. When it is switched on again, the default basis of the event type is selected for it.
 
 ## Defaults
 
@@ -72,16 +72,20 @@ When a criterion is switched off, its basis options are cleared and it is not us
 - Other events: Head-to-Head, and Win/Loss Ratio as the basis.
 - All five criteria start switched on in the form.
 - A criterion that is saved as off stays off when the sidebar opens again.
+- A saved logic with no criteria means points only: only **Points** is ticked when the sidebar opens.
+- If every criterion is switched off, the server ranks on points alone.
 
 ## Saving
 
 - **Update** saves the comparison method and the five criteria, then closes the sidebar and reloads the standings.
 - The saved values apply to the category, not to a single stage.
-- A failed save shows the server message in the error snackbar.
+- A successful save shows no message (the server answers "Leaderboard Winner Logic Updated Successfully", but the screen does not show it). A failed save shows no message either; the sidebar stays open.
 
 ## What the saved logic does
 
-- The saved criteria are used when the final standing is worked out. Teams are grouped by total points first. Inside a group of equal points, the enabled criteria break the tie in their saved order (Points is not used for this). With Head-to-Head the tied teams are compared with each other first; with Compare with All they are compared with the whole field.
+- The saved criteria are used when the final standing (**ALL**) is worked out. They do not change the stage tables or the Player Leaderboard, which rank on points.
+- With Head-to-Head, teams are grouped by total points first. Inside a group of equal points the enabled criteria are applied in their saved order (Points is not used for this) to the matches between the tied teams; if those separate no one, the same criteria are applied to the overall records.
+- Teams the criteria cannot separate share a rank, and the next rank skips the shared places (1, 1, 3).
 - Changing the logic changes the standing order on the next load. It does not change any match result.
 
 ## Permissions
@@ -104,7 +108,5 @@ When a criterion is switched off, its basis options are cleared and it is not us
 **Why is Sub Match or Game not counted?** Its toggle is off in the saved logic.
 
 **How do I save the winner logic?** Make the changes, then click **Update**.
-
-**Which permission do I need?** Display Settings in edit mode.
 
 **Which permission do I need to change the winner logic?** The Display Settings permission in edit mode. Without it the server refuses the **Update**.
