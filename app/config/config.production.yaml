@@ -134,6 +134,7 @@ app_chat:
   # Multilingual: questions in any language find the English guides.
   embedding_model: "intfloat/multilingual-e5-base"
   top_k: 4                   # passages sent to the model. Tested 2026-10-26 on 100 questions: 3 and 7 both 92.2%, but 7 answered 3x slower on CPU (median 12.8 s vs 4.2 s)
+  history_messages: 2  # the previous question and answer, sent only with a follow-up (app_chat.is_follow_up)
   # Chroma distance (lower is closer); hits above the limit count as no match.
   # Calibrated for multilingual-e5-base (right answers 0.32-0.51 in 7 languages).
   screen_max_distance: 0.55  # guide of the screen the user is on
@@ -190,6 +191,7 @@ llm:
   local_model_name: "qwen3.5:4b-q4_K_M"
   # Thinking off: on CPU a thinking answer takes minutes. See LLMConfig.local_reasoning.
   local_reasoning: false
+  local_keep_alive: "30m"
 
 # Admin-chat questions and answers, per tenant and session (app/services/chat_store.py).
 # Local MongoDB: mongod --dbpath <folder> --bind_ip 127.0.0.1 (see README).
